@@ -3,77 +3,102 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SignetAI.io | Accountability Over Truth</title>
+    <title>Signet AI | Technical Specification & VPR Standard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
       :root {
-        /* Midnight (OLED Dark) */
-        --bg-primary: #0a0a0a;
-        --bg-secondary: #121212;
-        --text-primary: #ffffff;
-        --text-secondary: #a3a3a3;
-        --accent: #10b981;
-        --border: rgba(255, 255, 255, 0.08);
-        --glass: rgba(255, 255, 255, 0.03);
-        --nav-bg: rgba(10, 10, 10, 0.85);
-        --code-bg: #050505;
+        /* C2PA Industrial Palette */
+        --bg-standard: #FFFFFF;
+        --bg-sidebar: #F8F9FA;
+        --text-header: #000000;
+        --text-body: #222222;
+        --trust-blue: #0055FF;
+        --border-light: #E1E4E8;
+        --admonition-bg: rgba(0, 85, 255, 0.03);
+        --code-bg: #F6F8FA;
       }
 
-      [data-theme='paper'] {
-        /* Ivory Paper (Editorial Light) */
-        --bg-primary: #faf9f6;
-        --bg-secondary: #f0ede4;
-        --text-primary: #121212;
-        --text-secondary: #525252;
-        --accent: #2563eb;
-        --border: rgba(0, 0, 0, 0.1);
-        --glass: rgba(0, 0, 0, 0.02);
-        --nav-bg: rgba(250, 249, 246, 0.9);
-        --code-bg: #f5f4f0;
-      }
-
-      [data-theme='sepia'] {
-        /* Solarized Sepia (Reader Focus) */
-        --bg-primary: #f4ecd8;
-        --bg-secondary: #e8dfc4;
-        --text-primary: #433422;
-        --text-secondary: #7a6a58;
-        --accent: #92400e;
-        --border: rgba(67, 52, 34, 0.12);
-        --glass: rgba(67, 52, 34, 0.04);
-        --nav-bg: rgba(244, 236, 216, 0.9);
-        --code-bg: #ebe1c9;
+      [data-theme='midnight'] {
+        --bg-standard: #0D1117;
+        --bg-sidebar: #010409;
+        --text-header: #F0F6FC;
+        --text-body: #C9D1D9;
+        --trust-blue: #58A6FF;
+        --border-light: #30363D;
+        --admonition-bg: rgba(88, 166, 255, 0.05);
+        --code-bg: #161B22;
       }
 
       html { scroll-behavior: smooth; }
       body {
-        background-color: var(--bg-primary);
-        color: var(--text-primary);
-        font-family: 'Inter', sans-serif;
-        transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        background-color: var(--bg-standard);
+        color: var(--text-body);
+        font-family: 'Inter', -apple-system, sans-serif;
+        line-height: 1.6;
+        transition: background-color 0.3s ease;
       }
-      .font-serif { font-family: 'Playfair Display', serif; }
+
+      h1, h2, h3, h4, h5 {
+        color: var(--text-header);
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+
       .font-mono { font-family: 'JetBrains Mono', monospace; }
       
-      .theme-bg { background-color: var(--bg-primary); }
-      .theme-bg-secondary { background-color: var(--bg-secondary); }
-      .theme-text { color: var(--text-primary); }
-      .theme-text-secondary { color: var(--text-secondary); }
-      .theme-border { border-color: var(--border); }
-      .theme-accent { color: var(--accent); }
-      .theme-accent-bg { background-color: var(--accent); }
-
-      .glass-card {
-        background: var(--glass);
-        backdrop-filter: blur(12px);
-        border: 1px solid var(--border);
+      .content-column {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 4rem 2rem;
       }
-      .border-v { border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
-      .border-t-theme { border-top: 1px solid var(--border); }
-      .border-b-theme { border-bottom: 1px solid var(--border); }
+
+      .sidebar-link {
+        color: var(--text-body);
+        font-size: 0.875rem;
+        padding: 0.5rem 1rem;
+        display: block;
+        border-left: 2px solid transparent;
+        transition: all 0.2s;
+      }
+      .sidebar-link:hover {
+        background-color: rgba(0, 0, 0, 0.03);
+        color: var(--trust-blue);
+      }
+      .sidebar-link.active {
+        color: var(--trust-blue);
+        border-left-color: var(--trust-blue);
+        background-color: var(--admonition-bg);
+        font-weight: 600;
+      }
+
+      .admonition {
+        border-left: 4px solid var(--trust-blue);
+        background-color: var(--admonition-bg);
+        padding: 1.5rem;
+        margin: 2rem 0;
+      }
+
+      .hr-chapter {
+        border: 0;
+        border-top: 1px solid var(--border-light);
+        margin: 4rem 0;
+      }
+
+      .cr-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: 1.5px solid currentColor;
+        font-weight: 800;
+        font-size: 10px;
+        text-transform: lowercase;
+      }
     </style>
     <script type="importmap">
     {
