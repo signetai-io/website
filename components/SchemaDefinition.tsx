@@ -23,53 +23,53 @@ export const SchemaDefinition: React.FC = () => {
   ];
 
   return (
-    <section className="py-40 px-6 max-w-7xl mx-auto border-v theme-bg-secondary/20">
+    <section id="schema-intro" className="py-24 border-v">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-20">
         <div className="space-y-12">
           <div className="space-y-4">
-            <span className="font-mono text-[10px] theme-accent tracking-[0.4em] uppercase font-bold">Standard Artifacts</span>
-            <h2 className="font-serif text-5xl theme-text font-bold italic">The VPR Payload.</h2>
-            <p className="theme-text-secondary font-serif text-lg leading-relaxed">
-              Example HTTP header and metadata payload emitted by a Signet-compliant node during asset generation.
+            <span className="font-mono text-[10px] text-[var(--trust-blue)] tracking-[0.4em] uppercase font-bold">Standard Artifacts</span>
+            <h2 className="text-4xl font-bold italic text-[var(--text-header)]">The VPR Header.</h2>
+            <p className="text-lg leading-relaxed text-[var(--text-body)] opacity-80">
+              Protocol nodes emit an `X-Signet-VPR` header containing a deterministic reasoning chain.
             </p>
           </div>
           
-          <div className="p-8 rounded-lg shadow-inner overflow-hidden" style={{ backgroundColor: 'var(--code-bg)', border: '1px solid var(--border)' }}>
+          <div className="p-8 rounded border border-[var(--border-light)]" style={{ backgroundColor: 'var(--code-bg)' }}>
             <div className="flex gap-2 mb-6">
-              <div className="w-2.5 h-2.5 rounded-full bg-red-500/20"></div>
-              <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/20"></div>
-              <div className="w-2.5 h-2.5 rounded-full bg-green-500/20"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-red-500/30"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/30"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-green-500/30"></div>
             </div>
-            <pre className="font-mono text-[12px] theme-text leading-relaxed overflow-x-auto selection:bg-emerald-500/20">
-              {JSON.stringify(vprHeaderSample, null, 2)}
+            <pre className="font-mono text-[12px] leading-relaxed overflow-x-auto border-none p-0">
+              <code>{JSON.stringify(vprHeaderSample, null, 2)}</code>
             </pre>
           </div>
         </div>
         
         <div className="space-y-12">
           <div className="space-y-4">
-            <span className="font-mono text-[10px] theme-text-secondary tracking-[0.4em] uppercase font-bold">Ecosystem Distribution</span>
-            <h2 className="font-serif text-5xl theme-text font-bold italic">Functional Mapping.</h2>
-            <p className="theme-text-secondary font-serif text-lg leading-relaxed">
-              How the Signet Protocol layers distribute functional responsibility across the decentralized tool ecosystem.
+            <span className="font-mono text-[10px] text-[var(--text-body)] opacity-40 tracking-[0.4em] uppercase font-bold">Ecosystem Distribution</span>
+            <h2 className="text-4xl font-bold italic text-[var(--text-header)]">Functional Mapping.</h2>
+            <p className="text-lg leading-relaxed text-[var(--text-body)] opacity-80">
+              Mapping functional responsibility across protocol layers.
             </p>
           </div>
 
-          <div className="border border-neutral-800/10 rounded-lg overflow-hidden glass-card">
-            <table className="w-full font-mono text-[11px] theme-text-secondary uppercase tracking-wider">
-              <thead className="theme-bg-secondary text-neutral-500 border-b border-neutral-800/10">
+          <div className="border border-[var(--border-light)] rounded overflow-hidden">
+            <table className="w-full font-mono text-[11px] uppercase tracking-wider">
+              <thead className="bg-[var(--table-header)] border-b border-[var(--border-light)] text-[var(--text-header)]">
                 <tr>
-                  <th className="p-6 text-left font-bold">Component</th>
-                  <th className="p-6 text-left font-bold">Protocol Layer</th>
-                  <th className="p-6 text-left font-bold">Task</th>
+                  <th className="p-4 text-left font-bold">Component</th>
+                  <th className="p-4 text-left font-bold">Layer</th>
+                  <th className="p-4 text-left font-bold">Task</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-800/10 font-serif lowercase italic text-base">
+              <tbody className="divide-y divide-[var(--border-light)]">
                 {appMapping.map(m => (
-                  <tr key={m.app} className="hover:theme-bg-secondary/30 transition-colors">
-                    <td className="p-6 theme-text font-bold normal-case font-sans">{m.app}</td>
-                    <td className="p-6 font-mono text-[10px] uppercase tracking-tighter not-italic">{m.layer}</td>
-                    <td className="p-6 theme-text-secondary opacity-80">{m.task}</td>
+                  <tr key={m.app} className="hover:bg-white/5 transition-colors">
+                    <td className="p-4 text-[var(--text-header)] font-bold">{m.app}</td>
+                    <td className="p-4 text-[var(--text-body)] opacity-60 text-[10px]">{m.layer}</td>
+                    <td className="p-4 text-[var(--trust-blue)] font-bold">{m.task}</td>
                   </tr>
                 ))}
               </tbody>

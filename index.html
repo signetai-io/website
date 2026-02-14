@@ -23,16 +23,16 @@
       }
 
       [data-theme='midnight'] {
-        /* Obsidian Specification Palette (High-Contrast Dark) */
-        --bg-standard: #0D1117;
-        --bg-sidebar: #010409;
+        /* Obsidian High-Contrast Palette */
+        --bg-standard: #000000;
+        --bg-sidebar: #050505;
         --text-header: #FFFFFF;
-        --text-body: #D1D5DB;
-        --trust-blue: #4D8BFF;
-        --border-light: #30363D;
-        --admonition-bg: rgba(77, 139, 255, 0.08);
-        --code-bg: #161B22;
-        --table-header: #1C2128;
+        --text-body: #E5E7EB;
+        --trust-blue: #3B82F6;
+        --border-light: #222222;
+        --admonition-bg: rgba(59, 130, 246, 0.1);
+        --code-bg: #0A0A0A;
+        --table-header: #0D0D0D;
       }
 
       html { scroll-behavior: smooth; }
@@ -103,12 +103,13 @@
         text-transform: lowercase;
       }
 
-      /* High-contrast table styles for both modes */
+      /* High-contrast table styles */
       table { width: 100%; border-collapse: collapse; }
       th { background-color: var(--table-header); color: var(--text-header); font-weight: 700; border-bottom: 2px solid var(--border-light); }
       td { border-bottom: 1px solid var(--border-light); }
       
-      pre { border: 1px solid var(--border-light); border-radius: 4px; }
+      pre { border: 1px solid var(--border-light); border-radius: 4px; background-color: var(--code-bg); color: var(--text-body); }
+      code { color: inherit; }
     </style>
     <script type="importmap">
     {
