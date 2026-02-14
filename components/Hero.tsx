@@ -1,7 +1,7 @@
 import React from 'react';
 import { SignetChainVisual } from './SignetChain';
 
-export const Hero: React.FC = () => {
+export const Hero: React.FC<{ onOpenPortal: () => void }> = ({ onOpenPortal }) => {
   return (
     <section className="relative pt-40 pb-24 px-6 max-w-7xl mx-auto border-v">
       <div className="flex flex-col lg:flex-row gap-16 items-start">
@@ -24,12 +24,12 @@ export const Hero: React.FC = () => {
           </p>
 
           <div className="flex flex-wrap gap-4 pt-4">
-            <a 
-              href="#tks" 
+            <button 
+              onClick={onOpenPortal}
               className="px-8 py-5 theme-accent-bg text-white font-mono text-xs uppercase tracking-widest shadow-xl hover:brightness-110 transition-all text-center"
             >
-              Generate Master Signet
-            </a>
+              Access Signet Portal
+            </button>
             <a 
               href="#spec" 
               className="px-8 py-5 border border-current theme-text font-mono text-xs uppercase tracking-widest hover:theme-accent-bg hover:text-white transition-all text-center"

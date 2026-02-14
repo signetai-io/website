@@ -6,8 +6,9 @@ import { SpecView } from './components/SpecView';
 import { VerificationBadge } from './components/VerificationBadge';
 import { TrustKeyService } from './components/TrustKeyService';
 import { ContactHub } from './components/ContactHub';
+import { PortalView } from './components/PortalView';
 
-type Theme = 'midnight' | 'paper' | 'sepia';
+export type Theme = 'midnight' | 'paper' | 'sepia';
 
 const Footer: React.FC = () => (
   <footer className="py-24 px-6 border-t-theme max-w-7xl mx-auto border-v">
@@ -55,7 +56,12 @@ const Footer: React.FC = () => (
   </footer>
 );
 
-const Navbar: React.FC<{ isSpec: boolean; currentTheme: Theme; onThemeChange: (t: Theme) => void }> = ({ isSpec, currentTheme, onThemeChange }) => (
+const Navbar: React.FC<{ 
+  isSpec: boolean; 
+  currentTheme: Theme; 
+  onThemeChange: (t: Theme) => void;
+  onPortalOpen: () => void;
+}> = ({ isSpec, currentTheme, onThemeChange, onPortalOpen }) => (
   <nav className="fixed top-0 left-0 w-full z-50 border-b-theme" style={{ backgroundColor: 'var(--nav-bg)', backdropFilter: 'blur(24px)' }}>
     <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between border-v">
       <a href="/" onClick={(e) => { if(!isSpec) e.preventDefault(); window.location.hash = ''; }} className="flex items-center gap-4 group">
@@ -78,7 +84,6 @@ const Navbar: React.FC<{ isSpec: boolean; currentTheme: Theme; onThemeChange: (t
           )}
         </div>
 
-        {/* Improved Theme Switcher */}
         <div className="flex items-center gap-1 p-1 rounded-full border border-neutral-800/10 glass-card">
           {(['midnight', 'paper', 'sepia'] as Theme[]).map((t) => (
             <button
@@ -96,7 +101,10 @@ const Navbar: React.FC<{ isSpec: boolean; currentTheme: Theme; onThemeChange: (t
           ))}
         </div>
 
-        <button className="hidden sm:block px-6 py-2 bg-black text-white dark:bg-white dark:text-black font-mono text-[10px] uppercase tracking-[0.2em] font-bold hover:theme-accent-bg hover:text-white transition-all shadow-xl">
+        <button 
+          onClick={onPortalOpen}
+          className="px-6 py-2 bg-black text-white dark:bg-white dark:text-black font-mono text-[10px] uppercase tracking-[0.2em] font-bold hover:theme-accent-bg hover:text-white transition-all shadow-xl"
+        >
           Portal
         </button>
       </div>
@@ -107,6 +115,7 @@ const Navbar: React.FC<{ isSpec: boolean; currentTheme: Theme; onThemeChange: (t
 const App: React.FC = () => {
   const [view, setView] = useState<'home' | 'spec'>('home');
   const [theme, setTheme] = useState<Theme>('midnight');
+  const [isPortalOpen, setIsPortalOpen] = useState(false);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -129,11 +138,16 @@ const App: React.FC = () => {
 
   return (
     <div className={`min-h-screen selection:bg-[var(--accent)] selection:text-white theme-bg`}>
-      <Navbar isSpec={view === 'spec'} currentTheme={theme} onThemeChange={setTheme} />
+      <Navbar 
+        isSpec={view === 'spec'} 
+        currentTheme={theme} 
+        onThemeChange={setTheme} 
+        onPortalOpen={() => setIsPortalOpen(true)}
+      />
       <main>
         {view === 'home' ? (
           <>
-            <Hero />
+            <Hero onOpenPortal={() => setIsPortalOpen(true)} />
             <Architecture />
             <TrustKeyService />
             <SchemaDefinition />
@@ -145,6 +159,7 @@ const App: React.FC = () => {
       </main>
       <Footer />
       <VerificationBadge />
+      <PortalView isOpen={isPortalOpen} onClose={() => setIsPortalOpen(false)} />
     </div>
   );
 };
