@@ -13,6 +13,7 @@ import { VerificationBadge } from './components/VerificationBadge';
 import { BrandingView } from './components/BrandingView';
 import { ManualView } from './components/ManualView';
 import { LiveAssistant } from './components/LiveAssistant';
+import { AuditorView } from './components/AuditorView';
 
 export type Theme = 'standard' | 'midnight';
 
@@ -37,9 +38,10 @@ const Sidebar: React.FC<{ currentView: string; isOpen: boolean }> = ({ currentVi
         
         <p className="px-4 pt-8 text-[10px] uppercase tracking-widest font-bold text-[var(--text-body)] opacity-40 mb-4">Identity & Trust</p>
         <a href="#identity" className="sidebar-link">5. TrustKey Registry</a>
-        <a href="#branding" className={`sidebar-link ${currentView === 'branding' ? 'active' : ''}`}>6. Branding Kit</a>
-        <a href="#manual" className={`sidebar-link ${currentView === 'manual' ? 'active' : ''}`}>7. Operator's Manual</a>
-        <a href="#contact" className="sidebar-link">8. Technical Inquiries</a>
+        <a href="#auditor" className={`sidebar-link ${currentView === 'auditor' ? 'active' : ''}`}>6. C2PA Test Suite</a>
+        <a href="#branding" className={`sidebar-link ${currentView === 'branding' ? 'active' : ''}`}>7. Branding Kit</a>
+        <a href="#manual" className={`sidebar-link ${currentView === 'manual' ? 'active' : ''}`}>8. Operator's Manual</a>
+        <a href="#contact" className="sidebar-link">9. Technical Inquiries</a>
       </nav>
     </div>
 
@@ -77,7 +79,7 @@ const Header: React.FC<{ onToggleSidebar: () => void; theme: Theme; onToggleThem
 );
 
 const App: React.FC = () => {
-  const [view, setView] = useState<'home' | 'spec' | 'standards' | 'schema' | 'branding' | 'apps' | 'manual'>('home');
+  const [view, setView] = useState<'home' | 'spec' | 'standards' | 'schema' | 'branding' | 'apps' | 'manual' | 'auditor'>('home');
   const [theme, setTheme] = useState<Theme>('standard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isPortalOpen, setIsPortalOpen] = useState(false);
@@ -111,6 +113,8 @@ const App: React.FC = () => {
       if (hash === '#verifier') {
         setIsPortalOpen(true);
         setView('home');
+      } else if (hash === '#auditor') {
+        setView('auditor');
       } else if (hash === '#manual') {
         setView('manual');
       } else if (hash === '#spec') {
@@ -136,7 +140,6 @@ const App: React.FC = () => {
 
     handleNavigation();
     window.addEventListener('hashchange', handleNavigation);
-    // Listen for history pushState if needed, but here we mainly use hash and path
     window.addEventListener('popstate', handleNavigation);
     
     return () => {
@@ -177,6 +180,7 @@ const App: React.FC = () => {
           {view === 'schema' && <SchemaView />}
           {view === 'branding' && <BrandingView />}
           {view === 'manual' && <ManualView />}
+          {view === 'auditor' && <AuditorView />}
           {view === 'apps' && (
             <div className="py-24 space-y-12">
               <header className="space-y-2">
@@ -213,7 +217,7 @@ const App: React.FC = () => {
             </div>
             <div className="flex gap-8">
               <a href="#identity" className="hover:text-[var(--trust-blue)] transition-colors">/#identity</a>
-              <a href="#verifier" className="hover:text-[var(--trust-blue)] transition-colors">/#verifier</a>
+              <a href="#auditor" className="hover:text-[var(--trust-blue)] transition-colors">/#auditor</a>
               <a href="/apps/summarizer" className="hover:text-[var(--trust-blue)] transition-colors">/apps/summarizer</a>
             </div>
             <span>ISO/IEC 19566-5 Compliance</span>

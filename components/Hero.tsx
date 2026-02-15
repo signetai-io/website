@@ -25,16 +25,16 @@ export const Hero: React.FC<{ onOpenPortal: () => void }> = ({ onOpenPortal }) =
             Verifier SDK
           </button>
           <a 
+            href="#auditor" 
+            className="px-8 py-3 border border-[var(--trust-blue)] text-[var(--trust-blue)] text-[11px] font-bold uppercase tracking-widest rounded hover:bg-[var(--admonition-bg)] transition-all text-center"
+          >
+            C2PA Auditor
+          </a>
+          <a 
             href="#identity" 
             className="px-8 py-3 border border-[var(--border-light)] text-[var(--text-header)] text-[11px] font-bold uppercase tracking-widest rounded hover:bg-white/5 transition-all text-center"
           >
             /#identity
-          </a>
-          <a 
-            href="/apps/summarizer" 
-            className="px-8 py-3 border border-[var(--trust-blue)] text-[var(--trust-blue)] text-[11px] font-bold uppercase tracking-widest rounded hover:bg-[var(--admonition-bg)] transition-all text-center"
-          >
-            /apps/summarizer
           </a>
         </div>
       </div>
