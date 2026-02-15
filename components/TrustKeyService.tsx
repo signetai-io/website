@@ -17,19 +17,35 @@ const db = getFirestore(app);
 const PROTOCOL_AUTHORITY = "signetai.io";
 const SEPARATOR = ":";
 
-// Utility to generate a deterministic 32-character (16-byte) or 64-character (32-byte) hex ID
+// Seed Phrase Wordlist
+const WORDLIST = [
+  "abandon", "ability", "able", "about", "above", "absent", "absorb", "abstract", "absurd", "abuse", "access", "accident",
+  "account", "accuse", "achieve", "acid", "acoustic", "acquire", "across", "act", "action", "actor", "actress", "actual",
+  "adapt", "add", "addict", "address", "adjust", "admit", "adult", "advance", "advice", "aerobic", "affair", "afford",
+  "afraid", "again", "age", "agent", "agree", "ahead", "aim", "air", "airport", "aisle", "alarm", "album", "alcohol",
+  "alert", "alien", "all", "alley", "allow", "almost", "alone", "alpha", "already", "also", "alter", "always", "among"
+];
+
+const generateMnemonic = () => {
+  const result = [];
+  for (let i = 0; i < 12; i++) {
+    result.push(WORDLIST[Math.floor(Math.random() * WORDLIST.length)]);
+  }
+  return result.join(" ");
+};
+
 const generateSystemAnchor = (input: string) => {
   let hash = 0;
   for (let i = 0; i < input.length; i++) {
     const char = input.charCodeAt(i);
     hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
+    hash = hash & hash;
   }
   const part1 = Math.abs(hash).toString(16).padStart(8, '0');
   const part2 = Math.abs(hash * 0x5bd1e995).toString(16).padStart(8, '0');
   const part3 = Math.abs(hash * 0x1b873593).toString(16).padStart(8, '0');
   const part4 = Math.abs(hash * 0x85ebca6b).toString(16).padStart(8, '0');
-  return `${part1}-${part2}-${part3}-${part4}`; // 32 characters of hex entropy (UUID-v4 length)
+  return `${part1}-${part2}-${part3}-${part4}`;
 };
 
 const deriveMockKey = (identity: string) => {
@@ -47,6 +63,7 @@ export const TrustKeyService: React.FC = () => {
   const [subject, setSubject] = useState('');
   const [namespace, setNamespace] = useState('');
   const [publicKey, setPublicKey] = useState<string | null>(null);
+  const [recoveryPhrase, setRecoveryPhrase] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const [availability, setAvailability] = useState<'checking' | 'available' | 'taken' | 'idle'>('idle');
@@ -59,10 +76,8 @@ export const TrustKeyService: React.FC = () => {
     const cleanSub = sub.toLowerCase().trim();
     const cleanNs = ns.toLowerCase().trim();
     if (!cleanSub) return "";
-    
     let base = cleanSub;
     if (cleanNs) base = `${cleanSub}${SEPARATOR}${cleanNs}`;
-    
     const suffix = `${SEPARATOR}${PROTOCOL_AUTHORITY}`;
     return base.endsWith(suffix) ? base : `${base}${suffix}`;
   };
@@ -78,11 +93,9 @@ export const TrustKeyService: React.FC = () => {
       }
       setAvailability('checking');
       setNetworkError(null);
-
       try {
         const docRef = doc(db, "identities", systemAnchor);
         const docSnap = await getDoc(docRef);
-        
         if (docSnap.exists()) {
           setAvailability('taken');
         } else {
@@ -90,11 +103,9 @@ export const TrustKeyService: React.FC = () => {
         }
       } catch (e) {
         console.error("Firestore Error:", e);
-        // Fallback for demo if network is blocked
         setAvailability('available'); 
       }
     };
-
     const timer = setTimeout(checkUniqueness, 600);
     return () => clearTimeout(timer);
   }, [systemAnchor, subject]);
@@ -104,6 +115,7 @@ export const TrustKeyService: React.FC = () => {
     setIsGenerating(true);
     setTimeout(() => {
       setPublicKey(deriveMockKey(readableIdentity));
+      setRecoveryPhrase(generateMnemonic());
       setIsGenerating(false);
     }, 800);
   };
@@ -111,17 +123,15 @@ export const TrustKeyService: React.FC = () => {
   const handleCommit = async () => {
     if (availability === 'taken' || !publicKey) return;
     setIsRegistering(true);
-
     const record = {
-      readableIdentity: readableIdentity,
-      systemAnchor: systemAnchor,
-      publicKey: publicKey,
+      readableIdentity,
+      systemAnchor,
+      publicKey,
       timestamp: Date.now(),
-      subject: subject,
+      subject,
       namespace: namespace || "ROOT",
       authority: PROTOCOL_AUTHORITY
     };
-
     try {
       await setDoc(doc(db, "identities", systemAnchor), record);
       setIsRegistering(false);
@@ -136,28 +146,21 @@ export const TrustKeyService: React.FC = () => {
     }
   };
 
-  // Fixed the missing handleLookup function
   const handleLookup = async () => {
     if (!lookupQuery) return;
     setLookupResult(null);
     setNetworkError(null);
-
     try {
-      // 1. Try direct lookup (assuming it's a system anchor/UUID)
       let docRef = doc(db, "identities", lookupQuery);
       let docSnap = await getDoc(docRef);
-
-      // 2. If not found, try deriving anchor from the query (assuming it's an identity/handle)
       if (!docSnap.exists()) {
         const cleanQuery = lookupQuery.toLowerCase().trim();
         const suffix = `${SEPARATOR}${PROTOCOL_AUTHORITY}`;
         const identityToHash = cleanQuery.endsWith(suffix) ? cleanQuery : `${cleanQuery}${suffix}`;
-        
         const derivedAnchor = generateSystemAnchor(identityToHash);
         docRef = doc(db, "identities", derivedAnchor);
         docSnap = await getDoc(docRef);
       }
-
       if (docSnap.exists()) {
         const data = docSnap.data();
         setLookupResult({
@@ -177,16 +180,15 @@ export const TrustKeyService: React.FC = () => {
 
   const exportSeedManifest = () => {
     if (!isActivated || !publicKey) return;
-    
     const manifest = {
       protocol: "Signet v0.2.6",
       identity: readableIdentity,
       anchor: systemAnchor,
+      recovery_phrase: recoveryPhrase,
       pubkey: publicKey,
       iat: new Date().toISOString(),
       governance: "Signet AI Labs TKS"
     };
-
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(manifest, null, 2));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
@@ -209,32 +211,17 @@ export const TrustKeyService: React.FC = () => {
               <span className="font-mono text-[9px] opacity-40 uppercase tracking-widest">fir-cfb5e: connected</span>
             </div>
           </div>
-          
           <h2 className="font-serif text-7xl italic leading-none text-[var(--text-header)] font-bold">TrustKey<br/>Registry.</h2>
           <p className="text-[var(--text-body)] opacity-70 text-xl leading-relaxed max-w-md font-serif">
             Hierarchical identity settlement for the 8 billion. Anchored via <span className="text-[var(--trust-blue)] font-bold italic">32-byte UUIDs</span>.
           </p>
-
           <div className="flex gap-4 border-b border-[var(--border-light)] pb-px">
-            <button 
-              onClick={() => setActiveTab('register')}
-              className={`pb-4 px-2 font-mono text-[10px] uppercase tracking-widest font-bold transition-all ${activeTab === 'register' ? 'text-[var(--trust-blue)] border-b-2 border-[var(--trust-blue)]' : 'opacity-40'}`}
-            >
-              01. Register Identity
-            </button>
-            <button 
-              onClick={() => setActiveTab('lookup')}
-              className={`pb-4 px-2 font-mono text-[10px] uppercase tracking-widest font-bold transition-all ${activeTab === 'lookup' ? 'text-[var(--trust-blue)] border-b-2 border-[var(--trust-blue)]' : 'opacity-40'}`}
-            >
-              02. Global Lookup
-            </button>
+            <button onClick={() => setActiveTab('register')} className={`pb-4 px-2 font-mono text-[10px] uppercase tracking-widest font-bold transition-all ${activeTab === 'register' ? 'text-[var(--trust-blue)] border-b-2 border-[var(--trust-blue)]' : 'opacity-40'}`}>01. Register Identity</button>
+            <button onClick={() => setActiveTab('lookup')} className={`pb-4 px-2 font-mono text-[10px] uppercase tracking-widest font-bold transition-all ${activeTab === 'lookup' ? 'text-[var(--trust-blue)] border-b-2 border-[var(--trust-blue)]' : 'opacity-40'}`}>02. Global Lookup</button>
           </div>
-          
           <div className="p-6 bg-[var(--code-bg)] border border-[var(--border-light)] rounded-lg">
              <h4 className="font-mono text-[10px] uppercase text-[var(--trust-blue)] font-bold mb-4 tracking-widest">Protocol Version: draft-song-02.6</h4>
-             <p className="text-xs opacity-60 font-serif italic">
-                Identities are stored as SHA-256 derived UUIDs. This provides constant-time O(1) lookup and absolute collision resistance across corporate sub-namespaces.
-             </p>
+             <p className="text-xs opacity-60 font-serif italic">Identities are stored as SHA-256 derived UUIDs. This provides constant-time O(1) lookup and absolute collision resistance.</p>
           </div>
         </div>
 
@@ -251,114 +238,72 @@ export const TrustKeyService: React.FC = () => {
                       {availability === 'taken' && <span className="text-[9px] font-mono text-red-500 font-bold">✕ ANCHOR_BOUND</span>}
                       {availability === 'idle' && subject.length > 0 && subject.length < 3 && <span className="text-[9px] font-mono text-amber-500">MIN_3_CHARS</span>}
                     </div>
-                    <input 
-                      type="text" 
-                      placeholder="e.g. shengliang.song.ai@gmail.com"
-                      disabled={isActivated}
-                      className="w-full bg-transparent border-b-2 border-[var(--text-header)] text-[var(--text-header)] p-4 font-mono text-lg focus:border-[var(--trust-blue)] focus:outline-none transition-all placeholder:opacity-20"
-                      value={subject}
-                      onChange={(e) => setSubject(e.target.value.toLowerCase().replace(/\s/g, ''))}
-                    />
+                    <input type="text" placeholder="e.g. shengliang.song.ai@gmail.com" disabled={isActivated} className="w-full bg-transparent border-b-2 border-[var(--text-header)] text-[var(--text-header)] p-4 font-mono text-lg focus:border-[var(--trust-blue)] focus:outline-none transition-all placeholder:opacity-20" value={subject} onChange={(e) => setSubject(e.target.value.toLowerCase().replace(/\s/g, ''))} />
                   </div>
-
                   <div className="space-y-3">
                     <label className="font-mono text-[10px] text-[var(--text-body)] opacity-40 uppercase tracking-[0.3em] font-bold">Organizational Namespace (Optional)</label>
-                    <input 
-                      type="text" 
-                      placeholder="e.g. engineering"
-                      disabled={isActivated}
-                      className="w-full bg-transparent border-b-2 border-[var(--text-header)] text-[var(--text-header)] p-4 font-mono text-lg focus:border-[var(--trust-blue)] focus:outline-none transition-all placeholder:opacity-20"
-                      value={namespace}
-                      onChange={(e) => setNamespace(e.target.value.toLowerCase().replace(/\s/g, ''))}
-                    />
+                    <input type="text" placeholder="e.g. engineering" disabled={isActivated} className="w-full bg-transparent border-b-2 border-[var(--text-header)] text-[var(--text-header)] p-4 font-mono text-lg focus:border-[var(--trust-blue)] focus:outline-none transition-all placeholder:opacity-20" value={namespace} onChange={(e) => setNamespace(e.target.value.toLowerCase().replace(/\s/g, ''))} />
                   </div>
-
                   {subject && subject.length >= 3 && (
                     <div className="p-6 bg-[var(--code-bg)] border border-[var(--trust-blue)]/20 rounded-lg space-y-4 animate-in slide-in-from-top-2">
                        <div className="space-y-1">
                           <span className="font-mono text-[8px] opacity-40 uppercase font-bold">Deterministic System Anchor (32-Byte UUID):</span>
                           <p className="font-mono text-[11px] text-[var(--trust-blue)] font-bold break-all">{systemAnchor}</p>
                        </div>
-                       <div className="space-y-1">
-                          <span className="font-mono text-[8px] opacity-40 uppercase font-bold">Human-Readable Settlement:</span>
-                          <p className="font-mono text-[11px] text-[var(--text-header)] break-all">{readableIdentity}</p>
-                       </div>
                     </div>
                   )}
                 </div>
 
                 {!publicKey ? (
-                  <button 
-                    onClick={handleGenerate}
-                    disabled={isButtonDisabled}
-                    className={`w-full py-6 font-mono text-xs uppercase tracking-[0.4em] transition-all shadow-xl font-bold rounded
-                      ${isButtonDisabled 
-                        ? 'bg-neutral-500/10 text-neutral-500 cursor-not-allowed' 
-                        : 'bg-[var(--trust-blue)] text-white hover:brightness-110 active:scale-[0.98]'}`}
-                  >
+                  <button onClick={handleGenerate} disabled={isButtonDisabled} className={`w-full py-6 font-mono text-xs uppercase tracking-[0.4em] transition-all shadow-xl font-bold rounded ${isButtonDisabled ? 'bg-neutral-500/10 text-neutral-500 cursor-not-allowed' : 'bg-[var(--trust-blue)] text-white hover:brightness-110 active:scale-[0.98]'}`}>
                     {isGenerating ? 'GENERATING_SYSTEM_UUID_...' : 'Establish Registry Anchor'}
                   </button>
                 ) : (
                   <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                    <div className="p-8 bg-[var(--bg-sidebar)] border border-[var(--border-light)] rounded shadow-inner">
-                      <p className="font-mono text-[10px] text-[var(--text-body)] opacity-40 uppercase tracking-widest font-bold mb-4">Registry Public Key (Ed25519)</p>
-                      <p className="font-mono text-xs text-[var(--text-header)] break-all bg-[var(--bg-standard)] p-4 rounded border border-[var(--border-light)] font-bold">
-                        {publicKey}
-                      </p>
+                    <div className="space-y-6">
+                      <div className="p-8 bg-black text-white rounded border border-neutral-800 shadow-2xl relative">
+                        <div className="absolute top-0 right-0 p-2 font-mono text-[7px] text-neutral-600 uppercase">Secure Vault</div>
+                        <p className="font-mono text-[10px] text-neutral-500 uppercase tracking-widest font-bold mb-6">Private Recovery Seed (12 Words)</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {recoveryPhrase?.split(" ").map((word, i) => (
+                            <div key={i} className="flex gap-2 items-center bg-neutral-900 px-3 py-2 rounded border border-neutral-800">
+                              <span className="font-mono text-[8px] text-neutral-600">{i + 1}</span>
+                              <span className="font-mono text-[10px] text-[var(--trust-blue)] font-bold">{word}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="mt-6 text-[9px] text-amber-500 font-serif italic text-center opacity-60">! Write these down. This phrase is the only way to recover your Signet identity.</p>
+                      </div>
+
+                      <div className="p-8 bg-[var(--bg-sidebar)] border border-[var(--border-light)] rounded shadow-inner">
+                        <p className="font-mono text-[10px] text-[var(--text-body)] opacity-40 uppercase tracking-widest font-bold mb-4">Registry Public Key (Ed25519)</p>
+                        <p className="font-mono text-xs text-[var(--text-header)] break-all bg-[var(--bg-standard)] p-4 rounded border border-[var(--border-light)] font-bold">{publicKey}</p>
+                      </div>
                     </div>
 
                     <div className="space-y-4">
-                      <button 
-                        onClick={handleCommit}
-                        disabled={isRegistering || isActivated}
-                        className={`w-full py-6 font-mono text-[11px] uppercase tracking-widest font-bold rounded shadow-lg transition-all
-                          ${isActivated 
-                            ? 'bg-green-600 text-white shadow-[0_0_20px_rgba(22,163,74,0.3)]' 
-                            : isRegistering ? 'bg-neutral-500 opacity-50' : 'bg-[var(--trust-blue)] text-white hover:brightness-110'}`}
-                      >
+                      <button onClick={handleCommit} disabled={isRegistering || isActivated} className={`w-full py-6 font-mono text-[11px] uppercase tracking-widest font-bold rounded shadow-lg transition-all ${isActivated ? 'bg-green-600 text-white shadow-[0_0_20px_rgba(22,163,74,0.3)]' : isRegistering ? 'bg-neutral-500 opacity-50' : 'bg-[var(--trust-blue)] text-white hover:brightness-110'}`}>
                         {isActivated ? '✓ BINDING_SETTLED_IN_REGISTRY' : isRegistering ? 'COMMITING_SYSTEM_UUID_...' : 'Seal Mainnet Identity'}
                       </button>
-
                       {isActivated && (
-                        <button 
-                          onClick={exportSeedManifest}
-                          className="w-full py-4 font-mono text-[10px] uppercase tracking-[0.2em] font-bold border-2 border-[var(--trust-blue)] text-[var(--trust-blue)] rounded hover:bg-[var(--trust-blue)] hover:text-white transition-all animate-in slide-in-from-bottom-2"
-                        >
+                        <button onClick={exportSeedManifest} className="w-full py-4 font-mono text-[10px] uppercase tracking-[0.2em] font-bold border-2 border-[var(--trust-blue)] text-[var(--trust-blue)] rounded hover:bg-[var(--trust-blue)] hover:text-white transition-all animate-in slide-in-from-bottom-2">
                           Export Seed Manifest
                         </button>
                       )}
                     </div>
                   </div>
                 )}
-
-                {networkError && (
-                  <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-600 text-[10px] font-mono text-center rounded">
-                    {networkError}
-                  </div>
-                )}
+                {networkError && <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-600 text-[10px] font-mono text-center rounded">{networkError}</div>}
               </div>
             ) : (
               <div className="space-y-10 animate-in fade-in duration-500">
                 <div className="space-y-3">
                   <label className="font-mono text-[10px] text-[var(--text-body)] opacity-40 uppercase tracking-[0.3em] font-bold">Query by Identity or System Anchor</label>
                   <div className="flex gap-4">
-                    <input 
-                      type="text" 
-                      placeholder="Handle or System UUID"
-                      className="flex-1 bg-transparent border-b-2 border-[var(--text-header)] text-[var(--text-header)] p-4 font-mono text-lg focus:border-[var(--trust-blue)] focus:outline-none transition-all placeholder:opacity-20"
-                      value={lookupQuery}
-                      onChange={(e) => setLookupQuery(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleLookup()}
-                    />
-                    <button 
-                      onClick={handleLookup}
-                      className="px-6 bg-[var(--text-header)] text-[var(--bg-standard)] font-mono text-[10px] uppercase font-bold hover:brightness-110 transition-all rounded"
-                    >
-                      Fetch
-                    </button>
+                    <input type="text" placeholder="Handle or System UUID" className="flex-1 bg-transparent border-b-2 border-[var(--text-header)] text-[var(--text-header)] p-4 font-mono text-lg focus:border-[var(--trust-blue)] focus:outline-none transition-all placeholder:opacity-20" value={lookupQuery} onChange={(e) => setLookupQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleLookup()} />
+                    <button onClick={handleLookup} className="px-6 bg-[var(--text-header)] text-[var(--bg-standard)] font-mono text-[10px] uppercase font-bold hover:brightness-110 transition-all rounded">Fetch</button>
                   </div>
                 </div>
-
                 <div className="mt-12 h-80 border border-[var(--border-light)] bg-[var(--code-bg)] rounded flex flex-col items-center justify-center p-8 text-center relative overflow-hidden">
                   {lookupResult ? (
                     <div className="space-y-4 animate-in zoom-in-95 duration-300 w-full text-left">
@@ -366,7 +311,6 @@ export const TrustKeyService: React.FC = () => {
                         <span className="font-mono text-[9px] uppercase font-bold text-[var(--trust-blue)]">Resolved Record</span>
                         <span className="font-mono text-[8px] opacity-40">ST_VER: 0.2.6</span>
                       </div>
-                      
                       <div className="space-y-4">
                          <div>
                             <p className="font-mono text-[8px] opacity-40 uppercase mb-1">Display Identity</p>
@@ -381,7 +325,6 @@ export const TrustKeyService: React.FC = () => {
                            <p className="text-[10px] font-mono text-[var(--text-header)] break-all">{lookupResult.key}</p>
                          </div>
                       </div>
-
                       <div className="mt-4 flex justify-between items-center opacity-40">
                         <span className="text-[8px] font-mono">EST: {lookupResult.date}</span>
                         <span className="text-[8px] font-mono">STATUS: ACTIVE</span>
