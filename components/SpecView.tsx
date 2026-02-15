@@ -122,7 +122,7 @@ export const SpecView: React.FC = () => {
       SPEC_PAGES.forEach((p, index) => {
         if (index > 0) doc.addPage();
         
-        // Background Accent (Subtle line)
+        // Background Accent (Subtle vertical line)
         doc.setDrawColor(0, 85, 255);
         doc.setLineWidth(0.5);
         doc.line(margin, 20, margin, pageHeight - 20);
@@ -132,7 +132,7 @@ export const SpecView: React.FC = () => {
         doc.setFontSize(8);
         doc.setTextColor(180, 180, 180);
         doc.text("TECHNICAL SPECIFICATION: DRAFT-SONG-SIGNET-02.7", margin + 5, 15);
-        doc.text(`VERSION: 0.2.7-RELEASE`, pageWidth - margin - 40, 15);
+        doc.text(`RELEASE: v0.2.7-RELEASE`, pageWidth - margin - 40, 15);
         
         // Page Number
         doc.text(`PAGE ${index + 1} OF ${SPEC_PAGES.length}`, pageWidth - margin - 20, pageHeight - 10);
@@ -168,18 +168,18 @@ export const SpecView: React.FC = () => {
         doc.setFont("times", "italic");
         doc.setFontSize(10);
         doc.setTextColor(0, 0, 0);
-        doc.text("shengliang.song.ai:gmail.com", margin + 10, sealY + 14);
+        doc.text("Authorized by: shengliang.song.ai:gmail.com", margin + 10, sealY + 14);
         
         doc.setFont("courier", "normal");
         doc.setFontSize(6);
         doc.setTextColor(150, 150, 150);
-        doc.text(`SEALED_TIMESTAMP: ${new Date().toISOString()}`, margin + 10, sealY + 20);
-        doc.text(`PROVENANCE_ID: 0x${Math.random().toString(16).slice(2, 18).toUpperCase()}`, pageWidth - margin - 60, sealY + 20);
+        doc.text(`SEALED_TS: ${new Date().toISOString()}`, margin + 10, sealY + 20);
+        doc.text(`PROVENANCE_ROOT: SHA256:7B8C...44A2`, pageWidth - margin - 60, sealY + 20);
       });
 
       doc.save(PDF_FILENAME);
     } catch (err) {
-      console.error("PDF Generation Fault:", err);
+      console.error("PDF Engine Error:", err);
     } finally {
       setIsGenerating(false);
     }
@@ -193,11 +193,11 @@ export const SpecView: React.FC = () => {
       "asset": {
         "name": PDF_FILENAME,
         "hash": "sha256:7b8c8f2d4a12b9c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4g5h6i7",
-        "size": 142000
+        "size": 158000
       },
       "signature": {
         "identity": "shengliang.song.ai:gmail.com",
-        "publicKey": "ed25519:signet_master_authority_2026",
+        "publicKey": "ed25519:master_authority_key_2026",
         "attestedBy": "Signet Protocol Labs",
         "timestamp": Date.now()
       }
@@ -206,7 +206,7 @@ export const SpecView: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'official_spec_v027.json';
+    a.download = 'spec_v027_official_manifest.json';
     a.click();
   };
 
@@ -280,7 +280,7 @@ export const SpecView: React.FC = () => {
         </p>
         <div className="flex justify-center gap-8 opacity-20 hover:opacity-100 transition-opacity">
            <span className="font-mono text-[8px] uppercase font-bold tracking-widest">ISO/TC 290 COMPLIANT</span>
-           <span className="font-mono text-[8px] uppercase font-bold tracking-widest">C2PA v2.3 NEATIVE</span>
+           <span className="font-mono text-[8px] uppercase font-bold tracking-widest">C2PA v2.3 NATIVE</span>
            <span className="font-mono text-[8px] uppercase font-bold tracking-widest">NEURAL LENS 0.2.7</span>
         </div>
       </div>
