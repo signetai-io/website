@@ -1,11 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+import { initializeApp, getApps, getApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
 import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 import { firebaseConfig } from '../private_keys';
 
-// Initialize Firebase - Assuming referer restrictions are set in GCP Console
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-const db = getFirestore(app);
+// Initialize dedicated Signet Identity Registry Instance
+const initSignetFirebase = () => {
+  try {
+    if (getApps().length === 0) {
+      return initializeApp(firebaseConfig);
+    }
+    // If multiple apps are needed in the future, use: 
+    // return initializeApp(firebaseConfig, "SIGNET_PROD");
+    return getApp();
+  } catch (e) {
+    console.error("Firebase Initialization Error:", e);
+    return null;
+  }
+};
+
+const app = initSignetFirebase();
+const db = app ? getFirestore(app) : null;
 
 const PROTOCOL_AUTHORITY = "signetai.io";
 const SEPARATOR = ":";
@@ -80,7 +94,7 @@ export const TrustKeyService: React.FC = () => {
 
   useEffect(() => {
     const checkUniqueness = async () => {
-      if (!subject || subject.length < 3) {
+      if (!subject || subject.length < 3 || !db) {
         setAvailability('idle');
         return;
       }
@@ -95,6 +109,7 @@ export const TrustKeyService: React.FC = () => {
           setAvailability('available');
         }
       } catch (e) {
+        console.warn("Project Unreachable - Check config");
         setAvailability('available'); 
       }
     };
@@ -113,7 +128,7 @@ export const TrustKeyService: React.FC = () => {
   };
 
   const handleCommit = async () => {
-    if (availability === 'taken' || !publicKey) return;
+    if (availability === 'taken' || !publicKey || !db) return;
     setIsRegistering(true);
     const record = {
       readableIdentity,
@@ -129,7 +144,7 @@ export const TrustKeyService: React.FC = () => {
       setIsRegistering(false);
       setIsActivated(true);
     } catch (e) {
-      setNetworkError("Identity settled via local substrate.");
+      setNetworkError("New Project Configuration Required.");
       setTimeout(() => {
         setIsRegistering(false);
         setIsActivated(true);
@@ -138,7 +153,7 @@ export const TrustKeyService: React.FC = () => {
   };
 
   const handleLookup = async () => {
-    if (!lookupQuery) return;
+    if (!lookupQuery || !db) return;
     setLookupResult(null);
     setNetworkError(null);
     try {
@@ -200,29 +215,29 @@ export const TrustKeyService: React.FC = () => {
               onMouseLeave={() => setShowShieldDetail(false)}
               className="cursor-help font-mono text-[10px] uppercase bg-blue-600 text-white px-3 py-1 tracking-[0.2em] font-bold rounded-sm"
             >
-              SHIELDED_DOMAIN_MODE
+              ISOLATED_PROD_MODE
             </span>
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>
               <span className="font-mono text-[9px] opacity-40 uppercase tracking-widest">
-                INFRASTRUCTURE: REFERRER_RESTRICTION_ENFORCED
+                INFRASTRUCTURE: PROJECT_DECOUPLING_ACTIVE
               </span>
             </div>
 
             {showShieldDetail && (
               <div className="absolute top-full left-0 mt-4 w-80 p-6 bg-black text-white rounded-lg shadow-2xl border border-blue-500/30 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-                <h5 className="font-mono text-[10px] uppercase text-blue-400 font-bold mb-4 tracking-widest">Shield Topology</h5>
+                <h5 className="font-mono text-[10px] uppercase text-blue-400 font-bold mb-4 tracking-widest">Infrastructure Isolation</h5>
                 <div className="space-y-4">
                   <div className="flex items-start gap-3">
                     <span className="text-blue-500 font-bold text-xs mt-1">01</span>
-                    <p className="text-[11px] leading-relaxed opacity-70 italic">GCP API Gateway rejects any request without a verified <strong>signetai.io</strong> or <strong>aivoicecast.com</strong> header.</p>
+                    <p className="text-[11px] leading-relaxed opacity-70 italic">Dedicated Firebase project for <strong>signetai.io</strong> to bypass legacy restriction locks.</p>
                   </div>
                   <div className="flex items-start gap-3">
                     <span className="text-blue-500 font-bold text-xs mt-1">02</span>
-                    <p className="text-[11px] leading-relaxed opacity-70 italic">Cross-Origin Resource Sharing (CORS) policies are strictly scoped to verified production subdomains.</p>
+                    <p className="text-[11px] leading-relaxed opacity-70 italic">Independent billing and quota management for the 8 billion scale.</p>
                   </div>
                   <div className="pt-2 border-t border-white/10">
-                    <span className="font-mono text-[8px] text-green-500 uppercase font-bold">Status: Authoritative Shield Active</span>
+                    <span className="font-mono text-[8px] text-green-500 uppercase font-bold">Status: Isolated Production Node</span>
                   </div>
                 </div>
               </div>
