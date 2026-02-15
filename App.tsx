@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Hero } from './components/Hero';
 import { Architecture } from './components/Architecture';
@@ -15,6 +14,7 @@ import { BrandingView } from './components/BrandingView';
 import { ManualView } from './components/ManualView';
 import { LiveAssistant } from './components/LiveAssistant';
 import { AuditorView } from './components/AuditorView';
+import { SecurityIntegrityMonitor } from './components/SecurityIntegrityMonitor';
 
 export type Theme = 'standard' | 'midnight';
 
@@ -23,13 +23,13 @@ const Sidebar: React.FC<{ currentView: string; isOpen: boolean }> = ({ currentVi
     className={`fixed left-0 top-0 h-screen w-72 bg-[var(--bg-sidebar)] border-r border-[var(--border-light)] z-40 transition-transform duration-300 transform 
     ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
   >
-    <div className="p-8">
+    <div className="p-8 h-full flex flex-col">
       <div className="flex items-center gap-3 mb-12">
         <div className="cr-badge text-[var(--trust-blue)]">cr</div>
         <span className="font-bold tracking-tight text-xl text-[var(--text-header)]">Signet v0.2.6</span>
       </div>
 
-      <nav className="space-y-1">
+      <nav className="space-y-1 flex-1 overflow-y-auto">
         <p className="px-4 text-[10px] uppercase tracking-widest font-bold text-[var(--text-body)] opacity-40 mb-4">Core Specification</p>
         <a href="/" className={`sidebar-link ${currentView === 'home' ? 'active' : ''}`}>0. Introduction</a>
         <a href="#standards" className={`sidebar-link ${currentView === 'standards' ? 'active' : ''}`}>1. Standards & C2PA</a>
@@ -44,12 +44,13 @@ const Sidebar: React.FC<{ currentView: string; isOpen: boolean }> = ({ currentVi
         <a href="#manual" className={`sidebar-link ${currentView === 'manual' ? 'active' : ''}`}>8. Operator's Manual</a>
         <a href="#contact" className="sidebar-link">9. Technical Inquiries</a>
       </nav>
-    </div>
 
-    <div className="absolute bottom-8 left-8">
-      <div className="flex items-center gap-2 text-[10px] font-mono opacity-50 text-[var(--text-body)]">
-        <div className="w-2 h-2 rounded-full bg-green-500"></div>
-        <span>MAINNET_NODE: ACTIVE</span>
+      <div className="pt-8 mt-8 border-t border-[var(--border-light)] space-y-6">
+        <SecurityIntegrityMonitor />
+        <div className="flex items-center gap-2 text-[10px] font-mono opacity-50 text-[var(--text-body)]">
+          <div className="w-2 h-2 rounded-full bg-green-500"></div>
+          <span>MAINNET_NODE: ACTIVE</span>
+        </div>
       </div>
     </div>
   </aside>
