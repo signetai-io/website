@@ -13,8 +13,6 @@ const initSignetFirebase = () => {
 };
 
 const app = initSignetFirebase();
-// Use the default database instance. Specifying "signetai" as the database ID 
-// often causes hangs if that specific named instance hasn't been created in the GCP console.
 const db = app ? getFirestore(app) : null;
 const auth = app ? getAuth(app) : null;
 
@@ -154,7 +152,6 @@ export const TrustKeyService: React.FC = () => {
     setIndexUrl(null);
     setStatus(`STEP 1/4: Syncing ${securityGrade * 11}-bit Entropy...`);
     
-    // Non-blocking delay for UI visual sync
     await new Promise(r => setTimeout(r, 600));
 
     const identity = identityInput.trim().toLowerCase().replace(/\s+/g, '-');
@@ -162,7 +159,6 @@ export const TrustKeyService: React.FC = () => {
     const pubKey = deriveMockKey(identity);
     const mnemonic = generateMnemonic(securityGrade);
 
-    // Timeout guard for Firestore operations (10 seconds)
     const withTimeout = (promise: Promise<any>, timeoutMs: number) => {
       return Promise.race([
         promise,
@@ -174,16 +170,25 @@ export const TrustKeyService: React.FC = () => {
       if (db) {
         setStatus("STEP 2/4: Checking Global Registry Conflicts...");
         const docSnap = await withTimeout(getDoc(doc(db, "identities", anchor)), 10000);
+        
+        // If the document exists, check if we are the owner
         if (docSnap.exists()) {
-          throw new Error(`Anchor ${anchor} is already claimed.`);
+          const data = docSnap.data();
+          if (currentUser && data.ownerUid === currentUser.uid) {
+             setStatus("STEP 2/4: Anchor owned by you. Preparing update...");
+          } else {
+             throw new Error(`Anchor ${anchor} is already claimed by another user.`);
+          }
         }
 
         if (currentUser && securityGrade === 24) {
           setStatus("STEP 3/4: Verifying Sovereign Uniqueness...");
           const q = query(collection(db, "identities"), where("ownerUid", "==", currentUser.uid), where("entropyBits", "==", 264));
           const existing = await withTimeout(getDocs(q), 10000);
-          if (!existing.empty) {
-             throw new Error("Protocol Policy: You already possess a registered Sovereign Signet.");
+          
+          // Only throw if the existing sovereign signet has a DIFFERENT anchor
+          if (!existing.empty && existing.docs[0].id !== anchor) {
+             throw new Error("Protocol Policy: You already possess a different Sovereign Signet anchor.");
           }
         }
 
@@ -216,10 +221,10 @@ export const TrustKeyService: React.FC = () => {
       setStatus(`SUCCESS: Vault Sealed for ${identity}.`);
     } catch (err: any) {
       console.error("Signet Protocol Exception:", err);
-      let errMsg = err.message || "Unknown cryptographic fault.";
+      let errMsg = err.message || "Unknown fault.";
       
       if (errMsg.includes("permission-denied") || errMsg.includes("PERMISSION_DENIED")) {
-        errMsg = "Registry Denied: The Curatorial ID is either too short (<4 chars) or restricted. Try a longer identifier.";
+        errMsg = "Registry Denied: Insufficient permissions. Ensure your ID is at least 4 characters and you aren't overwriting someone else's identity.";
       } else if (errMsg.includes("index") || errMsg.includes("FAILED_PRECONDITION")) {
         setStatus("CRITICAL: Missing Registry Index. Link provided below.");
         const match = errMsg.match(/https:\/\/console\.firebase\.google\.com[^\s]*/);

@@ -20,26 +20,27 @@ service cloud.firestore {
     // SIGNET IDENTITY REGISTRY (TKS)
     // ----------------------------------------------------------------------
     match /identities/{anchorId} {
+      // Registry is public for verification
       allow read: if true;
       
-      // HARDENED: Only allow creation of high-entropy anchors.
-      // Adjusted minimum to 10 to allow for shorter usernames like 'signetai.io:joe'.
-      allow create: if !exists(/databases/$(database)/documents/identities/$(anchorId))
-                    && anchorId.size() >= 10 
-                    && anchorId.size() <= 128;
+      // Allow creation of new unique identities
+      // Constraints: 10-256 chars (accounts for 'signetai.io:' prefix)
+      allow create: if anchorId.size() >= 10 && anchorId.size() <= 256;
       
-      allow update, delete: if isAdmin();
+      // Allow owners to update their own registry entry
+      allow update: if isAdmin() || (isAuthenticated() && resource.data.ownerUid == request.auth.uid);
+      
+      // Only admins can purge from the global registry
+      allow delete: if isAdmin();
     }
 
     // ----------------------------------------------------------------------
     // USERS & IDENTITY
     // ----------------------------------------------------------------------
     match /users/{userId} {
-      // HARDENED: Users can no longer list all other users.
       allow read: if isOwner(userId) || isAdmin(); 
-      
-      allow create: if isOwner(userId) && !(request.resource.data.keys().hasAny(['groups']));
-      allow update: if isAdmin() || (isOwner(userId) && !(request.resource.data.diff(resource.data).affectedKeys().hasAny(['groups'])));
+      allow create: if isOwner(userId);
+      allow update: if isAdmin() || isOwner(userId);
     }
 
     // ----------------------------------------------------------------------
