@@ -6,6 +6,11 @@ import { SpecView } from './components/SpecView';
 import { StandardsView } from './components/StandardsView';
 import { SchemaView } from './components/SchemaView';
 import { Admonition } from './components/Admonition';
+import { TrustKeyService } from './components/TrustKeyService';
+import { ContactHub } from './components/ContactHub';
+import { PortalView } from './components/PortalView';
+import { VerificationBadge } from './components/VerificationBadge';
+import { BrandingView } from './components/BrandingView';
 
 export type Theme = 'standard' | 'midnight';
 
@@ -30,7 +35,8 @@ const Sidebar: React.FC<{ currentView: string; isOpen: boolean }> = ({ currentVi
         
         <p className="px-4 pt-8 text-[10px] uppercase tracking-widest font-bold text-[var(--text-body)] opacity-40 mb-4">Identity & Trust</p>
         <a href="#tks" className="sidebar-link">5. TrustKey Registry</a>
-        <a href="#contact" className="sidebar-link">6. Technical Inquiries</a>
+        <a href="#branding" className={`sidebar-link ${currentView === 'branding' ? 'active' : ''}`}>6. Branding Kit</a>
+        <a href="#contact" className="sidebar-link">7. Technical Inquiries</a>
       </nav>
     </div>
 
@@ -43,7 +49,7 @@ const Sidebar: React.FC<{ currentView: string; isOpen: boolean }> = ({ currentVi
   </aside>
 );
 
-const Header: React.FC<{ onToggleSidebar: () => void; theme: Theme; onToggleTheme: () => void }> = ({ onToggleSidebar, theme, onToggleTheme }) => (
+const Header: React.FC<{ onToggleSidebar: () => void; theme: Theme; onToggleTheme: () => void; onOpenPortal: () => void }> = ({ onToggleSidebar, theme, onToggleTheme, onOpenPortal }) => (
   <header className="fixed top-0 right-0 left-0 lg:left-72 h-16 bg-[var(--bg-standard)] border-b border-[var(--border-light)] z-30 flex items-center justify-between px-8">
     <button onClick={onToggleSidebar} className="lg:hidden p-2 text-2xl text-[var(--text-header)]">☰</button>
     <div className="hidden lg:block text-[11px] font-mono text-[var(--text-body)] opacity-40 uppercase tracking-widest">
@@ -57,21 +63,21 @@ const Header: React.FC<{ onToggleSidebar: () => void; theme: Theme; onToggleThem
       >
         {theme === 'standard' ? 'Switch to Midnight' : 'Switch to Standard'}
       </button>
-      <a 
-        href="https://verify.signetai.io" 
-        target="_blank"
-        className="px-4 py-1.5 bg-[var(--trust-blue)] text-white text-[11px] font-bold rounded hover:brightness-110 transition-all"
+      <button 
+        onClick={onOpenPortal}
+        className="px-4 py-1.5 bg-[var(--trust-blue)] text-white text-[11px] font-bold rounded hover:brightness-110 transition-all shadow-sm"
       >
         Verifier SDK
-      </a>
+      </button>
     </div>
   </header>
 );
 
 const App: React.FC = () => {
-  const [view, setView] = useState<'home' | 'spec' | 'standards' | 'schema'>('home');
+  const [view, setView] = useState<'home' | 'spec' | 'standards' | 'schema' | 'branding'>('home');
   const [theme, setTheme] = useState<Theme>('standard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isPortalOpen, setIsPortalOpen] = useState(false);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -80,13 +86,33 @@ const App: React.FC = () => {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash;
-      if (hash === '#spec') setView('spec');
-      else if (hash === '#standards') setView('standards');
-      else if (hash === '#schema') setView('schema');
-      else setView('home');
-      window.scrollTo(0, 0);
+      
+      // Verification Subdomain Mapping Logic
+      if (hash === '#verifier') {
+        setIsPortalOpen(true);
+        setView('home');
+      } else if (hash === '#spec') {
+        setView('spec');
+      } else if (hash === '#standards') {
+        setView('standards');
+      } else if (hash === '#schema') {
+        setView('schema');
+      } else if (hash === '#branding') {
+        setView('branding');
+      } else {
+        setView('home');
+        // Handle anchor scrolling for sections on the home page
+        const anchorSections = ['#architecture', '#tks', '#contact'];
+        if (hash && anchorSections.includes(hash)) {
+          setTimeout(() => {
+            const el = document.querySelector(hash);
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+          }, 100);
+        }
+      }
       setIsSidebarOpen(false);
     };
+
     handleHashChange();
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
@@ -99,24 +125,30 @@ const App: React.FC = () => {
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} 
         theme={theme}
         onToggleTheme={() => setTheme(theme === 'standard' ? 'midnight' : 'standard')}
+        onOpenPortal={() => setIsPortalOpen(true)}
       />
       
       <main className="lg:pl-72 pt-16">
         <div className="content-column">
           {view === 'home' && (
             <>
-              <Hero onOpenPortal={() => {}} />
+              <Hero onOpenPortal={() => setIsPortalOpen(true)} />
               <Admonition type="note" title="Cognitive Assertion Layer">
                 The Signet Protocol acts as a specialized extension to C2PA, mapping neural logic states into standard JUMBF manifest boxes.
               </Admonition>
               <Architecture />
               <hr className="hr-chapter" />
               <SchemaDefinition />
+              <hr className="hr-chapter" />
+              <TrustKeyService />
+              <hr className="hr-chapter" />
+              <ContactHub />
             </>
           )}
           {view === 'spec' && <SpecView />}
           {view === 'standards' && <StandardsView />}
           {view === 'schema' && <SchemaView />}
+          {view === 'branding' && <BrandingView />}
 
           <footer className="mt-24 pt-12 border-t border-[var(--border-light)] flex justify-between items-center text-[10px] font-mono opacity-50 uppercase tracking-widest text-[var(--text-body)]">
             <div className="flex items-center gap-4">
@@ -127,6 +159,9 @@ const App: React.FC = () => {
           </footer>
         </div>
       </main>
+
+      <PortalView isOpen={isPortalOpen} onClose={() => setIsPortalOpen(false)} />
+      <VerificationBadge />
     </div>
   );
 };

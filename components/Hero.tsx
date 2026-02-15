@@ -1,6 +1,6 @@
 import React from 'react';
 
-export const Hero: React.FC<{ onOpenPortal: () => void }> = () => {
+export const Hero: React.FC<{ onOpenPortal: () => void }> = ({ onOpenPortal }) => {
   return (
     <section className="mb-24">
       <div className="space-y-6">
@@ -13,16 +13,22 @@ export const Hero: React.FC<{ onOpenPortal: () => void }> = () => {
           A technical framework for the cryptographic attestation of AI-generated reasoning paths, built natively on the ISO/C2PA JUMBF manifest structure.
         </p>
 
-        <div className="flex gap-4 pt-6">
+        <div className="flex flex-wrap gap-4 pt-6">
+          <button 
+            onClick={onOpenPortal}
+            className="px-6 py-2.5 bg-[var(--trust-blue)] text-white text-[13px] font-bold rounded shadow-md hover:brightness-110 transition-all"
+          >
+            Launch Verifier
+          </button>
           <a 
             href="#standards" 
-            className="px-6 py-2.5 bg-[var(--trust-blue)] text-white text-[13px] font-bold rounded shadow-sm hover:brightness-110 transition-all"
+            className="px-6 py-2.5 border border-[var(--border-light)] text-[var(--text-header)] text-[13px] font-bold rounded hover:bg-white/5 transition-all text-center"
           >
             Read Specification
           </a>
           <a 
             href="#schema" 
-            className="px-6 py-2.5 border border-[var(--border-light)] text-[var(--text-header)] text-[13px] font-bold rounded hover:bg-white/5 transition-all"
+            className="px-6 py-2.5 border border-[var(--border-light)] text-[var(--text-header)] text-[13px] font-bold rounded hover:bg-white/5 transition-all text-center"
           >
             VPR Manifest L3
           </a>
