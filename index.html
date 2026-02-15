@@ -110,6 +110,16 @@
       
       pre { border: 1px solid var(--border-light); border-radius: 4px; background-color: var(--code-bg); color: var(--text-body); }
       code { color: inherit; }
+
+      /* Assistant Prose Styles */
+      .prose-signet { font-size: 14px; line-height: 1.5; }
+      .prose-signet p { margin-bottom: 0.75rem; }
+      .prose-signet p:last-child { margin-bottom: 0; }
+      .prose-signet ul, .prose-signet ol { margin-bottom: 0.75rem; padding-left: 1.25rem; }
+      .prose-signet li { margin-bottom: 0.25rem; list-style-type: disc; }
+      .prose-signet strong { font-weight: 700; color: var(--text-header); }
+      .prose-signet code { font-family: 'JetBrains Mono', monospace; font-size: 12px; background: rgba(0,0,0,0.05); padding: 2px 4px; border-radius: 3px; }
+      [data-theme='midnight'] .prose-signet code { background: rgba(255,255,255,0.1); }
     </style>
     <script type="importmap">
 {
@@ -117,7 +127,8 @@
     "react/": "https://esm.sh/react@^19.2.4/",
     "react": "https://esm.sh/react@^19.2.4",
     "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.41.0"
+    "@google/genai": "https://esm.sh/@google/genai@^1.41.0",
+    "react-markdown": "https://esm.sh/react-markdown@^9.0.1"
   }
 }
 </script>

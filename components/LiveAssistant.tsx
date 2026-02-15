@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, Chat, GenerateContentResponse } from "@google/genai";
+import ReactMarkdown from 'react-markdown';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -9,7 +10,7 @@ interface Message {
 export const LiveAssistant: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', text: "Systems online. I am Signet-Alpha. Are you stuck in the logic flow, or do you require a technical deep-dive into the VPR protocol?" }
+    { role: 'assistant', text: "Systems online. I am **Signet-Alpha**. \n\nAre you stuck in the logic flow, or do you require a technical deep-dive into the **VPR protocol**?" }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -31,15 +32,22 @@ export const LiveAssistant: React.FC = () => {
       const newChat = ai.chats.create({
         model: 'gemini-3-flash-preview',
         config: {
-          systemInstruction: `You are Signet-Alpha, the official Technical Support AI for the Signet Protocol Labs. 
+          systemInstruction: `You are Signet-Alpha, the official Technical Support AI for Signet Protocol Labs. 
           Your goal is to help users understand the Verifiable Proof of Reasoning (VPR) framework.
-          Key Protocol Points:
+          
+          STYLE GUIDELINES:
+          - Use **Markdown** formatting for all responses.
+          - Use **Bold text** for key protocol terms like **VPR**, **JUMBF**, and **Neural Lens**.
+          - Use bulleted lists for technical steps or feature breakdowns.
+          - Use backticks for \`Trace IDs\` or code snippets.
+          - Maintain a professional, industrial, and slightly technical tone.
+
+          KEY PROTOCOL POINTS:
           - VPR is a C2PA-native extension for AI reasoning.
           - Trace IDs are unique fingerprints of logical nodes.
           - The "Forever Loop" is Continuous Attestation; it stops when a manifest is Finalized.
-          - We scale via Probabilistic Sampling (checking only random branches of a Merkle Tree).
-          - We are ISO/TC 290 compliant.
-          Be professional, industrial, slightly technical, but helpful. Use markdown for lists if needed.`,
+          - We scale via Probabilistic Sampling (checking random branches of a Merkle Tree).
+          - We are ISO/TC 290 compliant.`,
         },
       });
       setChatSession(newChat);
@@ -58,7 +66,6 @@ export const LiveAssistant: React.FC = () => {
       if (!chatSession) initChat();
       
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      // We use a fresh chat session from state or create one
       const session = chatSession || ai.chats.create({
         model: 'gemini-3-flash-preview',
         config: { systemInstruction: "Signet Assistant Persona" }
@@ -84,7 +91,7 @@ export const LiveAssistant: React.FC = () => {
       }
     } catch (error) {
       console.error("Assistant Error:", error);
-      setMessages(prev => [...prev, { role: 'assistant', text: "Error in Neural Link. Please re-attest the session." }]);
+      setMessages(prev => [...prev, { role: 'assistant', text: "Error in **Neural Link**. Please re-attest the session." }]);
     } finally {
       setIsLoading(false);
     }
@@ -103,7 +110,7 @@ export const LiveAssistant: React.FC = () => {
           </svg>
         </button>
       ) : (
-        <div className="w-80 md:w-96 h-[500px] bg-[var(--bg-standard)] border border-[var(--border-light)] shadow-2xl rounded-xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
+        <div className="w-80 md:w-96 h-[550px] bg-[var(--bg-standard)] border border-[var(--border-light)] shadow-2xl rounded-xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
           {/* Assistant Header */}
           <div className="p-4 bg-[var(--table-header)] border-b border-[var(--border-light)] flex justify-between items-center">
             <div className="flex items-center gap-3">
@@ -122,12 +129,21 @@ export const LiveAssistant: React.FC = () => {
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[var(--code-bg)]">
             {messages.map((m, i) => (
               <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[85%] p-3 rounded-lg text-sm leading-relaxed ${
+                <div className={`max-w-[90%] p-4 rounded-lg text-sm leading-relaxed ${
                   m.role === 'user' 
                     ? 'bg-[var(--trust-blue)] text-white' 
-                    : 'bg-[var(--bg-standard)] border border-[var(--border-light)] text-[var(--text-body)] italic shadow-sm'
+                    : 'bg-[var(--bg-standard)] border border-[var(--border-light)] text-[var(--text-body)] shadow-sm'
                 }`}>
-                  {m.text || (isLoading && i === messages.length - 1 ? "..." : "")}
+                  {m.role === 'assistant' ? (
+                    <div className="prose-signet">
+                      <ReactMarkdown>{m.text}</ReactMarkdown>
+                      {isLoading && i === messages.length - 1 && !m.text && (
+                        <span className="animate-pulse">...</span>
+                      )}
+                    </div>
+                  ) : (
+                    m.text
+                  )}
                 </div>
               </div>
             ))}
