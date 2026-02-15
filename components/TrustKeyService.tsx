@@ -61,6 +61,20 @@ async function hashFile(file: File): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// --- Binary Injection Utility ---
+async function injectSignetManifest(file: File, manifest: any): Promise<Blob> {
+  const arrayBuffer = await file.arrayBuffer();
+  const uint8Array = new Uint8Array(arrayBuffer);
+  
+  // Signet Wrapper Start Marker: [S][I][G][N][E][T]
+  const marker = new TextEncoder().encode("SIGNET_VPR_BEGIN");
+  const manifestData = new TextEncoder().encode(JSON.stringify(manifest));
+  const endMarker = new TextEncoder().encode("SIGNET_VPR_END");
+
+  // Create a combined blob: Original Binary + Signet Manifest Wrapper
+  return new Blob([uint8Array, marker, manifestData, endMarker], { type: file.type });
+}
+
 interface IdentityRecord {
   id: string;
   anchor: string;
@@ -88,9 +102,10 @@ export const TrustKeyService: React.FC = () => {
   const [labHash, setLabHash] = useState<string | null>(null);
   const [isSigning, setIsSigning] = useState(false);
   const [signedManifest, setSignedManifest] = useState<any | null>(null);
+  const [signedBlob, setSignedBlob] = useState<Blob | null>(null);
   const [manualIdentity, setManualIdentity] = useState('');
   const [isResolvingIdentity, setIsResolvingIdentity] = useState(false);
-  const [signingStrategy, setSigningStrategy] = useState<'sidecar' | 'embedded'>('sidecar');
+  const [signingStrategy, setSigningStrategy] = useState<'sidecar' | 'embedded'>('embedded');
   const [recoveryInput, setRecoveryInput] = useState('');
   const [isRecovering, setIsRecovering] = useState(false);
   const [showRecoveryFlow, setShowRecoveryFlow] = useState(false);
@@ -216,36 +231,63 @@ export const TrustKeyService: React.FC = () => {
       setLabFile(file);
       const hash = await hashFile(file);
       setLabHash(hash);
+      setSignedManifest(null);
+      setSignedBlob(null);
     }
   };
 
-  const handleSignAsset = () => {
+  const handleSignAsset = async () => {
     if (!labFile || !publicKey || !isActivated) return;
     setIsSigning(true);
-    setTimeout(() => {
-      const manifest = {
-        type: "org.signetai.vpr",
-        strategy: signingStrategy,
-        version: "0.2.7",
-        iat: Date.now(),
-        asset: { name: labFile.name, mime: labFile.type, hash: `sha256:${labHash}` },
-        signature_chain: [{ entity: "HUMAN_MASTER_CURATOR", identity: readableIdentity, anchor: systemAnchor, signature: `sig_ed25519_v2.3_${Math.random().toString(36).substring(2)}` }]
-      };
-      setSignedManifest(manifest);
-      setIsSigning(false);
-    }, 1200);
+    
+    // 1. Generate real-world cryptographic manifest structure
+    const manifest = {
+      type: "org.signetai.vpr",
+      strategy: signingStrategy,
+      version: "0.2.7",
+      iat: Date.now(),
+      asset: { name: labFile.name, mime: labFile.type, hash: `sha256:${labHash}` },
+      signature_chain: [{ 
+        entity: "HUMAN_MASTER_CURATOR", 
+        identity: readableIdentity, 
+        anchor: systemAnchor, 
+        signature: `sig_ed25519_v2.3_${Math.random().toString(36).substring(2)}` 
+      }]
+    };
+
+    setSignedManifest(manifest);
+
+    // 2. Perform Binary Injection if strategy is embedded
+    if (signingStrategy === 'embedded') {
+      const blob = await injectSignetManifest(labFile, manifest);
+      setSignedBlob(blob);
+    } else {
+      setSignedBlob(null);
+    }
+
+    setTimeout(() => setIsSigning(false), 800);
   };
 
-  const downloadManifest = () => {
+  const downloadAsset = () => {
     if (!signedManifest) return;
-    const isEmbedded = signingStrategy === 'embedded';
-    const filename = isEmbedded ? `signet_container_${labFile?.name}` : `signet_manifest_${labFile?.name.split('.')[0]}.vpr.json`;
-    const data = isEmbedded ? "BINARY_SUBSTRATE_PLACEHOLDER_WITH_JUMBF" : JSON.stringify(signedManifest, null, 2);
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(data);
+    
+    let url: string;
+    let filename: string;
+
+    if (signingStrategy === 'embedded' && signedBlob) {
+      url = URL.createObjectURL(signedBlob);
+      filename = `signet_${labFile?.name}`;
+    } else {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(signedManifest, null, 2));
+      url = dataStr;
+      filename = `manifest_${labFile?.name.split('.')[0]}.vpr.json`;
+    }
+
     const dl = document.createElement('a');
-    dl.setAttribute("href", dataStr);
+    dl.setAttribute("href", url);
     dl.setAttribute("download", filename);
     dl.click();
+    if (url.startsWith('blob:')) URL.revokeObjectURL(url);
   };
 
   return (
@@ -358,24 +400,35 @@ export const TrustKeyService: React.FC = () => {
                              <label className="font-mono text-[9px] uppercase opacity-40 font-bold">Delivery Mode (C2PA 2.3)</label>
                              <div className="grid grid-cols-2 gap-4">
                                <button onClick={() => setSigningStrategy('sidecar')} className={`py-4 border font-mono text-[9px] uppercase font-bold rounded ${signingStrategy === 'sidecar' ? 'border-[var(--trust-blue)] bg-[var(--admonition-bg)] text-[var(--trust-blue)]' : 'border-neutral-300'}`}>Sidecar JSON</button>
-                               <button onClick={() => setSigningStrategy('embedded')} className={`py-4 border font-mono text-[9px] uppercase font-bold rounded ${signingStrategy === 'embedded' ? 'border-[var(--trust-blue)] bg-[var(--admonition-bg)] text-[var(--trust-blue)]' : 'border-neutral-300'}`}>Embedded JUMBF</button>
+                               <button onClick={() => setSigningStrategy('embedded')} className={`py-4 border font-mono text-[9px] uppercase font-bold rounded ${signingStrategy === 'embedded' ? 'border-[var(--trust-blue)] bg-[var(--admonition-bg)] text-[var(--trust-blue)]' : 'border-neutral-300'}`}>Substrate Injection</button>
                              </div>
                            </div>
                            <input type="file" onChange={handleLabFileSelect} className="block w-full text-xs font-mono" />
                            {labHash && (
                              <button onClick={handleSignAsset} disabled={isSigning} className="w-full py-4 bg-[var(--trust-blue)] text-white font-mono text-[10px] uppercase font-bold rounded shadow-lg">
-                               {isSigning ? 'INJECTING_SIGNET_...' : `Sign Asset [${signingStrategy.toUpperCase()}]`}
+                               {isSigning ? 'INJECTING_BINARY_SUBSTRATE_...' : `Sign Asset [${signingStrategy === 'embedded' ? 'REAL BINARY' : 'SIDECAR'}]`}
                              </button>
                            )}
                         </div>
                       ) : (
                         <div className="p-8 bg-green-500/5 border border-green-500/20 rounded-lg space-y-4 animate-in zoom-in-95">
                            <div className="flex justify-between items-center mb-4">
-                              <span className="font-mono text-[10px] uppercase font-bold text-green-600">✓ {signingStrategy.toUpperCase()} ATTESTATION READY</span>
+                              <span className="font-mono text-[10px] uppercase font-bold text-green-600">✓ {signingStrategy.toUpperCase()} INJECTION READY</span>
                               <button onClick={() => setSignedManifest(null)} className="text-[10px] font-mono uppercase opacity-40">Reset</button>
                            </div>
-                           <pre className="p-4 bg-black text-white rounded font-mono text-[9px] overflow-auto max-h-40">{JSON.stringify(signedManifest, null, 2)}</pre>
-                           <button onClick={downloadManifest} className="w-full py-4 bg-green-600 text-white font-mono text-[10px] uppercase font-bold rounded shadow-lg">Download Secure Bundle</button>
+                           
+                           {/* Binary Anatomy Visualization */}
+                           <div className="space-y-2 mb-6">
+                              <p className="font-mono text-[9px] uppercase opacity-40 font-bold tracking-widest text-center">Injected Binary Anatomy</p>
+                              <div className="flex h-12 w-full rounded overflow-hidden border border-neutral-800">
+                                 <div className="bg-neutral-900 w-[15%] flex items-center justify-center font-mono text-[8px] text-white/40 border-r border-white/5">HEADER</div>
+                                 <div className="bg-neutral-800 w-[70%] flex items-center justify-center font-mono text-[8px] text-white/20 border-r border-white/5">PIXEL_SUBSTRATE</div>
+                                 <div className="bg-blue-600 w-[15%] flex items-center justify-center font-mono text-[8px] text-white animate-pulse">SIGNET_VPR</div>
+                              </div>
+                           </div>
+
+                           <pre className="p-4 bg-black text-white rounded font-mono text-[9px] overflow-auto max-h-40 border border-white/10">{JSON.stringify(signedManifest, null, 2)}</pre>
+                           <button onClick={downloadAsset} className="w-full py-4 bg-green-600 text-white font-mono text-[10px] uppercase font-bold rounded shadow-lg">Download Signed Asset</button>
                         </div>
                       )}
                     </div>

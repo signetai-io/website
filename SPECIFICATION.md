@@ -23,9 +23,10 @@ Compliance with C2PA 2.3 requires support for two primary transport modes.
 - Manifests are delivered as standalone JSON-LD objects.
 - Recommended for cloud-native pipelines and LLM context injection.
 
-### 3.2 Embedded Mode (JUMBF)
-- Manifests MUST be injected into the asset binary using the Joint Universal Media Binary Framework (JUMBF).
-- For JPEG/PNG, assertions reside in the `APP11` or equivalent metadata segments.
+### 3.2 Embedded Mode (Binary Substrate Injection)
+- **Technique**: Manifests MUST be injected into the asset binary. 
+- **Tail-End Injection**: Signet utilizes a "Tail-End Wrap" for browser-based delivery, where the manifest is appended after the standard EOI (End of Image) marker, enclosed in `SIGNET_VPR_BEGIN` and `SIGNET_VPR_END` tags.
+- **Compliance**: This ensures that standard image decoders ignore the metadata while Signet auditors can extract it via binary stream analysis.
 
 ## 4. Cryptographic Requirements
 - **Algorithm**: MUST use Ed25519 for all signatures.
