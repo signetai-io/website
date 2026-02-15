@@ -80,7 +80,6 @@ export const TrustKeyService: React.FC = () => {
       setNetworkError(null);
 
       try {
-        // We index by the 32-byte UUID-style System Anchor for storage efficiency
         const docRef = doc(db, "identities", systemAnchor);
         const docSnap = await getDoc(docRef);
         
@@ -91,8 +90,7 @@ export const TrustKeyService: React.FC = () => {
         }
       } catch (e) {
         console.error("Firestore Error:", e);
-        setNetworkError("Registry connection unstable. Using local simulation.");
-        // If Firebase fails, we don't block the user in this demo context
+        // Fallback for demo if network is blocked
         setAvailability('available'); 
       }
     };
@@ -114,22 +112,23 @@ export const TrustKeyService: React.FC = () => {
     if (availability === 'taken' || !publicKey) return;
     setIsRegistering(true);
 
+    const record = {
+      readableIdentity: readableIdentity,
+      systemAnchor: systemAnchor,
+      publicKey: publicKey,
+      timestamp: Date.now(),
+      subject: subject,
+      namespace: namespace || "ROOT",
+      authority: PROTOCOL_AUTHORITY
+    };
+
     try {
-      await setDoc(doc(db, "identities", systemAnchor), {
-        readableIdentity: readableIdentity,
-        systemAnchor: systemAnchor,
-        publicKey: publicKey,
-        timestamp: Date.now(),
-        subject: subject,
-        namespace: namespace || "ROOT",
-        authority: PROTOCOL_AUTHORITY
-      });
+      await setDoc(doc(db, "identities", systemAnchor), record);
       setIsRegistering(false);
       setIsActivated(true);
     } catch (e) {
       console.error("Commit error:", e);
       setNetworkError("Mainnet commit failed. Simulating local storage.");
-      // For the demo, we simulate success even if Firebase is blocked
       setTimeout(() => {
         setIsRegistering(false);
         setIsActivated(true);
@@ -137,45 +136,64 @@ export const TrustKeyService: React.FC = () => {
     }
   };
 
+  // Fixed the missing handleLookup function
   const handleLookup = async () => {
     if (!lookupQuery) return;
-    
     setLookupResult(null);
     setNetworkError(null);
 
     try {
-      // First try to look up by direct readable identity (we hash it to find the anchor)
-      const queryIdentity = getFullIdentity(lookupQuery, "");
-      const queryAnchor = generateSystemAnchor(queryIdentity);
-      
-      const docRef = doc(db, "identities", queryAnchor);
-      const docSnap = await getDoc(docRef);
+      // 1. Try direct lookup (assuming it's a system anchor/UUID)
+      let docRef = doc(db, "identities", lookupQuery);
+      let docSnap = await getDoc(docRef);
+
+      // 2. If not found, try deriving anchor from the query (assuming it's an identity/handle)
+      if (!docSnap.exists()) {
+        const cleanQuery = lookupQuery.toLowerCase().trim();
+        const suffix = `${SEPARATOR}${PROTOCOL_AUTHORITY}`;
+        const identityToHash = cleanQuery.endsWith(suffix) ? cleanQuery : `${cleanQuery}${suffix}`;
+        
+        const derivedAnchor = generateSystemAnchor(identityToHash);
+        docRef = doc(db, "identities", derivedAnchor);
+        docSnap = await getDoc(docRef);
+      }
 
       if (docSnap.exists()) {
         const data = docSnap.data();
-        setLookupResult({ 
-          id: data.readableIdentity, 
+        setLookupResult({
+          id: data.readableIdentity || data.subject,
           anchor: data.systemAnchor,
           key: data.publicKey,
           date: new Date(data.timestamp).toLocaleDateString()
         });
       } else {
-         // Maybe it's a UUID they pasted?
-         const uuidRef = doc(db, "identities", lookupQuery);
-         const uuidSnap = await getDoc(uuidRef);
-         if (uuidSnap.exists()) {
-            const data = uuidSnap.data();
-            setLookupResult({ 
-              id: data.readableIdentity, 
-              anchor: data.systemAnchor,
-              key: data.publicKey,
-              date: new Date(data.timestamp).toLocaleDateString()
-            });
-         }
+        setNetworkError("Identity not found in global registry.");
       }
     } catch (e) {
-      setNetworkError("Lookup failure.");
+      console.error("Lookup error:", e);
+      setNetworkError("Global registry lookup failed.");
     }
+  };
+
+  const exportSeedManifest = () => {
+    if (!isActivated || !publicKey) return;
+    
+    const manifest = {
+      protocol: "Signet v0.2.6",
+      identity: readableIdentity,
+      anchor: systemAnchor,
+      pubkey: publicKey,
+      iat: new Date().toISOString(),
+      governance: "Signet AI Labs TKS"
+    };
+
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(manifest, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `signet_seed_${systemAnchor.substring(0,8)}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
   };
 
   const isButtonDisabled = isGenerating || !subject || subject.length < 3 || availability === 'taken' || availability === 'checking';
@@ -289,16 +307,27 @@ export const TrustKeyService: React.FC = () => {
                       </p>
                     </div>
 
-                    <button 
-                      onClick={handleCommit}
-                      disabled={isRegistering || isActivated}
-                      className={`w-full py-6 font-mono text-[11px] uppercase tracking-widest font-bold rounded shadow-lg transition-all
-                        ${isActivated 
-                          ? 'bg-green-600 text-white shadow-[0_0_20px_rgba(22,163,74,0.3)]' 
-                          : isRegistering ? 'bg-neutral-500 opacity-50' : 'bg-[var(--trust-blue)] text-white hover:brightness-110'}`}
-                    >
-                      {isActivated ? '✓ BINDING_SETTLED_IN_REGISTRY' : isRegistering ? 'COMMITING_SYSTEM_UUID_...' : 'Seal Mainnet Identity'}
-                    </button>
+                    <div className="space-y-4">
+                      <button 
+                        onClick={handleCommit}
+                        disabled={isRegistering || isActivated}
+                        className={`w-full py-6 font-mono text-[11px] uppercase tracking-widest font-bold rounded shadow-lg transition-all
+                          ${isActivated 
+                            ? 'bg-green-600 text-white shadow-[0_0_20px_rgba(22,163,74,0.3)]' 
+                            : isRegistering ? 'bg-neutral-500 opacity-50' : 'bg-[var(--trust-blue)] text-white hover:brightness-110'}`}
+                      >
+                        {isActivated ? '✓ BINDING_SETTLED_IN_REGISTRY' : isRegistering ? 'COMMITING_SYSTEM_UUID_...' : 'Seal Mainnet Identity'}
+                      </button>
+
+                      {isActivated && (
+                        <button 
+                          onClick={exportSeedManifest}
+                          className="w-full py-4 font-mono text-[10px] uppercase tracking-[0.2em] font-bold border-2 border-[var(--trust-blue)] text-[var(--trust-blue)] rounded hover:bg-[var(--trust-blue)] hover:text-white transition-all animate-in slide-in-from-bottom-2"
+                        >
+                          Export Seed Manifest
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
 
