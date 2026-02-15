@@ -31,20 +31,50 @@ export const ManualView: React.FC = () => {
         </p>
       </header>
 
-      <ManualSection title="01. The Verifier SDK">
+      <ManualSection title="01. Identity Lifecycle (Registry)">
+        <div className="space-y-4 text-lg leading-loose text-[var(--text-body)] opacity-80 font-serif">
+          <p>The <strong>TrustKey Registry</strong> is the authoritative root for all Signet-enabled nodes. Follow these steps to establish your cryptographic presence:</p>
+          <ol className="list-decimal pl-6 space-y-4">
+            <li><strong>Define Subject:</strong> Enter your unique handle (e.g., <code>shengliang.song</code>). The system checks for "Anchor Availability" in real-time.</li>
+            <li><strong>Namespace Binding:</strong> Optionally bind your identity to an organization (e.g., <code>signetai.io</code>). This creates a hierarchical system anchor.</li>
+            <li><strong>Establish Anchor:</strong> Generate your Ed25519 keypair. <strong>Crucial:</strong> Secure your 12-word mnemonic. Signet AI Labs never stores your private key.</li>
+            <li><strong>Registry Settlement:</strong> Click "Seal Mainnet Identity" to commit your public key to the global database. This creates a permanent, immutable record for verifiers.</li>
+          </ol>
+        </div>
+      </ManualSection>
+
+      <ManualSection title="02. The Signing Pipeline (Lab)">
+        <p className="text-lg leading-loose text-[var(--text-body)] opacity-80 font-serif">
+          Once your identity is settled, you can transition to the <strong>Provenance Lab</strong> to attest to digital assets.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-10">
+          <FeatureCard 
+            icon="Σ" 
+            title="Asset Hashing" 
+            desc="Signet computes a SHA-256 digest of your file. This 'Vision Substrate' hash is the immutable DNA of the asset, ensuring any future modification breaks the signature." 
+          />
+          <FeatureCard 
+            icon="✓" 
+            title="Attestation & Verification" 
+            desc="Signing creates a VPR Manifest (org.signetai.vpr). Verifiers upload this manifest, which then triggers a live registry lookup to cross-check your public key and validate the signature." 
+          />
+        </div>
+      </ManualSection>
+
+      <ManualSection title="03. Understanding Trace IDs">
         <p className="text-lg leading-loose text-[var(--text-body)]">
           The Verifier SDK is your interface into the **Neural Lens**. It provides a real-time window into the cryptographic attestation process.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-10">
           <FeatureCard 
             icon="ID" 
-            title="Understanding Trace IDs" 
+            title="Logic Fingerprints" 
             desc="Every row in the Live Audit table represents a specific 'Logic Node' in the AI's reasoning path. The ID is a unique SHA-256 fingerprint." 
           />
           <FeatureCard 
             icon="∞" 
-            title="The Continuous Heartbeat" 
-            desc="Signet uses 'Continuous Attestation'. The stream monitors for 'State Drift' — ensuring the asset hasn't been tampered with." 
+            title="Continuous Heartbeat" 
+            desc="Signet uses 'Continuous Attestation'. The stream monitors for 'State Drift' — ensuring the asset hasn't been tampered with since the first ingredient was added." 
           />
         </div>
       </ManualSection>

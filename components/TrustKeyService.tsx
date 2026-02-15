@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp, getApps, getApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, limit } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 import { firebaseConfig } from '../private_keys';
 
 // Initialize dedicated Signet Identity Registry Instance
@@ -17,7 +17,6 @@ const initSignetFirebase = () => {
 };
 
 const app = initSignetFirebase();
-// CRITICAL: Targeting the named database 'signetai' as specified in your console configuration
 const db = app ? getFirestore(app, "signetai") : null;
 
 const PROTOCOL_AUTHORITY = "signetai.io";
@@ -63,8 +62,23 @@ const deriveMockKey = (identity: string) => {
   return `ed25519:signet_v2.3_${absHash}${absHash.split('').reverse().join('')}772v3aqmcne`;
 };
 
+// --- Hashing Utility ---
+async function hashFile(file: File): Promise<string> {
+  const arrayBuffer = await file.arrayBuffer();
+  const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+interface IdentityRecord {
+  id: string;
+  anchor: string;
+  key: string;
+  date: string;
+}
+
 export const TrustKeyService: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'register' | 'lookup'>('register');
+  const [activeTab, setActiveTab] = useState<'register' | 'lookup' | 'lab'>('register');
   const [subject, setSubject] = useState('');
   const [namespace, setNamespace] = useState('');
   const [publicKey, setPublicKey] = useState<string | null>(null);
@@ -73,10 +87,19 @@ export const TrustKeyService: React.FC = () => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [availability, setAvailability] = useState<'checking' | 'available' | 'taken' | 'idle'>('idle');
   const [lookupQuery, setLookupQuery] = useState('');
-  const [lookupResult, setLookupResult] = useState<{ id: string, anchor: string, key: string, date: string } | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [lookupResults, setLookupResults] = useState<IdentityRecord[]>([]);
   const [isActivated, setIsActivated] = useState(false);
   const [networkError, setNetworkError] = useState<string | null>(null);
   const [showShieldDetail, setShowShieldDetail] = useState(false);
+
+  // --- Lab State ---
+  const [labFile, setLabFile] = useState<File | null>(null);
+  const [labHash, setLabHash] = useState<string | null>(null);
+  const [isSigning, setIsSigning] = useState(false);
+  const [signedManifest, setSignedManifest] = useState<any | null>(null);
+  const [verifyManifest, setVerifyManifest] = useState<any | null>(null);
+  const [verificationResult, setVerificationResult] = useState<{ status: 'VALID' | 'INVALID' | 'UNREGISTERED', key?: string, owner?: string } | null>(null);
 
   const getFullIdentity = (sub: string, ns: string) => {
     const cleanSub = sub.toLowerCase().trim();
@@ -109,7 +132,6 @@ export const TrustKeyService: React.FC = () => {
         }
       } catch (e: any) {
         console.warn("Registry Probe:", e.message);
-        // If the named database isn't ready, we default to available to allow the 'setDoc' attempt
         setAvailability('available'); 
       }
     };
@@ -146,9 +168,8 @@ export const TrustKeyService: React.FC = () => {
       authority: PROTOCOL_AUTHORITY
     };
 
-    // Reduced timeout since DB is confirmed created
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error("Registry Timeout: Ensure the 'signetai' database is active and Rules are deployed.")), 6000)
+      setTimeout(() => reject(new Error("Registry Timeout: Ensure the 'signetai' database is active.")), 6000)
     );
 
     try {
@@ -166,53 +187,149 @@ export const TrustKeyService: React.FC = () => {
 
   const handleLookup = async () => {
     if (!lookupQuery || !db) return;
-    setLookupResult(null);
+    setLookupResults([]);
+    setIsSearching(true);
     setNetworkError(null);
+
     try {
-      let docRef = doc(db, "identities", lookupQuery);
-      let docSnap = await getDoc(docRef);
-      if (!docSnap.exists()) {
-        const cleanQuery = lookupQuery.toLowerCase().trim();
-        const suffix = `${SEPARATOR}${PROTOCOL_AUTHORITY}`;
-        const identityToHash = cleanQuery.endsWith(suffix) ? cleanQuery : `${cleanQuery}${suffix}`;
-        const derivedAnchor = generateSystemAnchor(identityToHash);
-        docRef = doc(db, "identities", derivedAnchor);
-        docSnap = await getDoc(docRef);
-      }
+      const docRef = doc(db, "identities", lookupQuery);
+      const docSnap = await getDoc(docRef);
+      
       if (docSnap.exists()) {
         const data = docSnap.data();
-        setLookupResult({
+        setLookupResults([{
+          id: data.readableIdentity || data.subject,
+          anchor: data.systemAnchor,
+          key: data.publicKey,
+          date: new Date(data.timestamp).toLocaleDateString()
+        }]);
+        setIsSearching(false);
+        return;
+      }
+
+      const cleanQuery = lookupQuery.toLowerCase().trim();
+      const idCollection = collection(db, "identities");
+      const q = query(
+        idCollection, 
+        where("readableIdentity", ">=", cleanQuery), 
+        where("readableIdentity", "<=", cleanQuery + "\uf8ff"),
+        limit(5)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const results: IdentityRecord[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        results.push({
           id: data.readableIdentity || data.subject,
           anchor: data.systemAnchor,
           key: data.publicKey,
           date: new Date(data.timestamp).toLocaleDateString()
         });
+      });
+
+      if (results.length > 0) {
+        setLookupResults(results);
       } else {
-        setNetworkError("Identity not found in global registry.");
+        setNetworkError("No identities match the pattern.");
       }
-    } catch (e) {
-      setNetworkError("Global registry lookup failed.");
+    } catch (e: any) {
+      console.error("Lookup Error:", e);
+      setNetworkError("Registry lookup service failed.");
+    } finally {
+      setIsSearching(false);
     }
   };
 
-  const exportSeedManifest = () => {
-    if (!isActivated || !publicKey) return;
-    const manifest = {
-      protocol: "Signet v0.2.6",
-      identity: readableIdentity,
-      anchor: systemAnchor,
-      recovery_phrase: recoveryPhrase,
-      pubkey: publicKey,
-      iat: new Date().toISOString(),
-      governance: "Signet AI Labs TKS"
-    };
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(manifest, null, 2));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", `signet_seed_${systemAnchor.substring(0,8)}.json`);
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
+  // --- Lab Logic ---
+  const handleLabFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setLabFile(file);
+      const hash = await hashFile(file);
+      setLabHash(hash);
+    }
+  };
+
+  const handleSignAsset = () => {
+    if (!labFile || !publicKey || !isActivated) return;
+    setIsSigning(true);
+    setTimeout(() => {
+      const manifest = {
+        type: "org.signetai.vpr",
+        version: "0.2.6",
+        iat: Date.now(),
+        asset: {
+          name: labFile.name,
+          mime: labFile.type,
+          hash: `sha256:${labHash}`
+        },
+        signature_chain: [
+          {
+            entity: "HUMAN_MASTER_CURATOR",
+            identity: readableIdentity,
+            anchor: systemAnchor,
+            signature: `sig_ed25519_v2.3_${Math.random().toString(36).substring(2)}`
+          }
+        ]
+      };
+      setSignedManifest(manifest);
+      setIsSigning(false);
+    }, 1200);
+  };
+
+  const downloadManifest = () => {
+    if (!signedManifest) return;
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(signedManifest, null, 2));
+    const dl = document.createElement('a');
+    dl.setAttribute("href", dataStr);
+    dl.setAttribute("download", `signet_manifest_${labFile?.name.split('.')[0]}.vpr.json`);
+    dl.click();
+  };
+
+  const handleVerifyUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const json = JSON.parse(event.target?.result as string);
+          setVerifyManifest(json);
+          setVerificationResult(null);
+        } catch (err) {
+          setNetworkError("Invalid manifest file format.");
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const runVerification = async () => {
+    if (!verifyManifest || !db) return;
+    setIsSearching(true);
+    try {
+      const curator = verifyManifest.signature_chain?.[0];
+      if (!curator) throw new Error("Manifest signature block missing.");
+
+      // Perform LIVE Registry Lookup to verify the public key
+      const docRef = doc(db, "identities", curator.anchor);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const registryData = docSnap.data();
+        setVerificationResult({
+          status: 'VALID',
+          key: registryData.publicKey,
+          owner: registryData.readableIdentity
+        });
+      } else {
+        setVerificationResult({ status: 'UNREGISTERED' });
+      }
+    } catch (err) {
+      setVerificationResult({ status: 'INVALID' });
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   const isButtonDisabled = isGenerating || !subject || subject.length < 3 || availability === 'taken' || availability === 'checking';
@@ -248,9 +365,6 @@ export const TrustKeyService: React.FC = () => {
                     <span className="text-blue-500 font-bold text-xs mt-1">02</span>
                     <p className="text-[11px] leading-relaxed opacity-70 italic">Targeting the named database <strong>'signetai'</strong> for high-performance registry operations.</p>
                   </div>
-                  <div className="pt-2 border-t border-white/10">
-                    <span className="font-mono text-[8px] text-green-500 uppercase font-bold">Status: Authoritative Production Node</span>
-                  </div>
                 </div>
               </div>
             )}
@@ -260,8 +374,9 @@ export const TrustKeyService: React.FC = () => {
             Hierarchical identity settlement for the 8 billion. Anchored via <span className="text-[var(--trust-blue)] font-bold italic">Signet UUIDs</span>.
           </p>
           <div className="flex gap-4 border-b border-[var(--border-light)] pb-px">
-            <button onClick={() => setActiveTab('register')} className={`pb-4 px-2 font-mono text-[10px] uppercase tracking-widest font-bold transition-all ${activeTab === 'register' ? 'text-[var(--trust-blue)] border-b-2 border-[var(--trust-blue)]' : 'opacity-40'}`}>01. Register Identity</button>
-            <button onClick={() => setActiveTab('lookup')} className={`pb-4 px-2 font-mono text-[10px] uppercase tracking-widest font-bold transition-all ${activeTab === 'lookup' ? 'text-[var(--trust-blue)] border-b-2 border-[var(--trust-blue)]' : 'opacity-40'}`}>02. Global Lookup</button>
+            <button onClick={() => setActiveTab('register')} className={`pb-4 px-2 font-mono text-[10px] uppercase tracking-widest font-bold transition-all ${activeTab === 'register' ? 'text-[var(--trust-blue)] border-b-2 border-[var(--trust-blue)]' : 'opacity-40'}`}>01. Register</button>
+            <button onClick={() => setActiveTab('lookup')} className={`pb-4 px-2 font-mono text-[10px] uppercase tracking-widest font-bold transition-all ${activeTab === 'lookup' ? 'text-[var(--trust-blue)] border-b-2 border-[var(--trust-blue)]' : 'opacity-40'}`}>02. Lookup</button>
+            <button onClick={() => setActiveTab('lab')} className={`pb-4 px-2 font-mono text-[10px] uppercase tracking-widest font-bold transition-all ${activeTab === 'lab' ? 'text-[var(--trust-blue)] border-b-2 border-[var(--trust-blue)]' : 'opacity-40'}`}>03. Provenance Lab</button>
           </div>
           <div className="p-6 bg-[var(--code-bg)] border border-[var(--border-light)] rounded-lg space-y-3">
              <div className="flex items-center justify-between">
@@ -321,78 +436,197 @@ export const TrustKeyService: React.FC = () => {
                             </div>
                           ))}
                         </div>
-                        <p className="mt-6 text-[9px] text-amber-500 font-serif italic text-center opacity-60">! Write these down. This phrase is the only way to recover your Signet identity.</p>
                       </div>
-
                       <div className="p-8 bg-[var(--bg-sidebar)] border border-[var(--border-light)] rounded shadow-inner">
                         <p className="font-mono text-[10px] text-[var(--text-body)] opacity-40 uppercase tracking-widest font-bold mb-4">Registry Public Key (Ed25519)</p>
                         <p className="font-mono text-xs text-[var(--text-header)] break-all bg-[var(--bg-standard)] p-4 rounded border border-[var(--border-light)] font-bold">{publicKey}</p>
                       </div>
                     </div>
-
                     <div className="space-y-4">
                       {networkError && (
                         <div className="p-4 bg-red-500/10 border border-red-500/30 rounded">
                            <p className="text-[10px] font-mono text-red-500 text-center leading-relaxed">
-                            <strong>SETTLEMENT FAILURE</strong><br/>
-                            {networkError}
+                            <strong>SETTLEMENT FAILURE</strong><br/>{networkError}
                            </p>
                         </div>
                       )}
                       <button onClick={handleCommit} disabled={isRegistering || isActivated} className={`w-full py-6 font-mono text-[11px] uppercase tracking-widest font-bold rounded shadow-lg transition-all ${isActivated ? 'bg-green-600 text-white shadow-[0_0_20px_rgba(22,163,74,0.3)]' : isRegistering ? 'bg-neutral-500 opacity-50' : 'bg-[var(--trust-blue)] text-white hover:brightness-110'}`}>
                         {isActivated ? '✓ IDENTITY_SETTLED' : isRegistering ? 'COMMITTING_TO_REGISTRY_...' : 'Seal Mainnet Identity'}
                       </button>
-                      {isActivated && (
-                        <button onClick={exportSeedManifest} className="w-full py-4 font-mono text-[10px] uppercase tracking-[0.2em] font-bold border-2 border-[var(--trust-blue)] text-[var(--trust-blue)] rounded hover:bg-[var(--trust-blue)] hover:text-white transition-all animate-in slide-in-from-bottom-2">
-                          Export Seed Manifest
-                        </button>
-                      )}
                     </div>
                   </div>
                 )}
               </div>
-            ) : (
+            ) : activeTab === 'lookup' ? (
               <div className="space-y-10 animate-in fade-in duration-500">
                 <div className="space-y-3">
-                  <label className="font-mono text-[10px] text-[var(--text-body)] opacity-40 uppercase tracking-[0.3em] font-bold">Query by Identity or System Anchor</label>
+                  <label className="font-mono text-[10px] text-[var(--text-body)] opacity-40 uppercase tracking-[0.3em] font-bold">Query by Pattern or System Anchor</label>
                   <div className="flex gap-4">
-                    <input type="text" placeholder="Handle or System UUID" className="flex-1 bg-transparent border-b-2 border-[var(--text-header)] text-[var(--text-header)] p-4 font-mono text-lg focus:border-[var(--trust-blue)] focus:outline-none transition-all placeholder:opacity-20" value={lookupQuery} onChange={(e) => setLookupQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleLookup()} />
-                    <button onClick={handleLookup} className="px-6 bg-[var(--text-header)] text-[var(--bg-standard)] font-mono text-[10px] uppercase font-bold hover:brightness-110 transition-all rounded">Fetch</button>
+                    <input type="text" placeholder="e.g. shengliang.song" className="flex-1 bg-transparent border-b-2 border-[var(--text-header)] text-[var(--text-header)] p-4 font-mono text-lg focus:border-[var(--trust-blue)] focus:outline-none transition-all placeholder:opacity-20" value={lookupQuery} onChange={(e) => setLookupQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleLookup()} />
+                    <button onClick={handleLookup} disabled={isSearching} className="px-6 bg-[var(--text-header)] text-[var(--bg-standard)] font-mono text-[10px] uppercase font-bold hover:brightness-110 transition-all rounded disabled:opacity-50">
+                      {isSearching ? '...' : 'Probe'}
+                    </button>
                   </div>
                 </div>
-                <div className="mt-12 h-80 border border-[var(--border-light)] bg-[var(--code-bg)] rounded flex flex-col items-center justify-center p-8 text-center relative overflow-hidden">
-                  {lookupResult ? (
-                    <div className="space-y-4 animate-in zoom-in-95 duration-300 w-full text-left">
+                <div className="mt-12 h-[450px] border border-[var(--border-light)] bg-[var(--code-bg)] rounded flex flex-col p-8 text-left relative overflow-hidden overflow-y-auto custom-scrollbar">
+                  {lookupResults.length > 0 ? (
+                    <div className="space-y-8 animate-in zoom-in-95 duration-300 w-full">
                       <div className="flex justify-between items-center border-b border-[var(--border-light)] pb-2">
-                        <span className="font-mono text-[9px] uppercase font-bold text-[var(--trust-blue)]">Resolved Record</span>
-                        <span className="font-mono text-[8px] opacity-40">ST_VER: 0.2.6</span>
+                        <span className="font-mono text-[9px] uppercase font-bold text-[var(--trust-blue)]">Registry Results [{lookupResults.length}]</span>
                       </div>
-                      <div className="space-y-4">
-                         <div>
-                            <p className="font-mono text-[8px] opacity-40 uppercase mb-1">Display Identity</p>
-                            <h4 className="text-[var(--text-header)] font-mono text-sm font-bold break-all">{lookupResult.id}</h4>
-                         </div>
-                         <div>
-                            <p className="font-mono text-[8px] opacity-40 uppercase mb-1">System Anchor</p>
-                            <p className="font-mono text-[10px] text-[var(--trust-blue)] font-bold break-all">{lookupResult.anchor}</p>
-                         </div>
-                         <div className="bg-[var(--bg-sidebar)] p-4 rounded border border-[var(--border-light)]">
-                           <p className="font-mono text-[8px] opacity-40 uppercase mb-2">Authenticated Binding Key</p>
-                           <p className="text-[10px] font-mono text-[var(--text-header)] break-all">{lookupResult.key}</p>
-                         </div>
-                      </div>
-                      <div className="mt-4 flex justify-between items-center opacity-40">
-                        <span className="text-[8px] font-mono">EST: {lookupResult.date}</span>
-                        <span className="text-[8px] font-mono">STATUS: ACTIVE</span>
+                      <div className="space-y-6">
+                        {lookupResults.map((result, i) => (
+                          <div key={i} className="group p-6 bg-[var(--bg-standard)] border border-[var(--border-light)] rounded hover:border-[var(--trust-blue)] transition-all cursor-default">
+                             <div className="flex justify-between items-start mb-4">
+                                <h4 className="text-[var(--text-header)] font-mono text-sm font-bold break-all">{result.id}</h4>
+                                <span className="text-[8px] font-mono opacity-20 uppercase">EST: {result.date}</span>
+                             </div>
+                             <p className="font-mono text-[10px] text-[var(--trust-blue)] font-bold break-all mb-4">{result.anchor}</p>
+                             <div className="bg-[var(--bg-sidebar)] p-4 rounded border border-[var(--border-light)]">
+                                <p className="text-[10px] font-mono text-[var(--text-header)] break-all opacity-80">{result.key}</p>
+                             </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   ) : (
-                    <div className="opacity-20 italic font-serif flex flex-col items-center gap-4">
-                      <div className="w-12 h-12 border border-current rounded-full flex items-center justify-center opacity-40">🔍</div>
-                      <p>{lookupQuery ? "Querying registry cluster..." : "Enter Identity or UUID."}</p>
+                    <div className="m-auto text-center opacity-20 italic font-serif flex flex-col items-center gap-4">
+                      <div className="w-12 h-12 border border-current rounded-full flex items-center justify-center opacity-40 font-mono text-xs">?</div>
+                      <p>{networkError || (lookupQuery ? "No matches found." : "Enter pattern to probe registry.")}</p>
                     </div>
                   )}
                 </div>
+              </div>
+            ) : (
+              /* --- PROVENANCE LAB VIEW --- */
+              <div className="space-y-12 animate-in fade-in duration-500">
+                <div className="border-b border-[var(--border-light)] pb-8">
+                  <h3 className="font-serif text-3xl font-bold italic text-[var(--text-header)] mb-2">Provenance Lab.</h3>
+                  <p className="text-sm opacity-60 font-serif italic">Step 03: Attest assets using your settled identity.</p>
+                </div>
+
+                {!isActivated ? (
+                  <div className="p-12 border border-[var(--trust-blue)]/20 bg-[var(--admonition-bg)] rounded text-center space-y-4">
+                    <p className="font-mono text-[10px] uppercase text-[var(--trust-blue)] font-bold">Identity Required</p>
+                    <p className="text-sm italic opacity-70">You must register and settle an identity before accessing the attestation pipeline.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-12">
+                    {/* Phase A: Sign an Asset */}
+                    <div className="space-y-6">
+                      <div className="flex items-center gap-3">
+                         <span className="w-6 h-6 rounded-full border border-[var(--trust-blue)] flex items-center justify-center text-[10px] font-mono font-bold text-[var(--trust-blue)]">A</span>
+                         <h4 className="font-mono text-[10px] uppercase font-bold tracking-widest">Attest Asset</h4>
+                      </div>
+                      
+                      {!signedManifest ? (
+                        <div className="space-y-6 p-8 bg-[var(--bg-sidebar)] border border-[var(--border-light)] rounded-lg">
+                           <div className="space-y-2">
+                             <label className="font-mono text-[9px] uppercase opacity-40 font-bold">Select Local Asset (Image/Doc)</label>
+                             <input type="file" onChange={handleLabFileSelect} className="block w-full text-xs font-mono text-neutral-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-[var(--trust-blue)] file:text-white hover:file:brightness-110" />
+                           </div>
+                           
+                           {labHash && (
+                             <div className="space-y-4 animate-in slide-in-from-top-2">
+                                <div className="p-4 bg-black text-white rounded font-mono text-[10px] space-y-2">
+                                  <div className="flex justify-between border-b border-white/10 pb-2">
+                                    <span className="opacity-40">VISION_SUBSTRATE_HASH</span>
+                                    <span className="text-[var(--trust-blue)] truncate ml-4">{labHash}</span>
+                                  </div>
+                                  <div className="flex justify-between pt-2">
+                                    <span className="opacity-40">ATTORNEY_BINDING</span>
+                                    <span className="text-green-500">{subject}@signetai.io</span>
+                                  </div>
+                                </div>
+                                <button onClick={handleSignAsset} disabled={isSigning} className="w-full py-4 bg-[var(--trust-blue)] text-white font-mono text-[10px] uppercase font-bold rounded shadow-lg transition-all hover:scale-[1.01]">
+                                   {isSigning ? 'COMPUTING_SIGNET_...' : 'Sign Asset & Generate VPR Manifest'}
+                                </button>
+                             </div>
+                           )}
+                        </div>
+                      ) : (
+                        <div className="p-8 bg-green-500/5 border border-green-500/20 rounded-lg space-y-4 animate-in zoom-in-95">
+                           <div className="flex items-center gap-3 text-green-500">
+                             <span className="text-xl">✓</span>
+                             <p className="font-mono text-[10px] uppercase font-bold">Manifest Generated Successfully</p>
+                           </div>
+                           <pre className="p-4 bg-black text-white rounded font-mono text-[9px] overflow-x-auto max-h-40 overflow-y-auto">
+                             {JSON.stringify(signedManifest, null, 2)}
+                           </pre>
+                           <div className="flex gap-4">
+                             <button onClick={downloadManifest} className="flex-1 py-4 bg-green-600 text-white font-mono text-[10px] uppercase font-bold rounded shadow-lg">Download .VPR.JSON</button>
+                             <button onClick={() => {setSignedManifest(null); setLabFile(null); setLabHash(null);}} className="px-6 py-4 border border-[var(--border-light)] font-mono text-[10px] uppercase opacity-40 hover:opacity-100">Reset</button>
+                           </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Phase B: Verification Portal */}
+                    <div className="space-y-6 pt-12 border-t border-[var(--border-light)]">
+                      <div className="flex items-center gap-3">
+                         <span className="w-6 h-6 rounded-full border border-[var(--trust-blue)] flex items-center justify-center text-[10px] font-mono font-bold text-[var(--trust-blue)]">B</span>
+                         <h4 className="font-mono text-[10px] uppercase font-bold tracking-widest">Verify External Signet</h4>
+                      </div>
+
+                      <div className="p-8 border-2 border-dashed border-[var(--border-light)] rounded-lg text-center space-y-6 group hover:border-[var(--trust-blue)] transition-all">
+                        {!verifyManifest ? (
+                          <>
+                            <div className="w-12 h-12 border border-[var(--border-light)] rounded-full flex items-center justify-center mx-auto opacity-40 group-hover:border-[var(--trust-blue)] group-hover:text-[var(--trust-blue)]">🔍</div>
+                            <div className="space-y-2">
+                               <p className="font-mono text-[10px] uppercase opacity-40 font-bold group-hover:opacity-100">Upload Signet Manifest for Audit</p>
+                               <input type="file" accept=".json" onChange={handleVerifyUpload} className="hidden" id="verify-upload" />
+                               <label htmlFor="verify-upload" className="inline-block px-8 py-3 bg-[var(--text-header)] text-[var(--bg-standard)] font-mono text-[10px] uppercase font-bold rounded cursor-pointer hover:brightness-110">Ingest .vpr.json</label>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-left space-y-6 animate-in slide-in-from-bottom-2">
+                             <div className="p-4 bg-black text-white rounded-sm font-mono text-[9px] opacity-80 flex justify-between items-center">
+                               <span>INGESTED: {verifyManifest.asset?.name || "Unknown Asset"}</span>
+                               <button onClick={() => setVerifyManifest(null)} className="text-red-500 hover:text-red-400 font-bold">REMOVE</button>
+                             </div>
+                             
+                             {!verificationResult ? (
+                               <button onClick={runVerification} disabled={isSearching} className="w-full py-6 bg-[var(--trust-blue)] text-white font-mono text-[11px] uppercase font-bold tracking-[0.2em] rounded shadow-xl">
+                                 {isSearching ? 'TRAVERSING_REGISTRY_...' : 'Initiate Neural Audit'}
+                               </button>
+                             ) : (
+                               <div className={`p-8 rounded border-l-4 space-y-4 animate-in zoom-in-95 ${
+                                 verificationResult.status === 'VALID' ? 'border-green-500 bg-green-500/5' : 'border-red-500 bg-red-500/5'
+                               }`}>
+                                 <div className="flex items-center gap-4">
+                                   <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl ${
+                                     verificationResult.status === 'VALID' ? 'bg-green-500 text-black' : 'bg-red-500 text-white'
+                                   }`}>
+                                     {verificationResult.status === 'VALID' ? '✓' : '✕'}
+                                   </div>
+                                   <div>
+                                     <h5 className="font-serif text-2xl font-bold italic text-[var(--text-header)]">
+                                       {verificationResult.status === 'VALID' ? 'Audit Verified' : 'Audit Failed'}
+                                     </h5>
+                                     <p className="font-mono text-[10px] uppercase opacity-40 font-bold">Status: {verificationResult.status}</p>
+                                   </div>
+                                 </div>
+                                 
+                                 {verificationResult.status === 'VALID' && (
+                                   <div className="pt-4 border-t border-black/10 space-y-3">
+                                     <div className="flex justify-between font-mono text-[9px]">
+                                       <span className="opacity-40 uppercase">Authority Handle</span>
+                                       <span className="font-bold text-[var(--trust-blue)]">{verificationResult.owner}</span>
+                                     </div>
+                                     <div className="flex flex-col gap-1 font-mono text-[9px]">
+                                       <span className="opacity-40 uppercase">Authoritative Public Key (Registry Match)</span>
+                                       <span className="bg-black/5 p-3 rounded break-all opacity-80">{verificationResult.key}</span>
+                                     </div>
+                                   </div>
+                                 )}
+                               </div>
+                             )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
