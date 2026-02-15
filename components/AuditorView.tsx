@@ -44,6 +44,7 @@ const PUBLIC_TEST_FILES: C2PATestFile[] = [
 export const AuditorView: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<C2PATestFile | null>(null);
   const [isAuditing, setIsAuditing] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
 
   const runAudit = (file: C2PATestFile) => {
     setIsAuditing(true);
@@ -56,15 +57,40 @@ export const AuditorView: React.FC = () => {
   return (
     <div className="py-12 space-y-12 animate-in fade-in duration-700">
       <header className="space-y-4">
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-[10px] uppercase bg-orange-500 text-white px-2 py-0.5 font-bold tracking-widest rounded-sm">Testing Lab</span>
-          <span className="font-mono text-[10px] uppercase text-[var(--trust-blue)] tracking-[0.4em] font-bold">Signet Auditor v0.2.1</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="font-mono text-[10px] uppercase bg-orange-500 text-white px-2 py-0.5 font-bold tracking-widest rounded-sm">Testing Lab</span>
+            <span className="font-mono text-[10px] uppercase text-[var(--trust-blue)] tracking-[0.4em] font-bold">Signet Auditor v0.2.1</span>
+          </div>
+          <button 
+            onClick={() => setShowGuide(!showGuide)}
+            className="font-mono text-[10px] uppercase border border-[var(--trust-blue)] text-[var(--trust-blue)] px-4 py-2 hover:bg-[var(--trust-blue)] hover:text-white transition-all font-bold rounded shadow-sm"
+          >
+            {showGuide ? '✕ Hide Guide' : '📖 Execution Guide'}
+          </button>
         </div>
         <h1 className="text-5xl font-bold italic tracking-tighter text-[var(--text-header)]">C2PA Test Suite.</h1>
         <p className="text-lg opacity-60 font-serif leading-relaxed italic max-w-2xl">
           Ingest and verify public test files from the <code>c2pa-org/public-testfiles</code> repository. Cross-reference standard manifests with Signet VPR logic.
         </p>
       </header>
+
+      {showGuide && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 animate-in slide-in-from-top-4 duration-500">
+          {[
+            { step: '01', title: 'Target Selection', text: 'Select a verified asset from the C2PA public repository list.' },
+            { step: '02', title: 'JUMBF Parsing', text: 'System decoupling of the binary manifest from the visual substrate.' },
+            { step: '03', title: 'Box Inspection', text: 'Audit specific JUMBF assertions like c2pa.actions and signet.vpr.' },
+            { step: '04', title: 'Attestation', text: 'Verify the Ed25519 signature against the trusted TKS identity anchor.' }
+          ].map((item) => (
+            <div key={item.step} className="p-6 border border-[var(--trust-blue)] bg-[var(--admonition-bg)] rounded-lg space-y-3">
+              <span className="font-mono text-[10px] text-[var(--trust-blue)] font-bold tracking-widest opacity-40">{item.step}</span>
+              <h4 className="font-serif text-lg font-bold italic text-[var(--text-header)]">{item.title}</h4>
+              <p className="text-[12px] opacity-70 leading-relaxed italic">{item.text}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Col: File Selector */}
@@ -106,7 +132,7 @@ export const AuditorView: React.FC = () => {
         <div className="lg:col-span-2 space-y-8">
           {!selectedFile && !isAuditing ? (
             <div className="h-96 border border-[var(--border-light)] rounded-xl flex flex-col items-center justify-center bg-[var(--code-bg)] opacity-30 italic font-serif">
-              <p>Select a test file to initiate JUMBF extraction...</p>
+              <p>Select a test file from the menu to initiate JUMBF extraction...</p>
             </div>
           ) : isAuditing ? (
             <div className="h-96 border border-[var(--border-light)] rounded-xl flex flex-col items-center justify-center bg-[var(--code-bg)]">
