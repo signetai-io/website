@@ -17,7 +17,7 @@ const db = app ? getFirestore(app, "signetai") : null;
 const PROTOCOL_AUTHORITY = "signetai.io";
 const SEPARATOR = ":";
 
-// BIP-39 English Wordlist (Full 2048 words required for 11-bit index mapping: 2^11 = 2048)
+// BIP-39 English Wordlist (Full 2048 words required for 11-bit index mapping)
 const BIP39_WORDS = [
   "abandon", "ability", "able", "about", "above", "absent", "absorb", "abstract", "absurd", "abuse", "access", "accident",
   "account", "accuse", "achieve", "acid", "acoustic", "acquire", "across", "act", "action", "actor", "actress", "actual",
@@ -56,13 +56,9 @@ const BIP39_WORDS = [
 
 const generateMnemonic = (wordCount: 12 | 24) => {
   const result = [];
-  // CSPRNG: Using Web Crypto API to ensure raw entropy is non-deterministic
   const randomValues = new Uint32Array(wordCount);
   window.crypto.getRandomValues(randomValues);
-  
   for (let i = 0; i < wordCount; i++) {
-    // Each index is 11-bits (2^11 = 2048 words in BIP-39)
-    // 12 words = 132-bits entropy | 24 words = 264-bits entropy
     const index = randomValues[i] % BIP39_WORDS.length;
     result.push(BIP39_WORDS[index]);
   }
@@ -82,6 +78,7 @@ const deriveMockKey = (identity: string) => {
 export const TrustKeyService: React.FC = () => {
   const [activeVault, setActiveVault] = useState<VaultRecord | null>(null);
   const [securityGrade, setSecurityGrade] = useState<12 | 24>(24);
+  const [identityInput, setIdentityInput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
 
@@ -95,12 +92,17 @@ export const TrustKeyService: React.FC = () => {
   };
 
   const handleGenerate = async () => {
+    if (!identityInput.trim()) {
+      setStatus("ERROR: Curatorial ID cannot be empty.");
+      return;
+    }
+    
     setIsGenerating(true);
     setStatus(`Initializing ${securityGrade * 11}-bit Entropy Pool...`);
     
     setTimeout(async () => {
       const mnemonic = generateMnemonic(securityGrade);
-      const identity = `curator-${Math.floor(Math.random() * 9999).toString().padStart(4, '0')}`;
+      const identity = identityInput.trim().toLowerCase().replace(/\s+/g, '-');
       const anchor = `${PROTOCOL_AUTHORITY}${SEPARATOR}${identity}`;
       const pubKey = deriveMockKey(identity);
 
@@ -131,8 +133,18 @@ export const TrustKeyService: React.FC = () => {
     }, 1500);
   };
 
+  const handleDownloadVault = () => {
+    if (!activeVault) return;
+    const blob = new Blob([JSON.stringify(activeVault, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `signet_seed_${activeVault.identity}.json`;
+    a.click();
+  };
+
   const handlePurge = async () => {
-    if (activeVault && confirm("DANGER: This will remove your keys. Recovery requires your 24-word seed. Continue?")) {
+    if (activeVault && confirm("DANGER: This will remove your keys. Recovery requires your seed manifest. Continue?")) {
       await PersistenceService.purgeVault(activeVault.anchor);
       setActiveVault(null);
       setStatus("Vault Purged.");
@@ -149,13 +161,27 @@ export const TrustKeyService: React.FC = () => {
             <span className="font-mono text-[10px] text-[var(--trust-blue)] tracking-[0.4em] uppercase font-bold">Layer 5: TrustKey Registry</span>
             <h2 className="text-4xl font-bold italic text-[var(--text-header)]">Sovereign Grade Identity.</h2>
             <p className="text-lg leading-relaxed text-[var(--text-body)] opacity-80">
-              Signet replaces deprecated 160-bit standards with 264-bit industrial-grade entropy. 
+              Signet replaces deprecated standards with 264-bit industrial-grade entropy. 
               Each word represents <span className="text-[var(--trust-blue)] font-bold">11 bits of index</span> ($2^{11} = 2048$).
             </p>
           </div>
 
           {!activeVault ? (
             <div className="space-y-8 animate-in fade-in duration-500">
+              <div className="space-y-4">
+                <label className="font-mono text-[10px] uppercase font-bold opacity-40">Choose Curatorial ID</label>
+                <div className="flex gap-2 p-2 border border-[var(--border-light)] rounded bg-white">
+                   <span className="font-mono text-sm opacity-30 px-2 flex items-center">{PROTOCOL_AUTHORITY}:</span>
+                   <input 
+                     type="text" 
+                     value={identityInput} 
+                     onChange={(e) => setIdentityInput(e.target.value)}
+                     placeholder="e.g. shengliang.song"
+                     className="flex-1 bg-transparent outline-none font-mono text-sm text-[var(--trust-blue)]"
+                   />
+                </div>
+              </div>
+
               <div className="p-1 border border-[var(--border-light)] rounded-lg flex bg-[var(--bg-sidebar)]">
                 <button 
                   onClick={() => setSecurityGrade(12)}
@@ -185,10 +211,10 @@ export const TrustKeyService: React.FC = () => {
                 
                 <button 
                   onClick={handleGenerate}
-                  disabled={isGenerating}
+                  disabled={isGenerating || !identityInput}
                   className={`w-full py-5 text-white font-mono text-xs uppercase font-bold tracking-[0.3em] rounded shadow-2xl transition-all active:scale-95 ${securityGrade === 24 ? 'bg-emerald-600' : 'bg-[var(--trust-blue)]'}`}
                 >
-                  {isGenerating ? 'ENTROPY_POOL_SYNCING...' : `Generate ${securityGrade}-Word Vault`}
+                  {isGenerating ? 'ENTROPY_POOL_SYNCING...' : `Register & Seal Vault`}
                 </button>
               </div>
             </div>
@@ -214,6 +240,13 @@ export const TrustKeyService: React.FC = () => {
                   </div>
                </div>
 
+               <button 
+                  onClick={handleDownloadVault}
+                  className="w-full py-4 bg-[var(--trust-blue)] text-white font-mono text-[10px] uppercase font-bold tracking-widest rounded shadow-lg hover:brightness-110 transition-all"
+               >
+                 Download Seed Manifest (.json)
+               </button>
+
                <div className="pt-6 border-t border-[var(--border-light)] flex justify-between items-center">
                   <button 
                     onClick={handlePurge}
@@ -235,11 +268,11 @@ export const TrustKeyService: React.FC = () => {
 
         <div className="space-y-8 lg:pt-12">
           <div className="p-10 border border-[var(--border-light)] rounded-lg bg-[var(--bg-standard)] shadow-lg relative group">
-            <h4 className="font-mono text-[11px] opacity-40 uppercase tracking-widest mb-6 font-bold">Seed Manifest (11-bit Word Indexing)</h4>
+            <h4 className="font-mono text-[11px] opacity-40 uppercase tracking-widest mb-6 font-bold">Seed Manifest (VRP-R Target)</h4>
             
             {!activeVault ? (
               <div className="h-48 border border-dashed border-[var(--border-light)] flex items-center justify-center italic opacity-20 text-sm font-serif">
-                Awaiting hardware entropy trigger...
+                Awaiting curatorial identity anchor...
               </div>
             ) : (
               <div className="space-y-6">
@@ -254,7 +287,7 @@ export const TrustKeyService: React.FC = () => {
                 <div className="flex items-center gap-4 p-4 bg-amber-500/5 border border-amber-500/20 rounded">
                    <span className="text-xl">🛡️</span>
                    <p className="text-[10px] font-serif italic opacity-70 leading-relaxed">
-                     This {activeVault.mnemonic.split(' ').length * 11}-bit manifest exceeds Ed25519 security requirements. Hover to reveal curatorial seed.
+                     This is your <strong>Master Recovery Key</strong>. If you lose this, you lose your authority. Hover to reveal words, or download the manifest.
                    </p>
                 </div>
               </div>
@@ -265,10 +298,6 @@ export const TrustKeyService: React.FC = () => {
             <h4 className="font-mono text-[11px] opacity-40 uppercase tracking-widest font-bold">2026 Entropy Benchmarks</h4>
             <div className="space-y-4">
               <div className="flex justify-between items-end border-b border-[var(--border-light)] pb-2">
-                 <span className="font-serif italic text-sm">SHA-1 (Legacy)</span>
-                 <span className="font-mono text-[10px] opacity-40">160-bit (UNSAFE)</span>
-              </div>
-              <div className="flex justify-between items-end border-b border-[var(--border-light)] pb-2">
                  <span className="font-serif italic text-sm">Consumer Standard</span>
                  <span className="font-mono text-[10px] opacity-40">132-bit (MINIMUM)</span>
               </div>
@@ -278,7 +307,7 @@ export const TrustKeyService: React.FC = () => {
               </div>
             </div>
             <p className="text-[11px] opacity-60 leading-relaxed font-serif italic">
-              By utilizing a 24-word seed from the 2048-word BIP-39 dictionary, Signet achieves 264 bits of entropy ($24 \times 11$), ensuring collision resistance across the 8 billion user registry.
+              Signet achieves 264 bits of entropy ($24 \times 11$), ensuring collision resistance across the 8 billion user registry.
             </p>
           </div>
         </div>
