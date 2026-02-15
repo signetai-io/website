@@ -74,10 +74,11 @@ const Header: React.FC<{ onToggleSidebar: () => void; theme: Theme; onToggleThem
 );
 
 const App: React.FC = () => {
-  const [view, setView] = useState<'home' | 'spec' | 'standards' | 'schema' | 'branding'>('home');
+  const [view, setView] = useState<'home' | 'spec' | 'standards' | 'schema' | 'branding' | 'apps'>('home');
   const [theme, setTheme] = useState<Theme>('standard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isPortalOpen, setIsPortalOpen] = useState(false);
+  const [activeApp, setActiveApp] = useState<string | null>(null);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -86,11 +87,32 @@ const App: React.FC = () => {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash;
+      const path = window.location.pathname;
       
-      // Verification Subdomain Mapping Logic
+      // Subdomain State Restoration from Bridge
+      const params = new URLSearchParams(window.location.search);
+      if (params.has('origin_url')) {
+        console.log("Restoring session from:", decodeURIComponent(params.get('origin_url') || ''));
+      }
+
+      // Route Logic
+      if (path.startsWith('/apps/')) {
+        setView('apps');
+        setActiveApp(path.split('/')[2]);
+        return;
+      }
+
       if (hash === '#verifier') {
         setIsPortalOpen(true);
         setView('home');
+      } else if (hash === '#identity') {
+        setView('home');
+        setTimeout(() => document.querySelector('#tks')?.scrollIntoView({ behavior: 'smooth' }), 100);
+      } else if (hash === '#prism') {
+        setView('home');
+        setTimeout(() => document.querySelector('#architecture')?.scrollIntoView({ behavior: 'smooth' }), 100);
+      } else if (hash === '#developers') {
+        setView('spec');
       } else if (hash === '#spec') {
         setView('spec');
       } else if (hash === '#standards') {
@@ -101,7 +123,6 @@ const App: React.FC = () => {
         setView('branding');
       } else {
         setView('home');
-        // Handle anchor scrolling for sections on the home page
         const anchorSections = ['#architecture', '#tks', '#contact'];
         if (hash && anchorSections.includes(hash)) {
           setTimeout(() => {
@@ -115,7 +136,12 @@ const App: React.FC = () => {
 
     handleHashChange();
     window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
+    // Handle manual path navigation for /apps/
+    window.addEventListener('popstate', handleHashChange);
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+      window.removeEventListener('popstate', handleHashChange);
+    };
   }, []);
 
   return (
@@ -149,6 +175,28 @@ const App: React.FC = () => {
           {view === 'standards' && <StandardsView />}
           {view === 'schema' && <SchemaView />}
           {view === 'branding' && <BrandingView />}
+          {view === 'apps' && (
+            <div className="py-24 space-y-12">
+              <header>
+                <span className="font-mono text-[10px] uppercase text-[var(--trust-blue)] tracking-[0.4em] font-bold">Ported Application</span>
+                <h1 className="text-5xl font-bold italic tracking-tighter text-[var(--text-header)] mt-4">
+                  {activeApp?.toUpperCase()} <span className="text-[var(--text-body)] opacity-20">v1.0</span>
+                </h1>
+              </header>
+              <div className="aspect-video bg-[var(--code-bg)] border border-[var(--border-light)] rounded-xl flex items-center justify-center relative overflow-hidden group">
+                <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, var(--trust-blue) 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+                <div className="text-center space-y-4">
+                  <p className="font-mono text-xs opacity-40 uppercase tracking-widest">Awaiting Neural Link...</p>
+                  <button className="px-8 py-3 bg-[var(--trust-blue)] text-white text-xs font-bold uppercase tracking-widest rounded shadow-xl hover:scale-105 transition-all">
+                    Initialize App
+                  </button>
+                </div>
+              </div>
+              <Admonition type="important">
+                This app is running within a Signet-Verified sandbox. All inputs and outputs are hashed and appended to the local VPR manifest.
+              </Admonition>
+            </div>
+          )}
 
           <footer className="mt-24 pt-12 border-t border-[var(--border-light)] flex justify-between items-center text-[10px] font-mono opacity-50 uppercase tracking-widest text-[var(--text-body)]">
             <div className="flex items-center gap-4">
