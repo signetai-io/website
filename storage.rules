@@ -7,11 +7,8 @@ service firebase.storage {
     }
 
     function isAdmin() {
-      return isAuthenticated() && (
-        firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
-        (firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.get('groups', []).hasAny(['admin_neural_prism']) ||
-         request.auth.token.email == 'shengliang.song.ai@gmail.com')
-      );
+      // STRICT LOCKDOWN: Admin privileges tied exclusively to account email.
+      return isAuthenticated() && request.auth.token.email == 'shengliang.song.ai@gmail.com';
     }
 
     // PUBLIC SCRIPTURE CACHES - Authoritative (Admin Only Write)

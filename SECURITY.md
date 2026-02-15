@@ -1,24 +1,23 @@
 # Signet Protocol Security Policy
 
-## 1. Risk Assessment (LOG-2026-02-15-C)
-- **API Key Leak**: Mitigated. Access is limited via **GCP Referrer Whitelisting** to `signetai.io` and `aivoicecast.com`.
-- **Identity Registry**: [FRICTIONLESS DEMO] Registration allows public `create` but strictly prevents `update/delete`. This ensures the "First-to-Claim" demo works without requiring user login, while maintaining record integrity.
-- **Data Integrity**: [HARDENED] Ledgers (Bible/Neural) are now **Append-Only** for users. Deletion is restricted to Admins.
-- **Privilege Escalation**: [FIXED] User document creation blocks self-assignment of the `admin_neural_prism` group.
+## 1. Risk Assessment (LOG-2026-02-15-D)
+- **API Key Leak**: Mitigated via **GCP Referrer Whitelisting**.
+- **Privilege Escalation**: [RESOLVED] Group-based admin elevation is DISABLED. Administrative access is now strictly limited to the hardcoded primary architect email in security rules.
+- **Identity Registry**: [FRICTIONLESS DEMO] Registry remains public for `create` to support the pivot demo, secured by domain whitelist.
+- **Data Integrity**: Ledgers are **Append-Only** for users; deletions are restricted to the primary admin email.
 
 ## 2. Mandatory GCP Configuration
-The security of the unauthenticated Registry depends ENTIRELY on the [GCP Credentials Console](https://console.cloud.google.com/apis/credentials). Verify these settings:
+Security depends on the [GCP Credentials Console](https://console.cloud.google.com/apis/credentials). 
 
 1. **Website Restrictions:**
    - `https://www.signetai.io/*`
    - `https://www.aivoicecast.com/*`
-   - `http://localhost:*` (Allowed for dev)
+   - `http://localhost:*`
 
 2. **API Restrictions:**
-   - Limit key usage to: Firestore, Storage, and Identity Toolkit.
+   - Limit key to: Firestore, Storage, and Identity Toolkit.
 
 ## 3. Deployment Checklist
-- [ ] Deploy Firestore Rules (v0.2.6_STABLE)
-- [ ] Deploy Storage Rules (v0.2.6_STABLE)
-- [ ] Confirm `TrustKeyService` registration works without login.
-- [ ] Confirm a standard user cannot delete ledger entries.
+- [x] Deploy Firestore Rules (v0.2.6_STRICT_EMAIL)
+- [x] Deploy Storage Rules (v0.2.6_STRICT_EMAIL)
+- [ ] Verify that only `shengliang.song.ai@gmail.com` can delete entries in `bible_ledger`.

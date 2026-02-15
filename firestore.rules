@@ -12,27 +12,22 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isAuthenticated() && (
-        request.auth.token.email == 'shengliang.song.ai@gmail.com' ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         'admin_neural_prism' in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('groups', []))
-      );
+      // STRICT LOCKDOWN: Only the primary architect email is granted administrative access.
+      // Group-based checks are disabled to prevent database-level privilege escalation.
+      return isAuthenticated() && request.auth.token.email == 'shengliang.song.ai@gmail.com';
     }
 
     // ----------------------------------------------------------------------
     // SIGNET IDENTITY REGISTRY (TKS)
     // ----------------------------------------------------------------------
     match /identities/{anchorId} {
-      // Public lookup is required for global verification
       allow read: if true;
       
       // First-to-Claim (Public Demo Mode):
-      // We allow unauthenticated creation to keep the demo frictionless, 
-      // relying on GCP Referrer Whitelisting to prevent 3rd party script abuse.
+      // Relying on GCP Referrer Whitelisting for primary security.
       allow create: if !exists(/databases/$(database)/documents/identities/$(anchorId))
                     && anchorId.size() >= 20;
       
-      // Updates and deletions are strictly for governance/admins
       allow update, delete: if isAdmin();
     }
 
