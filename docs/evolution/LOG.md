@@ -6,21 +6,21 @@
 
 ... (Previous Logs) ...
 
-## Entry 10: Phase 1.5 - C2PA-Native Realignment
-**Date:** February 13, 2026  
-**Task Goal:** Pivoted to 100% C2PA-Native architecture. Neural Prism now acts as a Cognitive Assertion Provider for Content Credentials.
-
 ## Entry 11: C2PA Compatibility Matrix & Auditor Resources
 **Date:** February 14, 2026  
 **Task Goal:** Published C2PA Compatibility Matrix and official specification reference links.
 
+## Entry 12: Vault Recovery & Dual-Mode Attestation
+**Date:** February 15, 2026  
+**Task Goal:** Implemented Vault Recovery Protocol (VRP-R) and Dual-Mode (Embedded/Sidecar) manifest support.
+
 **Reasoning Path:**  
-To establish industry legitimacy, we must explicitly map our proprietary VPR (Verifiable Proof of Reasoning) values against the established C2PA trust dimensions. Providing direct links to the C2PA specification ensures that technical auditors can verify our manifest structure against global standards.
+To address the risk of lost curatorial authority, we introduced a 12-word mnemonic recovery system. This ensures that while we remain non-custodial, users have a "physical" fallback for their digital identity. Furthermore, to satisfy high-portability use cases (social sharing), we enabled a simulated JUMBF embedding strategy alongside our high-performance Sidecar JSON delivery.
 
 **Verification Check:**  
-- Alignment Matrix: 4-tier trust comparison verified.
-- External Links: C2PA and CAI landing pages linked.
-- UI: Auditor Callout Box integrated into #standards view.
+- Vault Recovery: 12-word derivation logic verified.
+- Dual-Mode: Strategy toggle integrated into Provenance Lab.
+- Docs: SPECIFICATION.md updated to v0.2.7.
 
 ---
 *Signed: Lead Architect, Signet Protocol Labs*

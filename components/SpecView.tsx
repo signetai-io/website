@@ -9,7 +9,7 @@ export const SpecView: React.FC = () => {
         <div className="flex flex-col md:flex-row justify-between mb-20 border-b border-[var(--border-light)] pb-10 text-[11px] font-mono uppercase tracking-[0.3em] opacity-40 font-bold">
           <div className="space-y-2">
             <p>Protocol Working Group</p>
-            <p>Draft Song-02.6 (C2PA 2.3 Aligned)</p>
+            <p>Draft Song-02.7 (C2PA 2.3 Aligned)</p>
             <p>Status: Professional Standard</p>
           </div>
           <div className="text-right space-y-2 mt-4 md:mt-0">
@@ -24,16 +24,16 @@ export const SpecView: React.FC = () => {
             Signet Protocol: Deterministic Telemetry & VPR
           </h1>
           <div className="w-20 h-px bg-[var(--trust-blue)] mx-auto"></div>
-          <p className="opacity-40 font-mono text-xs uppercase tracking-[0.5em]">Standardization Track v0.2.6</p>
+          <p className="opacity-40 font-mono text-xs uppercase tracking-[0.5em]">Standardization Track v0.2.7</p>
         </div>
 
         <div className="mb-16">
           <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic underline underline-offset-8 decoration-1 decoration-neutral-500/30">Abstract</h2>
           <p className="indent-12 opacity-80 leading-loose">
             The Signet Protocol defines a framework for the cryptographic attestation of AI-generated reasoning paths. 
-            By utilizing the Neural Lens engine, the protocol transforms non-deterministic LLM outputs into formally verified "Signets." 
-            This ensures a verifiable chain of custody from Model to Tool to Human, enabling high-fidelity knowledge sharing 
-            at 100x lower marginal costs for the global population. This version (0.2.6) is built atop the **C2PA 2.3 Core Specification**.
+            Version 0.2.7 introduces the <strong>Vault Recovery Protocol (VRP-R)</strong> and <strong>Dual-Mode Manifest Delivery</strong>. 
+            By utilizing the Neural Lens engine, the protocol transforms non-deterministic LLM outputs into formally verified "Signets," 
+            while providing curators with a non-custodial 12-word mnemonic for identity restoration.
           </p>
         </div>
 
@@ -48,18 +48,22 @@ export const SpecView: React.FC = () => {
           </section>
 
           <section>
-            <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">2. Cryptographic Security Standards</h2>
+            <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">2. Vault Recovery & Persistence</h2>
+            <p className="opacity-80 leading-loose mb-6">
+              Signet identities are anchored to a <strong>System Anchor</strong> in the global registry. If a local curatorial vault is lost, the 
+              <strong>Vault Recovery Protocol (VRP-R)</strong> enables the re-derivation of signing keys via a 12-word mnemonic, 
+              ensuring that a curator never loses their legacy of accountability.
+            </p>
             <div className="bg-[var(--admonition-bg)] p-8 border-l-4 border-[var(--trust-blue)] space-y-4 rounded-r">
               <p className="font-mono text-[10px] uppercase font-bold tracking-widest text-[var(--trust-blue)]">Layer 0: Cryptographic Root</p>
               <p className="opacity-80 leading-loose italic">
                 Signet Protocol mandates <strong>256-bit Ed25519</strong> for all identity anchors. 
-                With a state space of <strong>$1.1 \times 10^{77}$ combinations</strong>, the private keys are mathematically immune to classical brute-force 
-                attacks, providing security parity with global financial settlement layers.
+                V0.2.7 formally supports both <strong>Sidecar JSON</strong> and <strong>JUMBF Embedded</strong> manifests.
               </p>
               <ul className="text-xs font-mono opacity-60 space-y-1">
                 <li>• ALGORITHM: ED25519</li>
-                <li>• VERSION: SIGNET_v2.3</li>
-                <li>• COMPLIANCE: C2PA 2.3 JUMBF</li>
+                <li>• RECOVERY: VRP-R (12-WORD MNEMONIC)</li>
+                <li>• TRANSPORT: DUAL-MODE (EMBEDDED / SIDECAR)</li>
               </ul>
             </div>
           </section>
@@ -69,7 +73,7 @@ export const SpecView: React.FC = () => {
           <a href="#" onClick={(e) => { e.preventDefault(); window.location.hash = ''; }} className="opacity-60 hover:opacity-100 text-[var(--trust-blue)] transition-colors flex items-center gap-3 font-mono text-[10px] uppercase tracking-widest font-bold">
             <span className="text-lg">←</span> RETURN_TO_HOME
           </a>
-          <span className="opacity-30 font-mono text-[9px] uppercase tracking-widest">© SIGNET PROTOCOL LABS 2026 | v0.2.6</span>
+          <span className="opacity-30 font-mono text-[9px] uppercase tracking-widest">© SIGNET PROTOCOL LABS 2026 | v0.2.7</span>
         </div>
       </div>
     </div>

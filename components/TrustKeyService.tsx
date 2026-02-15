@@ -82,15 +82,12 @@ export const TrustKeyService: React.FC = () => {
   const [lookupResults, setLookupResults] = useState<IdentityRecord[]>([]);
   const [isActivated, setIsActivated] = useState(false);
   const [networkError, setNetworkError] = useState<string | null>(null);
-  const [showShieldDetail, setShowShieldDetail] = useState(false);
 
   // --- Lab & Recovery State ---
   const [labFile, setLabFile] = useState<File | null>(null);
   const [labHash, setLabHash] = useState<string | null>(null);
   const [isSigning, setIsSigning] = useState(false);
   const [signedManifest, setSignedManifest] = useState<any | null>(null);
-  const [verifyManifest, setVerifyManifest] = useState<any | null>(null);
-  const [verificationResult, setVerificationResult] = useState<{ status: 'VALID' | 'INVALID' | 'UNREGISTERED', key?: string, owner?: string } | null>(null);
   const [manualIdentity, setManualIdentity] = useState('');
   const [isResolvingIdentity, setIsResolvingIdentity] = useState(false);
   const [signingStrategy, setSigningStrategy] = useState<'sidecar' | 'embedded'>('sidecar');
@@ -192,7 +189,7 @@ export const TrustKeyService: React.FC = () => {
         setNamespace(data.namespace);
         setPublicKey(data.publicKey);
         setIsActivated(true);
-      } else { setNetworkError("Identity not found."); }
+      } else { setNetworkError("Identity not found in global registry."); }
     } catch (e) { setNetworkError("Resolution Error."); }
     finally { setIsResolvingIdentity(false); }
   };
@@ -243,42 +240,12 @@ export const TrustKeyService: React.FC = () => {
     if (!signedManifest) return;
     const isEmbedded = signingStrategy === 'embedded';
     const filename = isEmbedded ? `signet_container_${labFile?.name}` : `signet_manifest_${labFile?.name.split('.')[0]}.vpr.json`;
-    const data = isEmbedded ? "BINARY_SUBSTRATE_PLACEHOLDER" : JSON.stringify(signedManifest, null, 2);
+    const data = isEmbedded ? "BINARY_SUBSTRATE_PLACEHOLDER_WITH_JUMBF" : JSON.stringify(signedManifest, null, 2);
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(data);
     const dl = document.createElement('a');
     dl.setAttribute("href", dataStr);
     dl.setAttribute("download", filename);
     dl.click();
-  };
-
-  const handleVerifyUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const json = JSON.parse(event.target?.result as string);
-          setVerifyManifest(json);
-          setVerificationResult(null);
-        } catch (err) { setNetworkError("Invalid manifest file."); }
-      };
-      reader.readAsText(file);
-    }
-  };
-
-  const runVerification = async () => {
-    if (!verifyManifest || !db) return;
-    setIsSearching(true);
-    try {
-      const curator = verifyManifest.signature_chain?.[0];
-      const docRef = doc(db, "identities", curator.anchor);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        const reg = docSnap.data();
-        setVerificationResult({ status: 'VALID', key: reg.publicKey, owner: reg.readableIdentity });
-      } else { setVerificationResult({ status: 'UNREGISTERED' }); }
-    } catch (err) { setVerificationResult({ status: 'INVALID' }); }
-    finally { setIsSearching(false); }
   };
 
   return (
@@ -303,14 +270,14 @@ export const TrustKeyService: React.FC = () => {
                 {showRecoveryFlow ? (
                   <div className="space-y-8 animate-in slide-in-from-top-2">
                     <div className="space-y-2">
-                       <h3 className="font-serif text-3xl font-bold italic">Vault Recovery.</h3>
-                       <p className="text-sm opacity-60 italic">Lost your seed manifest? Input your 12-word mnemonic to re-derive authority.</p>
+                       <h3 className="font-serif text-3xl font-bold italic">Vault Recovery (VRP-R).</h3>
+                       <p className="text-sm opacity-60 italic">Input your non-custodial 12-word mnemonic to re-derive authority.</p>
                     </div>
                     <div className="space-y-4">
-                      <textarea placeholder="Word1 Word2 Word3..." className="w-full h-32 bg-[var(--code-bg)] p-4 font-mono text-sm border rounded outline-none focus:ring-1 focus:ring-blue-500" value={recoveryInput} onChange={(e) => setRecoveryInput(e.target.value)} />
+                      <textarea placeholder="abandon ability able about..." className="w-full h-32 bg-[var(--code-bg)] p-4 font-mono text-sm border rounded outline-none focus:ring-1 focus:ring-blue-500" value={recoveryInput} onChange={(e) => setRecoveryInput(e.target.value)} />
                       {networkError && <p className="text-[10px] font-mono text-red-500">{networkError}</p>}
                       <div className="flex gap-4">
-                        <button onClick={handleVaultRecovery} disabled={isRecovering} className="flex-1 py-4 bg-black text-white font-mono text-[10px] uppercase font-bold rounded shadow-lg">{isRecovering ? 'DERIVING_KEYS_...' : 'Restore Authority'}</button>
+                        <button onClick={handleVaultRecovery} disabled={isRecovering} className="flex-1 py-4 bg-black text-white font-mono text-[10px] uppercase font-bold rounded shadow-lg">{isRecovering ? 'RESTORING_...' : 'Restore Authority'}</button>
                         <button onClick={() => setShowRecoveryFlow(false)} className="px-6 py-4 border font-mono text-[10px] uppercase opacity-40">Cancel</button>
                       </div>
                     </div>
@@ -335,7 +302,7 @@ export const TrustKeyService: React.FC = () => {
                     ) : (
                       <div className="space-y-6">
                         <div className="p-8 bg-black text-white rounded border border-neutral-800 space-y-4">
-                          <p className="font-mono text-[10px] text-neutral-500 uppercase font-bold">Private Recovery Seed</p>
+                          <p className="font-mono text-[10px] text-neutral-500 uppercase font-bold">Private Recovery Mnemonic</p>
                           <div className="grid grid-cols-3 gap-2">
                             {recoveryPhrase?.split(" ").map((w, i) => <div key={i} className="bg-neutral-900 p-2 text-[10px] font-mono text-blue-400 text-center rounded">{w}</div>)}
                           </div>
@@ -350,7 +317,7 @@ export const TrustKeyService: React.FC = () => {
               </div>
             ) : activeTab === 'lookup' ? (
               <div className="space-y-10 animate-in fade-in duration-500">
-                <input type="text" placeholder="e.g. shengliang.song" className="w-full bg-transparent border-b-2 border-[var(--text-header)] p-4 font-mono text-lg" value={lookupQuery} onChange={(e) => setLookupQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleLookup()} />
+                <input type="text" placeholder="Search handle..." className="w-full bg-transparent border-b-2 border-[var(--text-header)] p-4 font-mono text-lg" value={lookupQuery} onChange={(e) => setLookupQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleLookup()} />
                 <div className="mt-8 h-80 border border-[var(--border-light)] bg-[var(--code-bg)] rounded p-8 overflow-y-auto">
                   {lookupResults.map((r, i) => (
                     <div key={i} className="p-4 bg-[var(--bg-standard)] border border-[var(--border-light)] rounded mb-4">
@@ -358,7 +325,6 @@ export const TrustKeyService: React.FC = () => {
                       <p className="text-[10px] font-mono opacity-40 break-all">{r.key}</p>
                     </div>
                   ))}
-                  {!lookupResults.length && <p className="opacity-20 text-center font-serif py-12">Enter handle to probe registry...</p>}
                 </div>
               </div>
             ) : (
@@ -374,12 +340,13 @@ export const TrustKeyService: React.FC = () => {
                       <div className="w-12 h-12 border border-neutral-300 rounded-full flex items-center justify-center mx-auto opacity-40">🔑</div>
                       <div className="space-y-2">
                         <p className="font-mono text-[10px] uppercase font-bold text-neutral-500">Link Active Identity</p>
-                        <p className="text-xs italic opacity-60">Resolve identity to begin curatorial attestation.</p>
+                        <p className="text-xs italic opacity-60">Enter your handle to link your registry anchor.</p>
                       </div>
                       <div className="flex gap-2">
-                        <input type="text" placeholder="Handle (e.g. shengliang.song)" className="flex-1 px-4 py-2 border rounded font-mono text-xs outline-none" value={manualIdentity} onChange={(e) => setManualIdentity(e.target.value)} />
+                        <input type="text" placeholder="e.g. shengliang.song" className="flex-1 px-4 py-2 border rounded font-mono text-xs outline-none" value={manualIdentity} onChange={(e) => setManualIdentity(e.target.value)} />
                         <button onClick={handleResolveManualIdentity} disabled={isResolvingIdentity} className="px-6 py-2 bg-black text-white font-mono text-[10px] uppercase font-bold rounded">Resolve</button>
                       </div>
+                      {networkError && <p className="text-[9px] font-mono text-red-500">{networkError}</p>}
                     </div>
                   </div>
                 ) : (
@@ -388,30 +355,27 @@ export const TrustKeyService: React.FC = () => {
                       {!signedManifest ? (
                         <div className="space-y-8 p-8 bg-neutral-50 border border-neutral-200 rounded-lg">
                            <div className="space-y-4">
-                             <label className="font-mono text-[9px] uppercase opacity-40 font-bold">Signing Strategy</label>
+                             <label className="font-mono text-[9px] uppercase opacity-40 font-bold">Delivery Mode (C2PA 2.3)</label>
                              <div className="grid grid-cols-2 gap-4">
-                               <button onClick={() => setSigningStrategy('sidecar')} className={`py-4 border font-mono text-[9px] uppercase font-bold rounded ${signingStrategy === 'sidecar' ? 'border-[var(--trust-blue)] bg-[var(--admonition-bg)] text-[var(--trust-blue)]' : 'border-neutral-300'}`}>Sidecar (.json)</button>
-                               <button onClick={() => setSigningStrategy('embedded')} className={`py-4 border font-mono text-[9px] uppercase font-bold rounded ${signingStrategy === 'embedded' ? 'border-[var(--trust-blue)] bg-[var(--admonition-bg)] text-[var(--trust-blue)]' : 'border-neutral-300'}`}>Embedded (JUMBF)</button>
+                               <button onClick={() => setSigningStrategy('sidecar')} className={`py-4 border font-mono text-[9px] uppercase font-bold rounded ${signingStrategy === 'sidecar' ? 'border-[var(--trust-blue)] bg-[var(--admonition-bg)] text-[var(--trust-blue)]' : 'border-neutral-300'}`}>Sidecar JSON</button>
+                               <button onClick={() => setSigningStrategy('embedded')} className={`py-4 border font-mono text-[9px] uppercase font-bold rounded ${signingStrategy === 'embedded' ? 'border-[var(--trust-blue)] bg-[var(--admonition-bg)] text-[var(--trust-blue)]' : 'border-neutral-300'}`}>Embedded JUMBF</button>
                              </div>
                            </div>
-                           <input type="file" onChange={handleLabFileSelect} className="block w-full text-xs font-mono file:mr-4 file:py-2 file:px-4 file:bg-blue-600 file:text-white" />
+                           <input type="file" onChange={handleLabFileSelect} className="block w-full text-xs font-mono" />
                            {labHash && (
-                             <div className="space-y-4">
-                                <p className="p-4 bg-black text-white rounded font-mono text-[10px] break-all opacity-80">SHA-256 Digest: {labHash}</p>
-                                <button onClick={handleSignAsset} disabled={isSigning} className="w-full py-4 bg-[var(--trust-blue)] text-white font-mono text-[10px] uppercase font-bold rounded shadow-lg">
-                                  {isSigning ? 'INJECTING_SIGNET_...' : `Sign Asset [${signingStrategy.toUpperCase()}]`}
-                                </button>
-                             </div>
+                             <button onClick={handleSignAsset} disabled={isSigning} className="w-full py-4 bg-[var(--trust-blue)] text-white font-mono text-[10px] uppercase font-bold rounded shadow-lg">
+                               {isSigning ? 'INJECTING_SIGNET_...' : `Sign Asset [${signingStrategy.toUpperCase()}]`}
+                             </button>
                            )}
                         </div>
                       ) : (
                         <div className="p-8 bg-green-500/5 border border-green-500/20 rounded-lg space-y-4 animate-in zoom-in-95">
                            <div className="flex justify-between items-center mb-4">
-                              <span className="font-mono text-[10px] uppercase font-bold text-green-600">✓ {signingStrategy.toUpperCase()} ATTESTATION COMPLETE</span>
-                              <button onClick={() => setSignedManifest(null)} className="text-[10px] font-mono uppercase opacity-40 hover:opacity-100">Reset</button>
+                              <span className="font-mono text-[10px] uppercase font-bold text-green-600">✓ {signingStrategy.toUpperCase()} ATTESTATION READY</span>
+                              <button onClick={() => setSignedManifest(null)} className="text-[10px] font-mono uppercase opacity-40">Reset</button>
                            </div>
                            <pre className="p-4 bg-black text-white rounded font-mono text-[9px] overflow-auto max-h-40">{JSON.stringify(signedManifest, null, 2)}</pre>
-                           <button onClick={downloadManifest} className="w-full py-4 bg-green-600 text-white font-mono text-[10px] uppercase font-bold rounded shadow-lg">Download Signed Asset Bundle</button>
+                           <button onClick={downloadManifest} className="w-full py-4 bg-green-600 text-white font-mono text-[10px] uppercase font-bold rounded shadow-lg">Download Secure Bundle</button>
                         </div>
                       )}
                     </div>
