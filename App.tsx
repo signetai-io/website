@@ -13,9 +13,8 @@ import { VerificationBadge } from './components/VerificationBadge';
 import { BrandingView } from './components/BrandingView';
 import { ManualView } from './components/ManualView';
 import { LiveAssistant } from './components/LiveAssistant';
-import { AuditorView } from './components/AuditorView';
-import { SecurityIntegrityMonitor } from './components/SecurityIntegrityMonitor';
 import { ProvenanceLab } from './components/ProvenanceLab';
+import { SecurityIntegrityMonitor } from './components/SecurityIntegrityMonitor';
 
 export type Theme = 'standard' | 'midnight';
 
@@ -25,21 +24,21 @@ const Sidebar: React.FC<{ currentView: string; isOpen: boolean }> = ({ currentVi
     ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
   >
     <div className="p-8 h-full flex flex-col">
-      <div className="flex items-center gap-3 mb-12">
+      <div className="flex items-center gap-3 mb-12 cursor-pointer" onClick={() => window.location.hash = ''}>
         <div className="cr-badge text-[var(--trust-blue)]">cr</div>
         <span className="font-bold tracking-tight text-xl text-[var(--text-header)]">Signet v0.2.7</span>
       </div>
 
       <nav className="space-y-1 flex-1 overflow-y-auto">
         <p className="px-4 text-[10px] uppercase tracking-widest font-bold text-[var(--text-body)] opacity-40 mb-4">Core Specification</p>
-        <a href="/" className={`sidebar-link ${currentView === 'home' ? 'active' : ''}`}>0. Introduction</a>
+        <a href="#" onClick={(e) => { e.preventDefault(); window.location.hash = ''; }} className={`sidebar-link ${currentView === 'home' ? 'active' : ''}`}>0. Introduction</a>
         <a href="#standards" className={`sidebar-link ${currentView === 'standards' ? 'active' : ''}`}>1. Standards & C2PA</a>
         <a href="#developers" className="sidebar-link">2. Neural Prism Pipeline</a>
         <a href="#schema" className={`sidebar-link ${currentView === 'schema' ? 'active' : ''}`}>3. VPR JSON Manifest</a>
         <a href="#spec" className={`sidebar-link ${currentView === 'spec' ? 'active' : ''}`}>4. Technical Draft</a>
         
         <p className="px-4 pt-8 text-[10px] uppercase tracking-widest font-bold text-[var(--text-body)] opacity-40 mb-4">Identity & Trust</p>
-        <a href="#identity" className="sidebar-link">5. TrustKey Registry (Register)</a>
+        <a href="#identity" className={`sidebar-link ${currentView === 'identity' ? 'active' : ''}`}>5. TrustKey Registry (Register)</a>
         <a href="#auditor" className={`sidebar-link ${currentView === 'auditor' ? 'active' : ''}`}>6. Provenance Lab (Verify)</a>
         <a href="#branding" className={`sidebar-link ${currentView === 'branding' ? 'active' : ''}`}>7. Branding Kit</a>
         <a href="#manual" className={`sidebar-link ${currentView === 'manual' ? 'active' : ''}`}>8. Operator's Manual</a>
@@ -82,7 +81,7 @@ const Header: React.FC<{ onToggleSidebar: () => void; theme: Theme; onToggleThem
 );
 
 const App: React.FC = () => {
-  const [view, setView] = useState<'home' | 'spec' | 'standards' | 'schema' | 'branding' | 'apps' | 'manual' | 'auditor'>('home');
+  const [view, setView] = useState<'home' | 'spec' | 'standards' | 'schema' | 'branding' | 'apps' | 'manual' | 'auditor' | 'identity'>('home');
   const [theme, setTheme] = useState<Theme>('standard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isPortalOpen, setIsPortalOpen] = useState(false);
@@ -99,25 +98,10 @@ const App: React.FC = () => {
   useEffect(() => {
     const handleNavigation = () => {
       const hash = window.location.hash;
-      const path = window.location.pathname;
-      
-      if (path.startsWith('/apps/')) {
-        const parts = path.split('/');
-        if (parts[2]) {
-          setView('apps');
-          setActiveApp(parts[2]);
-          setIsSidebarOpen(false);
-          return;
-        }
-      }
-
-      if (hash === '#verifier') {
-        setIsPortalOpen(true);
-        setView('home');
-      } else if (hash === '#auditor') {
+      if (hash === '#auditor') {
         setView('auditor');
-      } else if (hash === '#manual') {
-        setView('manual');
+      } else if (hash === '#identity') {
+        setView('identity');
       } else if (hash === '#spec') {
         setView('spec');
       } else if (hash === '#standards') {
@@ -126,12 +110,8 @@ const App: React.FC = () => {
         setView('schema');
       } else if (hash === '#branding') {
         setView('branding');
-      } else if (hash === '#identity' || hash === '#developers' || hash === '#contact') {
-        setView('home');
-        setTimeout(() => {
-          const el = document.querySelector(hash);
-          if (el) el.scrollIntoView({ behavior: 'smooth' });
-        }, 150);
+      } else if (hash === '#manual') {
+        setView('manual');
       } else {
         setView('home');
       }
@@ -140,12 +120,7 @@ const App: React.FC = () => {
 
     handleNavigation();
     window.addEventListener('hashchange', handleNavigation);
-    window.addEventListener('popstate', handleNavigation);
-    
-    return () => {
-      window.removeEventListener('hashchange', handleNavigation);
-      window.removeEventListener('popstate', handleNavigation);
-    };
+    return () => window.removeEventListener('hashchange', handleNavigation);
   }, []);
 
   return (
@@ -164,63 +139,28 @@ const App: React.FC = () => {
             <>
               <Hero onOpenPortal={() => setIsPortalOpen(true)} />
               <Admonition type="note" title="Cognitive Assertion Layer">
-                Signet Protocol acts as a specialized subdirectory of C2PA, mapping neural logic states into standard JUMBF manifest boxes at `/apps/*`.
+                Signet Protocol acts as a specialized subdirectory of C2PA, mapping neural logic states into standard JUMBF manifest boxes.
               </Admonition>
               <Architecture />
               <hr className="hr-chapter" />
               <SchemaDefinition />
               <hr className="hr-chapter" />
-              <TrustKeyService />
-              <hr className="hr-chapter" />
               <ContactHub />
             </>
           )}
+          {view === 'identity' && <TrustKeyService />}
+          {view === 'auditor' && <ProvenanceLab />}
           {view === 'spec' && <SpecView />}
           {view === 'standards' && <StandardsView />}
           {view === 'schema' && <SchemaView />}
           {view === 'branding' && <BrandingView />}
           {view === 'manual' && <ManualView />}
-          {view === 'auditor' && <ProvenanceLab />}
-          {view === 'apps' && (
-            <div className="py-24 space-y-12">
-              <header className="space-y-2">
-                <span className="font-mono text-[10px] uppercase text-[var(--trust-blue)] tracking-[0.4em] font-bold">Signet Ecosystem Subdirectory</span>
-                <h1 className="text-5xl font-bold italic tracking-tighter text-[var(--text-header)]">
-                  {activeApp?.toUpperCase()} <span className="text-[var(--text-body)] opacity-20 text-3xl">v1.0.4</span>
-                </h1>
-                <p className="font-mono text-[11px] opacity-40 uppercase tracking-widest">Path: signetai.io/apps/{activeApp}</p>
-              </header>
-              <div className="aspect-video bg-[var(--code-bg)] border border-[var(--border-light)] rounded-xl flex items-center justify-center relative overflow-hidden group">
-                <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, var(--trust-blue) 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
-                <div className="text-center space-y-6 relative z-10">
-                  <div className="w-16 h-16 border-2 border-[var(--trust-blue)] flex items-center justify-center mx-auto rounded-lg animate-pulse">
-                    <span className="text-[var(--trust-blue)] font-bold text-xl">∑</span>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="font-mono text-xs opacity-40 uppercase tracking-[0.3em]">Isolated Execution Substrate</p>
-                    <button className="px-10 py-4 bg-[var(--trust-blue)] text-white text-[11px] font-bold uppercase tracking-widest rounded shadow-2xl hover:scale-105 transition-all active:scale-95">
-                      Establish Neural Link
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <Admonition type="important" title="Sandboxed Provenance">
-                This application is running within an isolated Signet sandbox. All telemetry is hashed and appended to the local VPR manifest at `signetai.io/apps/{activeApp}/manifest.json`.
-              </Admonition>
-            </div>
-          )}
 
           <footer className="mt-24 pt-12 border-t border-[var(--border-light)] flex flex-wrap justify-between items-center gap-6 text-[10px] font-mono opacity-50 uppercase tracking-widest text-[var(--text-body)]">
             <div className="flex items-center gap-4">
               <div className="cr-badge">cr</div>
-              <span>Signet Protocol Group © 2026</span>
+              <span>Signet Protocol Group © 2026 | Signed by shengliang.song.ai:gmail.com</span>
             </div>
-            <div className="flex gap-8">
-              <a href="#identity" className="hover:text-[var(--trust-blue)] transition-colors">/#identity</a>
-              <a href="#auditor" className="hover:text-[var(--trust-blue)] transition-colors">/#auditor</a>
-              <a href="/apps/summarizer" className="hover:text-[var(--trust-blue)] transition-colors">/apps/summarizer</a>
-            </div>
-            <span>ISO/IEC 19566-5 Compliance</span>
           </footer>
         </div>
       </main>
