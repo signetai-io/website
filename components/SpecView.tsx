@@ -11,13 +11,13 @@ export const SpecView: React.FC = () => {
         <div className="flex flex-col md:flex-row justify-between mb-20 border-b border-[var(--border-light)] pb-10 text-[11px] font-mono uppercase tracking-[0.3em] opacity-40 font-bold">
           <div className="space-y-2">
             <p>Protocol Working Group</p>
-            <p>Draft Song-02</p>
+            <p>Draft Song-02 (C2PA 2.3 Aligned)</p>
             <p>Status: Professional Standard</p>
           </div>
           <div className="text-right space-y-2 mt-4 md:mt-0">
             <p>Principal Architect: SSL</p>
             <p>Signet AI Labs</p>
-            <p>Feb 14, 2026</p>
+            <p>Feb 15, 2026</p>
           </div>
         </div>
 
@@ -27,7 +27,7 @@ export const SpecView: React.FC = () => {
             Signet Protocol: Deterministic Telemetry & VPR
           </h1>
           <div className="w-20 h-px bg-[var(--trust-blue)] mx-auto"></div>
-          <p className="opacity-40 font-mono text-xs uppercase tracking-[0.5em]">Standardization Track</p>
+          <p className="opacity-40 font-mono text-xs uppercase tracking-[0.5em]">Standardization Track v2.3</p>
         </div>
 
         {/* Abstract */}
@@ -37,7 +37,7 @@ export const SpecView: React.FC = () => {
             The Signet Protocol defines a framework for the cryptographic attestation of AI-generated reasoning paths. 
             By utilizing the Neural Lens engine, the protocol transforms non-deterministic LLM outputs into formally verified "Signets." 
             This ensures a verifiable chain of custody from Model to Tool to Human, enabling high-fidelity knowledge sharing 
-            at 100x lower marginal costs for the global population.
+            at 100x lower marginal costs for the global population. This version (0.2.5) is built atop the **C2PA 2.3 Core Specification**.
           </p>
         </div>
 
@@ -53,17 +53,26 @@ export const SpecView: React.FC = () => {
           </section>
 
           <section>
-            <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">2. Core Components</h2>
-            <div className="space-y-6 pl-8 border-l-2 border-[var(--border-light)]">
-              <p className="opacity-80"><strong className="text-[var(--text-header)] font-sans uppercase text-xs tracking-widest mr-3">2.1 TrustKeyService (TKS):</strong> A secure identity registry bound to hardware-verified keys.</p>
-              <p className="opacity-80"><strong className="text-[var(--text-header)] font-sans uppercase text-xs tracking-widest mr-3">2.2 Neural Lens Engine:</strong> The deterministic compiler for LLM telemetry.</p>
-              <p className="opacity-80"><strong className="text-[var(--text-header)] font-sans uppercase text-xs tracking-widest mr-3">2.3 The Signet Artifact:</strong> A multi-signature cryptographic payload containing the reasoning DAG.</p>
+            <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">2. Cryptographic Security Standards</h2>
+            <div className="bg-[var(--admonition-bg)] p-8 border-l-4 border-[var(--trust-blue)] space-y-4 rounded-r">
+              <p className="font-mono text-[10px] uppercase font-bold tracking-widest text-[var(--trust-blue)]">Layer 0: Cryptographic Root</p>
+              <p className="opacity-80 leading-loose italic">
+                Signet Protocol mandates <strong>256-bit Ed25519</strong> (Edwards-curve Digital Signature Algorithm) for all identity anchors. 
+                With a state space of <strong>$1.1 \times 10^{77}$ combinations</strong>, the private keys are mathematically immune to classical brute-force 
+                attacks, providing security parity with global financial settlement layers.
+              </p>
+              <ul className="text-xs font-mono opacity-60 space-y-1">
+                <li>• ALGORITHM: ED25519 (CURVE25519)</li>
+                <li>• HASH_STRENGTH: 256 BITS</li>
+                <li>• ENTROPY_SOURCE: CSPRNG (LOCAL_CLIENT)</li>
+                <li>• COMPLIANCE: C2PA 2.3 JUMBF</li>
+              </ul>
             </div>
           </section>
 
           <section>
             <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">3. The VPR Pipeline</h2>
-            <p className="mb-8 opacity-80 font-serif italic">The protocol mandates a four-stage verification cycle:</p>
+            <p className="mb-8 opacity-80 font-serif italic">The protocol mandates a four-stage verification cycle aligned with ISO/TC 290:</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
               <div className="p-6 border border-[var(--border-light)] rounded bg-[var(--bg-sidebar)]">
                 <h4 className="text-[var(--text-header)] uppercase text-[10px] font-mono tracking-widest mb-3">L1: Vision</h4>
@@ -79,7 +88,7 @@ export const SpecView: React.FC = () => {
               </div>
               <div className="p-6 border-l-2 border-l-[var(--trust-blue)] border border-[var(--border-light)] rounded bg-[var(--bg-sidebar)]">
                 <h4 className="text-[var(--text-header)] uppercase text-[10px] font-mono tracking-widest mb-3">L4: Attestation</h4>
-                <p className="opacity-60 text-sm leading-relaxed italic">Final identity signature binding the human to the asset.</p>
+                <p className="opacity-60 text-sm leading-relaxed italic">Final identity signature binding the human to the asset using Ed25519.</p>
               </div>
             </div>
           </section>
@@ -90,7 +99,7 @@ export const SpecView: React.FC = () => {
           <a href="#" onClick={(e) => { e.preventDefault(); window.location.hash = ''; }} className="opacity-60 hover:opacity-100 text-[var(--trust-blue)] transition-colors flex items-center gap-3 font-mono text-[10px] uppercase tracking-widest font-bold">
             <span className="text-lg">←</span> RETURN_TO_HOME
           </a>
-          <span className="opacity-30 font-mono text-[9px] uppercase tracking-widest">© SIGNET PROTOCOL LABS 2026</span>
+          <span className="opacity-30 font-mono text-[9px] uppercase tracking-widest">© SIGNET PROTOCOL LABS 2026 | C2PA v2.3</span>
         </div>
       </div>
     </div>

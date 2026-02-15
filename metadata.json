@@ -1,7 +1,7 @@
 {
   "name": "SignetAI.io",
-  "description": "The TrustKeyService for the 8 billion. Implementing the Signet Protocol for cryptographic accountability in AI-generated ecosystems.",
+  "description": "The TrustKeyService for the 8 billion. Implementing the Signet Protocol for cryptographic accountability in AI-generated ecosystems aligned with C2PA 2.3.",
   "requestFramePermissions": [],
-  "version": "1.0.3",
+  "version": "1.0.4",
   "author": "Signet AI Labs"
 }

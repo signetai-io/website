@@ -13,16 +13,16 @@ export const StandardsView: React.FC = () => {
     <article className="prose prose-slate max-w-none">
       <header className="mb-16">
         <div className="text-[10px] font-mono text-[var(--trust-blue)] uppercase font-bold mb-4 tracking-[0.3em]">Section 1.0</div>
-        <h2 className="text-4xl font-bold mb-6 text-[var(--text-header)]">Standards & Compliance</h2>
+        <h2 className="text-4xl font-bold mb-6 text-[var(--text-header)]">Standards & Compliance (v2.3)</h2>
         <p className="text-lg text-[var(--text-body)] opacity-80">
-          Signet Protocol leverages existing Content Credentials (C2PA) infrastructure to provide a "deep-logic" audit layer for autonomous agents.
+          Signet Protocol adheres to the <strong>C2PA 2.3 Technical Specification</strong>. This alignment ensures that VPR assertions are interoperable with standard JUMBF manifest consumers.
         </p>
       </header>
 
       <section className="mb-16">
         <h3 className="text-xl font-bold mb-4 border-b border-[var(--border-light)] pb-2 text-[var(--text-header)]">1.1 Implementation Architecture</h3>
         <p className="mb-6 text-[var(--text-body)]">
-          The Neural Prism engine signs files using the standard C2PA toolchain (`c2patool`). Every Signet-verified asset contains a standard JUMBF box with custom `org.signetai.vpr` assertions.
+          The Neural Prism engine signs assets using the standard C2PA toolchain aligned with <strong>ISO/TC 290</strong>. Every Signet-verified asset contains a standard JUMBF box with custom <code>org.signetai.vpr</code> assertions as defined in the 2.3 draft.
         </p>
         
         <div className="overflow-x-auto my-8 border border-[var(--border-light)] rounded bg-[var(--bg-standard)]">
@@ -30,7 +30,7 @@ export const StandardsView: React.FC = () => {
             <thead className="bg-[var(--table-header)] border-b border-[var(--border-light)]">
               <tr>
                 <th className="px-6 py-4 font-bold text-[var(--text-header)]">Feature</th>
-                <th className="px-6 py-4 font-bold text-[var(--text-header)]">C2PA Native</th>
+                <th className="px-6 py-4 font-bold text-[var(--text-header)]">C2PA Native (2.3)</th>
                 <th className="px-6 py-4 font-bold text-[var(--trust-blue)]">Signet VPR Extension</th>
               </tr>
             </thead>
@@ -47,16 +47,16 @@ export const StandardsView: React.FC = () => {
         </div>
       </section>
 
-      <Admonition type="security" title="Adversarial Injection">
-        Implementing VPR without the L3 Adversarial Probe layer exposes the manifest to logic-spoofing attacks. Auditors MUST verify the L3 signature before attesting to L2 logic parity.
+      <Admonition type="security" title="Cryptographic Assurance">
+        All L4 attestation signatures MUST use 256-bit Ed25519. This ensures the integrity of the Human-in-the-loop signet against modern computational brute-force techniques.
       </Admonition>
 
       <section className="mb-16">
         <h3 className="text-xl font-bold mb-4 text-[var(--text-header)]">1.2 External References</h3>
         <ul className="space-y-4">
           <li>
-            <a href="https://spec.c2pa.org/" target="_blank" className="text-[var(--trust-blue)] hover:underline font-medium">
-              Official C2PA Specification (ISO/TC 290) &rarr;
+            <a href="https://spec.c2pa.org/specifications/specifications/2.3/index.html" target="_blank" className="text-[var(--trust-blue)] hover:underline font-medium">
+              C2PA Technical Specification v2.3 (Current Baseline) &rarr;
             </a>
           </li>
           <li>

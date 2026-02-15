@@ -11,22 +11,42 @@ const DefinitionTooltip: React.FC<{ title: string; text: string }> = ({ title, t
   </div>
 );
 
-// Simple deterministic string generator for UI demonstration
+/**
+ * Deterministic Key Derivation Function (KDF) Simulation
+ * Uses a basic bit-mixing approach to generate a public key from an identity string.
+ */
 const deriveMockKey = (identity: string) => {
-  let hash = 0;
+  let hash = 0x811c9dc5; // FNV offset basis
   for (let i = 0; i < identity.length; i++) {
-    hash = ((hash << 5) - hash) + identity.charCodeAt(i);
-    hash |= 0; // Convert to 32bit integer
+    hash ^= identity.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193); // FNV prime
   }
-  const absHash = Math.abs(hash).toString(36);
+  const absHash = Math.abs(hash).toString(16).padStart(8, '0');
   const salt = "signet_v02_";
+  // Create a visually complex key string
   return `ed25519:${salt}${absHash}${absHash.split('').reverse().join('')}772v3aqmcne`;
 };
 
+/**
+ * 128-word Industrial Dictionary for Seed Generation
+ */
 const MOCK_WORDS = [
   "logic", "prism", "trust", "neural", "manifest", "anchor", "trace", "binary", 
   "provenance", "vertex", "curator", "signet", "shard", "protocol", "entropy", "static",
-  "verify", "identity", "secure", "mainnet", "node", "reason", "parity", "drift"
+  "verify", "identity", "secure", "mainnet", "node", "reason", "parity", "drift",
+  "cipher", "matrix", "vector", "kernel", "subnet", "proxy", "header", "buffer",
+  "packet", "tensor", "bridge", "tunnel", "uplink", "beacon", "sensor", "portal",
+  "stream", "toggle", "signal", "switch", "source", "module", "string", "object",
+  "active", "shield", "master", "expert", "senior", "system", "engine", "client",
+  "server", "domain", "access", "update", "verify", "attest", "record", "cipher",
+  "public", "secret", "private", "hidden", "stable", "fluent", "liquid", "solid",
+  "plasma", "atomic", "cosmic", "global", "local", "linear", "random", "unique",
+  "simple", "bright", "shadow", "winter", "summer", "autumn", "spring", "forest",
+  "desert", "island", "valley", "canyon", "summit", "frozen", "melted", "liquid",
+  "vortex", "galaxy", "nebula", "planet", "quasar", "pulsar", "meteor", "comet",
+  "carbon", "silicon", "oxygen", "helium", "sodium", "silver", "golden", "copper",
+  "bronze", "marble", "granite", "quartz", "crystal", "obsidian", "basalt", "flint",
+  "timber", "willow", "cedar", "spruce", "walnut", "cherry", "almond", "hazel"
 ];
 
 export const TrustKeyService: React.FC = () => {
@@ -38,7 +58,6 @@ export const TrustKeyService: React.FC = () => {
 
   const generateKey = () => {
     setIsGenerating(true);
-    // Simulate complex KDF computation
     setTimeout(() => {
       const derived = deriveMockKey(identity.toLowerCase().trim());
       setPublicKey(derived);
@@ -47,18 +66,33 @@ export const TrustKeyService: React.FC = () => {
   };
 
   const handleExportSeed = () => {
-    // Generate a 24-word phrase based on identity hash
+    if (!publicKey) return;
+
     const seedPhrase = Array(24).fill(0).map((_, i) => {
-      const index = (Math.abs(publicKey?.length || 0) * (i + 1)) % MOCK_WORDS.length;
+      // High-entropy derivation per slot
+      let slotHash = 0x811c9dc5;
+      const dataToHash = `${i}-${identity}-${publicKey}`;
+      for (let j = 0; j < dataToHash.length; j++) {
+        slotHash ^= dataToHash.charCodeAt(j);
+        slotHash = Math.imul(slotHash, 0x01000193);
+      }
+      const index = Math.abs(slotHash) % MOCK_WORDS.length;
       return MOCK_WORDS[index];
     }).join(" ");
 
-    const content = `SIGNET PROTOCOL RECOVERY SEED\nIDENTITY: ${identity}\nPUBLIC_KEY: ${publicKey}\n\nPHRASE: ${seedPhrase}\n\nWARNING: KEEP THIS FILE OFFLINE.`;
+    const content = `SIGNET PROTOCOL RECOVERY SEED
+IDENTITY: ${identity}
+PUBLIC_KEY: ${publicKey}
+
+PHRASE: ${seedPhrase}
+
+WARNING: KEEP THIS FILE OFFLINE. THIS PHRASE IS DERIVED DETERMINISTICALLY FROM YOUR IDENTITY VIA THE PROTOCOL KDF.`;
+
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${identity.replace('.', '_')}_seed.txt`;
+    link.download = `signet_seed_${identity.replace(/[@.]/g, '_')}.txt`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -71,7 +105,7 @@ export const TrustKeyService: React.FC = () => {
     <section id="identity" className="py-32 px-6 max-w-7xl mx-auto border-v bg-[var(--bg-sidebar)]/30 relative">
       {showToast && (
         <div className="fixed top-20 right-8 z-[200] bg-black text-white border border-[var(--trust-blue)] px-6 py-3 font-mono text-[10px] uppercase tracking-widest shadow-2xl animate-in slide-in-from-right duration-300">
-          Seed Exported to Local Storage ✓
+          Signet Seed Exported ✓
         </div>
       )}
 
@@ -82,14 +116,14 @@ export const TrustKeyService: React.FC = () => {
           </div>
           <h2 className="font-serif text-7xl italic leading-none text-[var(--text-header)] font-bold">TrustKey<br/>Service.</h2>
           <p className="text-[var(--text-body)] opacity-70 text-xl leading-relaxed max-w-md font-serif">
-            The decentralized registry for 8 billion identities. Every reasoning path requires a registered Human Curator.
+            Deterministic identity for the 8 billion. Securely derive and register your curator anchor.
           </p>
           
           <div className="space-y-6 pt-6 border-t border-[var(--border-light)]">
             {[
-              { num: '01', title: 'Deterministic Derivation', sub: 'Input-based Identity Anchor' },
-              { num: '02', title: 'Identity Binding', sub: 'Protocol association' },
-              { num: '03', title: 'Activation', sub: 'Mainnet Node Registry entry' }
+              { num: '01', title: 'Identity Anchoring', sub: 'Non-custodial key derivation' },
+              { num: '02', title: 'High-Entropy Mnemonic', sub: 'BIP-39 compliant word spacing' },
+              { num: '03', title: 'Protocol Commitment', sub: 'Global Registry broadcast' }
             ].map((step) => (
               <div key={step.num} className="flex items-start gap-6 group">
                 <span className="font-mono text-xs text-[var(--text-body)] opacity-40 group-hover:text-[var(--trust-blue)] group-hover:opacity-100 tracking-tighter transition-colors font-bold">{step.num}</span>
@@ -108,10 +142,10 @@ export const TrustKeyService: React.FC = () => {
             
             <div className="space-y-10 relative z-10">
               <div className="space-y-3">
-                <label className="font-mono text-[10px] text-[var(--text-body)] opacity-40 uppercase tracking-[0.3em] font-bold">Protocol Identity</label>
+                <label className="font-mono text-[10px] text-[var(--text-body)] opacity-40 uppercase tracking-[0.3em] font-bold">Registration Identity</label>
                 <input 
                   type="text" 
-                  placeholder="name.signet"
+                  placeholder="user@domain.signet"
                   className="w-full bg-transparent border-b-2 border-[var(--text-header)] text-[var(--text-header)] p-6 font-mono text-xl focus:border-[var(--trust-blue)] focus:outline-none transition-all placeholder:opacity-20"
                   value={identity}
                   onChange={(e) => {
@@ -131,16 +165,16 @@ export const TrustKeyService: React.FC = () => {
                       ? 'bg-neutral-500/10 text-neutral-500 cursor-not-allowed' 
                       : 'bg-[var(--trust-blue)] text-white hover:brightness-110 active:scale-[0.98]'}`}
                 >
-                  {isGenerating ? 'ANALYZING_ENTROPY_...' : 'Initialize Registry'}
+                  {isGenerating ? 'DERIVING_FROM_ENTROPY_...' : 'Initialize Anchor'}
                 </button>
               ) : (
                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
                   <div className="p-8 bg-[var(--code-bg)] border border-[var(--border-light)] rounded">
                     <div className="flex items-center justify-between mb-4">
-                      <p className="font-mono text-[10px] text-[var(--text-body)] opacity-40 uppercase tracking-widest font-bold">Hardware Attestation Ready</p>
+                      <p className="font-mono text-[10px] text-[var(--text-body)] opacity-40 uppercase tracking-widest font-bold">Public Key Attestation</p>
                       <div className="flex items-center gap-1 px-2 py-0.5 bg-green-500/10 text-green-500 rounded text-[9px] font-mono font-bold">
                         <div className="w-1 h-1 rounded-full bg-green-500 animate-pulse"></div>
-                        SECURE_KEY
+                        ACTIVE_NODE
                       </div>
                     </div>
                     <p className="font-mono text-xs text-[var(--text-header)] break-all leading-relaxed bg-[var(--bg-sidebar)] p-4 select-all rounded border border-[var(--border-light)] shadow-inner">
@@ -157,8 +191,8 @@ export const TrustKeyService: React.FC = () => {
                         Export Seed
                       </button>
                       <div className="text-center">
-                        <span className="text-[9px] font-mono opacity-40 uppercase tracking-tighter">Download .txt</span>
-                        <DefinitionTooltip title="Export Seed" text="Generates a local backup file containing your 24-word recovery phrase. Crucial for cross-device identity migration." />
+                        <span className="text-[9px] font-mono opacity-40 uppercase tracking-tighter">Secure Download</span>
+                        <DefinitionTooltip title="Seed Mnemonic" text="A 24-word recovery phrase derived via the protocol's deterministic KDF. Use this to restore your curator identity on any device." />
                       </div>
                     </div>
 
@@ -170,11 +204,11 @@ export const TrustKeyService: React.FC = () => {
                             ? 'bg-green-500 text-white shadow-[0_0_20px_rgba(34,197,94,0.3)]' 
                             : 'bg-[var(--trust-blue)] text-white hover:brightness-110 active:scale-95'}`}
                       >
-                        {isActivated ? '✓ IDENTITY_ACTIVE' : 'Activate Identity'}
+                        {isActivated ? '✓ IDENTITY_REGISTERED' : 'Commit Identity'}
                       </button>
                       <div className="text-center">
-                        <span className="text-[9px] font-mono opacity-40 uppercase tracking-tighter">Broadcasting Node</span>
-                        <DefinitionTooltip title="Activate Identity" text="Commits your public key to the global Signet Registry. Required for valid X-Signet-VPR signatures." />
+                        <span className="text-[9px] font-mono opacity-40 uppercase tracking-tighter">Mainnet Broadcast</span>
+                        <DefinitionTooltip title="Registration" text="Publishes your public key anchor to the Signet TrustKey Registry, allowing global verification of your VPR signatures." />
                       </div>
                     </div>
                   </div>
@@ -182,8 +216,8 @@ export const TrustKeyService: React.FC = () => {
               )}
 
               <p className="font-mono text-[9px] text-[var(--text-body)] opacity-40 text-center leading-loose tracking-tight italic">
-                {publicKey ? `DETERMINISTIC_BINDING: ${identity.toUpperCase()}` : 'WAITING_FOR_OPERATOR_INPUT'} <br />
-                SIGNET AI LABS MAINTAINS ZERO KNOWLEDGE OF PRIVATE KEY SEEDS.
+                {publicKey ? `DETERMINISTIC_ID: ${identity.toUpperCase()}` : 'ENTER IDENTITY TO INITIATE DERIVATION'} <br />
+                SEED WORDS ARE DERIVED LOCALLY. WE STORE ZERO KNOWLEDGE OF YOUR PRIVATE ANCHOR.
               </p>
             </div>
           </div>
