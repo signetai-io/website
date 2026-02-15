@@ -92,6 +92,11 @@ export const TrustKeyService: React.FC = () => {
     if (auth) {
       const unsubscribe = onAuthStateChanged(auth, (user) => {
         setCurrentUser(user);
+        console.log("DEBUG: Auth Hook Triggered", { 
+          isAuthenticated: !!user,
+          uid: user?.uid,
+          email: user?.email
+        });
         if (user && !identityInput) {
           const suggestedId = (user.email?.split('@')[0] || user.displayName?.toLowerCase().replace(/\s+/g, '.') || '').replace(/[^a-z0-9.]/g, '');
           setIdentityInput(suggestedId);
@@ -159,6 +164,13 @@ export const TrustKeyService: React.FC = () => {
     const pubKey = deriveMockKey(identity);
     const mnemonic = generateMnemonic(securityGrade);
 
+    console.log("DEBUG: handleGenerate State", {
+      isAuthenticated: !!currentUser,
+      uid: currentUser?.uid,
+      anchor,
+      securityGrade
+    });
+
     const withTimeout = (promise: Promise<any>, timeoutMs: number) => {
       return Promise.race([
         promise,
@@ -167,45 +179,45 @@ export const TrustKeyService: React.FC = () => {
     };
 
     try {
-      if (db) {
-        setStatus("STEP 2/4: Checking Global Conflicts...");
+      // ONLY attempt Global Registry if authenticated
+      if (db && currentUser) {
+        setStatus("STEP 2/4: Verifying Global Ownership...");
         const docSnap = await withTimeout(getDoc(doc(db, "identities", anchor)), 10000);
         
         if (docSnap.exists()) {
           const data = docSnap.data();
-          // Allow authenticated users to reclaim 'ANONYMOUS' anchors
-          if (data.ownerUid !== 'ANONYMOUS' && (!currentUser || data.ownerUid !== currentUser.uid)) {
-             throw new Error(`The Curatorial ID "${identity}" is already claimed by another user. Please choose a different anchor.`);
-          }
-          if (data.ownerUid === 'ANONYMOUS' && currentUser) {
-             setStatus("STEP 2/4: Anchor found (Unclaimed). Preparing attribution...");
-          }
-        }
-
-        // Only enforce uniqueness if the user is authenticated and not reclaiming the same anchor
-        if (currentUser && securityGrade === 24) {
-          setStatus("STEP 3/4: Enforcing Protocol Policies...");
-          const q = query(collection(db, "identities"), where("ownerUid", "==", currentUser.uid), where("entropyBits", "==", 264));
-          const existing = await withTimeout(getDocs(q), 10000);
+          const ownerUid = data.ownerUid;
+          console.log("DEBUG: Existing Record Found", { ownerUid, currentUid: currentUser.uid });
           
-          if (!existing.empty && existing.docs[0].id !== anchor) {
-             throw new Error("Sovereign Policy: You already own a different 264-bit Signet anchor. Use your existing identity.");
+          // Reclaim logic: anchor is claimable if owned by 'ANONYMOUS' or the same user
+          const isClaimable = !ownerUid || ownerUid === 'ANONYMOUS' || ownerUid === currentUser.uid;
+          
+          if (!isClaimable) {
+             throw new Error(`The Curatorial ID "${identity}" is already claimed by another user. Please choose a unique anchor.`);
           }
+          setStatus("STEP 3/4: Enforcing Protocol Policies...");
         } else {
-          setStatus("STEP 3/4: Skipping Uniqueness Audit...");
+          setStatus("STEP 3/4: Creating Global Anchor...");
         }
 
-        setStatus("STEP 4/4: Sealing Registry Block...");
-        await withTimeout(setDoc(doc(db, "identities", anchor), {
+        setStatus("STEP 4/4: Sealing Global Registry Block...");
+        const payload = {
           identity,
           publicKey: pubKey,
           entropyBits: securityGrade * 11,
-          ownerUid: currentUser?.uid || 'ANONYMOUS',
-          provider: currentUser?.providerData[0]?.providerId || 'SOVEREIGN_SEED',
+          ownerUid: currentUser.uid,
+          provider: currentUser.providerData[0]?.providerId || 'GOOGLE',
           timestamp: Date.now()
-        }), 10000);
+        };
+        console.log("DEBUG: Final Firestore Payload", payload);
+        await withTimeout(setDoc(doc(db, "identities", anchor), payload), 15000);
+        console.log("DEBUG: Firestore Sync Complete.");
+      } else {
+        console.log("DEBUG: Guest Mode - Skipping Global Sync.");
+        setStatus("STEP 4/4: Skipping Global Registry (Guest Mode)...");
       }
 
+      // ALWAYS Save locally
       const newVault: VaultRecord = {
         anchor,
         identity,
@@ -213,7 +225,7 @@ export const TrustKeyService: React.FC = () => {
         mnemonic,
         timestamp: Date.now(),
         type: securityGrade === 24 ? 'SOVEREIGN' : 'CONSUMER',
-        provider: currentUser?.providerData[0]?.providerId
+        provider: currentUser?.providerData[0]?.providerId || 'LOCAL_GUEST'
       };
 
       await PersistenceService.saveVault(newVault);
@@ -221,13 +233,13 @@ export const TrustKeyService: React.FC = () => {
       
       await refreshVaults();
       setIsRegistering(false);
-      setStatus(`SUCCESS: Vault Sealed for ${identity}.`);
+      setStatus(`SUCCESS: Vault Sealed for ${identity}${!currentUser ? ' (Local-Only)' : ' (Global Sync)'}.`);
     } catch (err: any) {
-      console.error("Signet Exception:", err);
+      console.error("DEBUG: Registry Exception", err);
       let errMsg = err.message || "Unknown fault.";
       
       if (errMsg.includes("permission-denied") || errMsg.includes("PERMISSION_DENIED")) {
-        errMsg = "Permission Denied: This ID is protected. If you registered it previously, ensure you are logged in with the same social account.";
+        errMsg = `Permission Denied (Step 4/4). Current UID: ${currentUser?.uid || 'NONE'}. This usually means the ID is already claimed by a different account.`;
       } else if (errMsg.includes("index") || errMsg.includes("FAILED_PRECONDITION")) {
         setStatus("CRITICAL: Missing Registry Index.");
         const match = errMsg.match(/https:\/\/console\.firebase\.google\.com[^\s]*/);
@@ -283,7 +295,7 @@ export const TrustKeyService: React.FC = () => {
 
               <div className="space-y-6">
                 <div className="space-y-3">
-                  <label className="font-mono text-[10px] uppercase font-bold opacity-40">Verification Source (Recommended)</label>
+                  <label className="font-mono text-[10px] uppercase font-bold opacity-40">Verification Source (Required for Global Registry)</label>
                   <div className="flex flex-wrap gap-2">
                     {[
                       { id: 'google', label: 'Google', color: 'hover:border-red-500' },
@@ -294,16 +306,18 @@ export const TrustKeyService: React.FC = () => {
                         key={p.id}
                         disabled={isGenerating}
                         onClick={() => handleSocialLogin(p.id as any)}
-                        className={`px-4 py-2 border border-[var(--border-light)] rounded font-mono font-bold text-[10px] transition-all bg-white ${currentUser?.providerData[0]?.providerId.includes(p.id) ? 'bg-blue-50 border-blue-500 text-blue-600' : p.color}`}
+                        className={`px-4 py-2 border border-[var(--border-light)] rounded font-mono font-bold text-[10px] transition-all bg-white ${currentUser?.providerData[0]?.providerId.toLowerCase().includes(p.id) ? 'bg-blue-50 border-blue-500 text-blue-600' : p.color}`}
                       >
-                        {currentUser?.providerData[0]?.providerId.includes(p.id) ? `✓ ${p.label}` : p.label}
+                        {currentUser?.providerData[0]?.providerId.toLowerCase().includes(p.id) ? `✓ ${p.label}` : p.label}
                       </button>
                     ))}
                     {currentUser && (
                       <button onClick={handleLogout} className="px-4 py-2 text-[10px] font-mono text-red-500 opacity-50 hover:opacity-100 font-bold">Sign Out</button>
                     )}
                   </div>
-                  <p className="text-[9px] font-serif italic opacity-40">Logging in ensures you can recover this ID anchor if you change devices.</p>
+                  <p className="text-[9px] font-serif italic opacity-40">
+                    {currentUser ? `Signed in as ${currentUser.email}. Identity will be synced globally.` : `Guest mode: Identity will be saved to local IndexedDB only.`}
+                  </p>
                 </div>
 
                 <div className="space-y-3">
@@ -319,7 +333,6 @@ export const TrustKeyService: React.FC = () => {
                        className="flex-1 bg-transparent outline-none font-mono text-sm text-[var(--trust-blue)] font-bold"
                      />
                   </div>
-                  <p className="text-[10px] font-serif italic opacity-40">This name is your permanent cryptographic anchor. Minimum 4 characters.</p>
                 </div>
 
                 <div className="p-1 border border-[var(--border-light)] rounded-lg flex bg-[var(--bg-sidebar)]">
@@ -346,7 +359,7 @@ export const TrustKeyService: React.FC = () => {
                     className={`w-full py-5 text-white font-mono text-xs uppercase font-bold tracking-[0.3em] rounded shadow-2xl transition-all relative overflow-hidden group ${securityGrade === 24 ? 'bg-emerald-600' : 'bg-[var(--trust-blue)]'}`}
                   >
                     <div className="absolute inset-0 bg-white/20 -translate-x-full group-hover:translate-x-0 transition-transform duration-500"></div>
-                    <span className="relative z-10">{isGenerating ? 'SYNCING_REGISTRY...' : `Seal & Register Signet`}</span>
+                    <span className="relative z-10">{isGenerating ? 'SYNCING_PROTOCOL...' : `Seal & Register Signet`}</span>
                   </button>
                 </div>
               </div>
@@ -416,20 +429,14 @@ export const TrustKeyService: React.FC = () => {
           )}
           
           {status && (
-            <div className={`p-6 border-l-4 rounded-r-lg animate-in fade-in slide-in-from-left-2 shadow-sm ${status.includes('SUCCESS') ? 'bg-green-50 border-green-500' : status.includes('CRITICAL') ? 'bg-red-50 border-red-500' : 'bg-blue-50 border-[var(--trust-blue)]'}`}>
+            <div className={`p-6 border-l-4 rounded-r-lg animate-in fade-in shadow-sm ${status.includes('SUCCESS') ? 'bg-green-50 border-green-500' : status.includes('CRITICAL') ? 'bg-red-50 border-red-500' : 'bg-blue-50 border-[var(--trust-blue)]'}`}>
               <p className={`font-mono text-[11px] font-bold ${status.includes('SUCCESS') ? 'text-green-700' : status.includes('CRITICAL') ? 'text-red-700' : 'text-[var(--trust-blue)]'}`}>
                 {status.includes('SUCCESS') ? '✓ ' : status.includes('CRITICAL') ? '⚠️ ' : '∑ '}
                 {status}
               </p>
               {indexUrl && (
                 <div className="mt-4">
-                   <a 
-                     href={indexUrl} 
-                     target="_blank" 
-                     className="text-[10px] font-mono font-bold text-red-600 underline hover:text-red-800"
-                   >
-                     [ ACTION REQUIRED: CLICK HERE TO CREATE FIRESTORE INDEX ]
-                   </a>
+                   <a href={indexUrl} target="_blank" className="text-[10px] font-mono font-bold text-red-600 underline hover:text-red-800">[ ACTION REQUIRED: CREATE INDEX ]</a>
                 </div>
               )}
             </div>
@@ -464,23 +471,6 @@ export const TrustKeyService: React.FC = () => {
                 </div>
               </div>
             )}
-          </div>
-
-          <div className="p-10 glass-card space-y-6">
-            <h4 className="font-mono text-[11px] opacity-40 uppercase tracking-widest font-bold">Registry Policy v0.2.7</h4>
-            <div className="space-y-4">
-              <div className="flex justify-between items-end border-b border-[var(--border-light)] pb-2">
-                 <span className="font-serif italic text-sm">Sovereign Signet Limit</span>
-                 <span className="font-mono text-[10px] text-emerald-500 font-bold uppercase">1:1 Per Account</span>
-              </div>
-              <div className="flex justify-between items-end border-b border-[var(--border-light)] pb-2">
-                 <span className="font-serif italic text-sm">Consumer Identifiers</span>
-                 <span className="font-mono text-[10px] opacity-40 uppercase">Unlimited</span>
-              </div>
-            </div>
-            <p className="text-[11px] opacity-60 leading-relaxed font-serif italic">
-              Social login attestation raises the trust score for the Provenance Lab by providing verifiable human-grade linkability.
-            </p>
           </div>
         </div>
       </div>
