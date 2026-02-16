@@ -92,11 +92,17 @@ export const TrustKeyService: React.FC = () => {
           setAvailability({ status: 'available' });
         } else {
           const data = docSnap.data();
-          const isOwner = currentUser && (data.ownerUid === currentUser.uid || (data.ownerEmail && data.ownerEmail.toLowerCase() === currentUser.email?.toLowerCase()));
-          setAvailability({ 
-            status: isOwner ? 'owned' : 'taken',
-            owner: data.ownerEmail || 'Unknown' 
-          });
+          const isOwnerByUid = currentUser && data.ownerUid === currentUser.uid;
+          const isOwnerByEmail = currentUser && data.ownerEmail && currentUser.email && data.ownerEmail.toLowerCase() === currentUser.email.toLowerCase();
+          
+          if (isOwnerByUid || isOwnerByEmail) {
+            setAvailability({ status: 'owned' });
+          } else {
+            setAvailability({ 
+              status: 'taken',
+              owner: data.ownerEmail || 'Anonymized User' 
+            });
+          }
         }
       } catch (e) {
         setAvailability({ status: 'idle' });
@@ -126,7 +132,7 @@ export const TrustKeyService: React.FC = () => {
     try {
       setStatus(`Connecting to ${providerName.toUpperCase()}...`);
       await signInWithPopup(auth, provider);
-      setStatus(`Authenticated. Identity suggested.`);
+      setStatus(`Authenticated. Checking identity availability...`);
     } catch (err: any) {
       setStatus(`Auth Error: ${err.message}`);
     }
@@ -148,7 +154,7 @@ export const TrustKeyService: React.FC = () => {
     }
     
     setIsGenerating(true);
-    setStatus(`STEP 1/4: Generating Entropy...`);
+    setStatus(`STEP 1/4: Generating Sovereign Entropy...`);
     
     await new Promise(r => setTimeout(r, 600));
 
@@ -158,20 +164,23 @@ export const TrustKeyService: React.FC = () => {
 
     try {
       if (db && currentUser) {
-        setStatus(`STEP 2/4: Verifying Global Registry...`);
+        setStatus(`STEP 2/4: Synchronizing with Global Registry...`);
         const docRef = doc(db, "identities", anchor);
         const docSnap = await getDoc(docRef);
         
+        let isOverwriting = false;
         if (docSnap.exists()) {
           const data = docSnap.data();
-          const isOwner = data.ownerUid === currentUser.uid || (data.ownerEmail && data.ownerEmail.toLowerCase() === currentUser.email?.toLowerCase());
+          const isOwnerByUid = data.ownerUid === currentUser.uid;
+          const isOwnerByEmail = data.ownerEmail && currentUser.email && data.ownerEmail.toLowerCase() === currentUser.email.toLowerCase();
           
-          if (!isOwner) {
-             throw new Error(`The Curatorial ID "${identity}" is already locked by another user.`);
+          if (!isOwnerByUid && !isOwnerByEmail) {
+             throw new Error(`PERMISSIONS FAULT: The ID "${identity}" belongs to another curator. Please choose a unique name.`);
           }
-          setStatus("STEP 3/4: Updating Existing Global Anchor...");
+          isOverwriting = true;
+          setStatus("STEP 3/4: Overwriting existing anchor authority...");
         } else {
-          setStatus("STEP 3/4: Creating New Global Anchor...");
+          setStatus("STEP 3/4: Creating new protocol anchor...");
         }
 
         setStatus(`STEP 4/4: Sealing Global Registry Block...`);
@@ -187,7 +196,7 @@ export const TrustKeyService: React.FC = () => {
         
         await setDoc(docRef, payload);
       } else {
-        setStatus(`STEP 4/4: Finalizing local vault...`);
+        setStatus(`STEP 4/4: Finalizing local-only vault...`);
       }
 
       const newVault: VaultRecord = {
@@ -207,15 +216,15 @@ export const TrustKeyService: React.FC = () => {
       setIsRegistering(false);
       
       if (!currentUser) {
-        setStatus(`SUCCESS: Local vault sealed for ${identity}. (Guest Mode - Not synced to registry)`);
+        setStatus(`SUCCESS: Local vault sealed for ${identity}. Identity remains unverified (Guest Mode).`);
       } else {
-        setStatus(`SUCCESS: Vault Sealed for ${identity}. Global Registry synchronized.`);
+        setStatus(`SUCCESS: Vault Sealed for ${identity}. Your authority has been established in the Global Signet Registry.`);
       }
     } catch (err: any) {
       console.error("DEBUG: Registry Exception", err);
       let errMsg = err.message || "Unknown fault.";
       if (err.code === 'permission-denied' || errMsg.toLowerCase().includes("permission-denied") || errMsg.toLowerCase().includes("insufficient permissions")) {
-        errMsg = `CRITICAL: Access Denied. The ID "${identity}" is already claimed by another account. If this is your ID, please sign in with the correct credentials.`;
+        errMsg = `CRITICAL: Permission denied. You do not have authority over the ID "${identity}". If you previously owned this ID, ensure you are using the same email address.`;
       }
       setStatus(`${errMsg}`);
     } finally {
@@ -234,7 +243,7 @@ export const TrustKeyService: React.FC = () => {
   };
 
   const handlePurge = async (anchor: string) => {
-    if (confirm("DANGER: Remove locally? Ensure you have your mnemonic or JSON backup. Registry record will remain public.")) {
+    if (confirm("DANGER: This only removes the vault locally. Your Global Registry record is immutable. Ensure you have backed up your mnemonic.")) {
       await PersistenceService.purgeVault(anchor);
       await refreshVaults();
       setStatus("Local vault purged.");
@@ -297,10 +306,10 @@ export const TrustKeyService: React.FC = () => {
                         availability.status === 'owned' ? 'text-blue-500' : 
                         availability.status === 'taken' ? 'text-red-500' : 'opacity-20'
                       }`}>
-                        {availability.status === 'loading' ? 'Checking...' : 
-                         availability.status === 'available' ? 'Available' : 
-                         availability.status === 'owned' ? 'Owned by you' : 
-                         availability.status === 'taken' ? 'Already Taken' : ''}
+                        {availability.status === 'loading' ? 'Checking Registry...' : 
+                         availability.status === 'available' ? 'Available to Claim' : 
+                         availability.status === 'owned' ? 'Verified Owner (You)' : 
+                         availability.status === 'taken' ? `Registered by ${availability.owner}` : ''}
                       </span>
                     )}
                   </div>
@@ -317,7 +326,7 @@ export const TrustKeyService: React.FC = () => {
                   </div>
                   {availability?.status === 'owned' && (
                     <p className="text-[9px] font-serif italic text-blue-500 opacity-80">
-                      You already own this ID in the Global Registry. Generating now will update it with new entropy.
+                      You already own this ID. Generating now will update your public key and provide a new recovery mnemonic.
                     </p>
                   )}
                 </div>
@@ -351,7 +360,7 @@ export const TrustKeyService: React.FC = () => {
                     <div className="absolute inset-0 bg-white/20 -translate-x-full group-hover:translate-x-0 transition-transform duration-500"></div>
                     <span className="relative z-10">
                       {isGenerating ? 'SYNCING_PROTOCOL...' : 
-                       availability?.status === 'owned' ? 'Re-claim & Sync Anchor' : 'Seal & Register Signet'}
+                       availability?.status === 'owned' ? 'Re-register & Sync Vault' : 'Seal & Register Signet'}
                     </span>
                   </button>
                 </div>
@@ -361,7 +370,7 @@ export const TrustKeyService: React.FC = () => {
             <div className="space-y-8 animate-in fade-in">
               <div className="flex justify-between items-center border-b border-[var(--border-light)] pb-4">
                  <h3 className="font-mono text-[11px] uppercase font-bold opacity-40">Active Vault</h3>
-                 <button onClick={() => setIsRegistering(true)} className="text-[10px] font-mono text-[var(--trust-blue)] font-bold uppercase hover:underline">+ Register New Identity</button>
+                 <button onClick={() => setIsRegistering(true)} className="text-[10px] font-mono text-[var(--trust-blue)] font-bold uppercase hover:underline">+ New Identity</button>
               </div>
 
               {activeVault && (

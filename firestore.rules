@@ -36,7 +36,7 @@ service cloud.firestore {
       
       // Allow creation for any authenticated user who sets themselves as owner
       allow create: if isAuthenticated() 
-                    && anchorId.size() >= 10 
+                    && anchorId.size() >= 5 
                     && anchorId.size() <= 256 
                     && request.resource.data.ownerUid == request.auth.uid;
       
@@ -44,7 +44,6 @@ service cloud.firestore {
       // 1. User is an Admin
       // 2. Identity is unclaimed (ownerUid is empty or 'ANONYMOUS')
       // 3. Current authenticated user is the existing owner (matching UID or Email)
-      // AND they are preserving their ownership in the update.
       allow update: if isAdmin() 
                     || (isAuthenticated() && (
                         getExistingOwnerUid() == '' || 
