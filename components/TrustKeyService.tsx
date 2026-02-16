@@ -14,7 +14,8 @@ const initSignetFirebase = () => {
 };
 
 const app = initSignetFirebase();
-const db = app ? getFirestore(app) : null;
+// Explicitly targeting the 'signetai' database instance instead of '(default)'
+const db = app ? getFirestore(app, 'signetai') : null;
 const auth = app ? getAuth(app) : null;
 
 const PROTOCOL_AUTHORITY = "signetai.io";
@@ -197,7 +198,8 @@ export const TrustKeyService: React.FC = () => {
           entropyBits: securityGrade * 11,
           ownerUid: currentUser.uid,
           ownerEmail: currentUser.email?.toLowerCase() || '',
-          provider: currentUser.providerData[0]?.providerId || 'GOOGLE',
+          provider: PROTOCOL_AUTHORITY,
+          verificationSource: currentUser.providerData[0]?.providerId || 'GOOGLE',
           timestamp: Date.now()
         };
 
@@ -228,7 +230,8 @@ export const TrustKeyService: React.FC = () => {
         mnemonic,
         timestamp: Date.now(),
         type: securityGrade === 24 ? 'SOVEREIGN' : 'CONSUMER',
-        provider: currentUser?.providerData[0]?.providerId || 'LOCAL_GUEST'
+        provider: currentUser ? PROTOCOL_AUTHORITY : 'LOCAL_GUEST',
+        verificationSource: currentUser?.providerData[0]?.providerId
       };
 
       await PersistenceService.saveVault(newVault);
@@ -262,14 +265,6 @@ export const TrustKeyService: React.FC = () => {
     a.href = url;
     a.download = `signet_seed_${activeVault.identity}.json`;
     a.click();
-  };
-
-  const handlePurgeLocal = async (anchor: string) => {
-    if (confirm("DANGER: This removes the vault locally. Your Global Registry record is immutable unless you own it. Ensure you have backed up your mnemonic.")) {
-      await PersistenceService.purgeVault(anchor);
-      await refreshVaults();
-      setStatus("Local vault purged.");
-    }
   };
 
   return (
@@ -422,7 +417,7 @@ export const TrustKeyService: React.FC = () => {
               {activeVault && (
                 <div className="p-10 border border-[var(--border-light)] rounded-xl bg-white shadow-2xl space-y-8 relative overflow-hidden">
                    <div className="absolute top-0 right-0 px-4 py-1 bg-[var(--code-bg)] text-[9px] font-mono opacity-40 uppercase tracking-widest rounded-bl">
-                     {activeVault.provider || 'ANONYMOUS'}
+                     {activeVault.provider?.toUpperCase() || 'LOCAL_GUEST'}
                    </div>
                    
                    <div className="flex justify-between items-start">
@@ -465,7 +460,7 @@ export const TrustKeyService: React.FC = () => {
                       <div key={v.anchor} className="flex justify-between items-center p-5 border border-[var(--border-light)] rounded-lg hover:bg-white/80 hover:shadow-md transition-all group">
                         <button onClick={() => handleSwitchVault(v.anchor)} className="flex-1 text-left">
                            <p className="font-serif text-lg font-bold italic">{v.identity}</p>
-                           <p className="font-mono text-[9px] opacity-40 uppercase tracking-tighter">{v.type} | {v.provider || 'ANONYMOUS'}</p>
+                           <p className="font-mono text-[9px] opacity-40 uppercase tracking-tighter">{v.type} | {v.provider || 'LOCAL'}</p>
                         </button>
                         <button onClick={async () => {
                            if (confirm("Remove local vault? Registry record is immutable.")) {

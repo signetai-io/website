@@ -15,6 +15,7 @@ export interface VaultRecord {
   timestamp: number;
   type: 'SOVEREIGN' | 'CONSUMER';
   provider?: string;
+  verificationSource?: string;
 }
 
 export const PersistenceService = {
