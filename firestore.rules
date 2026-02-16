@@ -13,13 +13,12 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() && (
-        request.auth.token.email == 'shengliang.song.ai@gmail.com' || 
-        request.auth.token.email == 'shenglaing.song@gmail.com' ||
-        request.auth.token.email == 'shengliang.song@gmail.com'
+        request.auth.token.email.lower() == 'shengliang.song.ai@gmail.com' || 
+        request.auth.token.email.lower() == 'shengliang.song@gmail.com'
       );
     }
 
-    // Helper to safely get ownerUid or default to ANONYMOUS
+    // Helper to safely get the current ownerUid from existing data
     function getExistingOwner() {
       return resource.data.get('ownerUid', 'ANONYMOUS');
     }
@@ -30,28 +29,29 @@ service cloud.firestore {
     match /identities/{anchorId} {
       allow read: if true;
       
-      // Allow creation if the ID is within range (10-256 chars)
-      // Must be authenticated to save to global registry
+      // Allow creation of a new anchor for any authenticated user
       allow create: if anchorId.size() >= 10 && anchorId.size() <= 256 
                     && isAuthenticated() 
                     && request.resource.data.ownerUid == request.auth.uid;
       
-      // Allow update if:
-      // 1. User is an admin
-      // 2. User is authenticated and the record is currently unowned or owned by them
+      // Allow update for:
+      // 1. Admin users (overrides)
+      // 2. The existing owner
+      // 3. Any authenticated user if the identity is unclaimed
       allow update: if isAdmin() 
                     || (isAuthenticated() && (
                         getExistingOwner() == 'ANONYMOUS' || 
                         getExistingOwner() == request.auth.uid ||
                         getExistingOwner() == null ||
-                        getExistingOwner() == ""
+                        getExistingOwner() == "" ||
+                        getExistingOwner() == request.auth.token.email
                     ));
       
       allow delete: if isAdmin();
     }
 
     // ----------------------------------------------------------------------
-    // USERS & IDENTITY
+    // USERS & PROFILE
     // ----------------------------------------------------------------------
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin(); 

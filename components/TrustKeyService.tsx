@@ -4,6 +4,7 @@ import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs } 
 import { getAuth, signInWithPopup, GoogleAuthProvider, TwitterAuthProvider, FacebookAuthProvider, OAuthProvider, onAuthStateChanged, signOut, User } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
 import { firebaseConfig } from '../private_keys';
 import { PersistenceService, VaultRecord } from '../services/PersistenceService';
+import { BIP39_WORDS } from '../constants/Bip39Words';
 
 const initSignetFirebase = () => {
   try {
@@ -18,42 +19,6 @@ const auth = app ? getAuth(app) : null;
 
 const PROTOCOL_AUTHORITY = "signetai.io";
 const SEPARATOR = ":";
-
-const BIP39_WORDS = [
-  "abandon", "ability", "able", "about", "above", "absent", "absorb", "abstract", "absurd", "abuse", "access", "accident",
-  "account", "accuse", "achieve", "acid", "acoustic", "acquire", "across", "act", "action", "actor", "actress", "actual",
-  "adapt", "add", "addict", "address", "adjust", "admit", "adult", "advance", "advice", "aerobic", "affair", "afford",
-  "afraid", "again", "age", "agent", "agree", "ahead", "aim", "air", "airport", "aisle", "alarm", "album", "alcohol",
-  "alert", "alien", "all", "alley", "allow", "almost", "alone", "alpha", "already", "also", "alter", "always", "among",
-  "amount", "amuse", "analyst", "anchor", "ancient", "anger", "angle", "angry", "animal", "ankle", "announce", "annual",
-  "another", "answer", "antenna", "antique", "anxiety", "any", "apart", "apology", "appear", "apple", "approve", "april",
-  "arch", "arctic", "area", "arena", "argue", "arm", "armed", "armor", "army", "around", "arrange", "arrest", "arrive",
-  "arrow", "art", "artefact", "artist", "artwork", "ask", "aspect", "assault", "asset", "assist", "assume", "astonish",
-  "athlete", "atom", "attack", "attend", "attitude", "attract", "auction", "audit", "august", "aunt", "author", "auto",
-  "autumn", "average", "avocado", "avoid", "awake", "aware", "away", "awesome", "awful", "awkward", "axis", "baby",
-  "bachelor", "bacon", "badge", "bag", "balance", "balcony", "ball", "bamboo", "banana", "banner", "bar", "barely",
-  "bargain", "barrel", "base", "basic", "basket", "battle", "beach", "beam", "bean", "beauty", "because", "become",
-  "beef", "before", "begin", "behave", "behind", "believe", "below", "belt", "bench", "benefit", "best", "betray",
-  "better", "between", "beyond", "bicycle", "bid", "bike", "bind", "biology", "bird", "birth", "bitter", "black",
-  "blade", "blame", "blanket", "blast", "bleak", "bless", "blind", "blood", "blossom", "blue", "blur", "blush",
-  "board", "boat", "body", "boil", "bomb", "bone", "bonus", "book", "boost", "border", "boring", "borrow", "boss",
-  "bottom", "bounce", "box", "boy", "bracket", "brain", "brand", "brass", "brave", "bread", "breeze", "brick", "bridge",
-  "brief", "bright", "bring", "brisk", "broccoli", "broken", "bronze", "broom", "brother", "brown", "brush", "bubble",
-  "buddy", "budget", "buffalo", "build", "bulb", "bulk", "bullet", "bundle", "bunker", "burden", "burger", "burst",
-  "bus", "business", "busy", "butter", "buyer", "buzz", "cabbage", "cabin", "cable", "cactus", "cage", "cake", "call",
-  "calm", "camera", "camp", "can", "canal", "cancel", "candy", "cannon", "canoe", "canvas", "canyon", "capable", "capital",
-  "captain", "caption", "car", "carbon", "card", "cargo", "carpet", "carry", "cart", "case", "cash", "casino", "castle",
-  "casual", "cat", "catalog", "catch", "category", "cattle", "caught", "cause", "caution", "cave", "ceiling", "celery",
-  "cement", "census", "century", "cereal", "certain", "chair", "chalk", "champion", "change", "chaos", "chapter", "charge",
-  "chase", "chat", "cheap", "check", "cheese", "chef", "cherry", "chest", "chicken", "child", "chimney", "china",
-  "chose", "chronic", "chuckle", "chunk", "churn", "cigar", "cinema", "circle", "citizen", "city", "civil", "claim",
-  "clap", "clarify", "claw", "clay", "clean", "clerk", "clever", "click", "client", "cliff", "climb", "clinic", "clip",
-  "clock", "clog", "close", "cloth", "cloud", "clown", "club", "clump", "cluster", "clutch", "coach", "coast", "coconut",
-  "code", "coffee", "coil", "coin", "collect", "color", "column", "combine", "come", "comfort", "comic", "common",
-  "company", "compass", "complete", "confirm", "congress", "connect", "consider", "control", "convince", "cook", "cool",
-  "copper", "copy", "coral", "core", "corn", "correct", "cost", "cotton", "couch", "country", "couple", "course", "cousin",
-  "cover", "coyote", "crack", "cradle", "craft", "cram", "crane", "crash", "crater", "crawl", "crazy", "cream", "credit"
-];
 
 const generateMnemonic = (wordCount: 12 | 24) => {
   const result = [];
@@ -183,18 +148,19 @@ export const TrustKeyService: React.FC = () => {
       // ONLY attempt Global Registry if authenticated
       if (db && currentUser) {
         setStatus(`STEP 2/4: Verifying Global Ownership (UID: ${currentUser.uid.slice(0, 6)}...)...`);
-        const docSnap = await withTimeout(getDoc(doc(db, "identities", anchor)), 10000);
+        const docRef = doc(db, "identities", anchor);
+        const docSnap = await withTimeout(getDoc(docRef), 10000);
         
         if (docSnap.exists()) {
           const data = docSnap.data();
           const ownerUid = data.ownerUid;
           console.log("DEBUG: Existing Record Found", { ownerUid, currentUid: currentUser.uid });
           
-          // Reclaim logic: anchor is claimable if owned by 'ANONYMOUS' or the same user
-          const isClaimable = !ownerUid || ownerUid === 'ANONYMOUS' || ownerUid === currentUser.uid;
+          // Claimable if owned by 'ANONYMOUS', null, or the same UID
+          const isClaimable = !ownerUid || ownerUid === 'ANONYMOUS' || ownerUid === currentUser.uid || ownerUid === "";
           
           if (!isClaimable) {
-             throw new Error(`The Curatorial ID "${identity}" is already claimed by another user. Please choose a unique anchor.`);
+             throw new Error(`The Curatorial ID "${identity}" is already claimed by another owner. Please choose a unique anchor.`);
           }
           setStatus("STEP 3/4: Enforcing Protocol Policies...");
         } else {
@@ -211,11 +177,12 @@ export const TrustKeyService: React.FC = () => {
           timestamp: Date.now()
         };
         console.log("DEBUG: Final Firestore Payload", payload);
-        await withTimeout(setDoc(doc(db, "identities", anchor), payload), 15000);
+        await withTimeout(setDoc(docRef, payload), 15000);
         console.log("DEBUG: Firestore Sync Complete.");
       } else {
         console.log("DEBUG: Guest Mode - Skipping Global Sync.");
-        setStatus("STEP 4/4: Skipping Global Registry (Guest Mode)...");
+        // We set this status temporarily
+        setStatus("STEP 4/4: Finalizing local-only vault...");
       }
 
       // ALWAYS Save locally to IndexedDB
@@ -236,7 +203,7 @@ export const TrustKeyService: React.FC = () => {
       setIsRegistering(false);
       
       if (!currentUser) {
-        // Confirm guest success clearly
+        // Success message for guest mode
         setStatus(`∑ STEP 4/4: Skipping Global Registry (Guest Mode)... saved in local indexedDB. you may download it to your local disk.`);
       } else {
         setStatus(`SUCCESS: Vault Sealed for ${identity}. Identity successfully synchronized with the Global Signet Registry.`);
@@ -246,7 +213,7 @@ export const TrustKeyService: React.FC = () => {
       let errMsg = err.message || "Unknown fault.";
       
       if (errMsg.includes("permission-denied") || errMsg.includes("PERMISSION_DENIED")) {
-        errMsg = `CRITICAL: Missing or insufficient permissions. Authenticated as: ${currentUser?.email || 'NONE'} (UID: ${currentUser?.uid || 'N/A'}). Evaluation failed at Step 4/4. This usually means the anchor ID is locked by another owner or your project permissions are restricted.`;
+        errMsg = `CRITICAL: Missing or insufficient permissions. Authenticated as: ${currentUser?.email || 'NONE'} (UID: ${currentUser?.uid || 'N/A'}). Access to document "${anchor}" was denied. This usually means the ID is claimed by another user in the global database.`;
       } else if (errMsg.includes("index") || errMsg.includes("FAILED_PRECONDITION")) {
         setStatus("CRITICAL: Missing Registry Index.");
         const match = errMsg.match(/https:\/\/console\.firebase\.google\.com[^\s]*/);
