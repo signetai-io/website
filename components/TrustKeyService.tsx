@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { initializeApp, getApps, getApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+import { getFirestore, doc, getDoc, setDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 import { getAuth, signInWithPopup, GoogleAuthProvider, TwitterAuthProvider, FacebookAuthProvider, OAuthProvider, onAuthStateChanged, signOut, User } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
 import { firebaseConfig } from '../private_keys';
 import { PersistenceService, VaultRecord } from '../services/PersistenceService';
@@ -50,7 +50,9 @@ export const TrustKeyService: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [availability, setAvailability] = useState<{ status: 'loading' | 'available' | 'owned' | 'taken' | 'idle', owner?: string } | null>(null);
+  const [availability, setAvailability] = useState<{ status: 'loading' | 'available' | 'owned' | 'taken' | 'idle', owner?: string, uid?: string } | null>(null);
+
+  const isAdmin = currentUser?.email?.toLowerCase() === 'shengliang.song.ai@gmail.com' || currentUser?.email?.toLowerCase() === 'shengliang.song@gmail.com';
 
   const refreshVaults = useCallback(async () => {
     const vaults = await PersistenceService.getAllVaults();
@@ -100,7 +102,8 @@ export const TrustKeyService: React.FC = () => {
           } else {
             setAvailability({ 
               status: 'taken',
-              owner: data.ownerEmail || 'Anonymized User' 
+              owner: data.ownerEmail || 'Anonymized User',
+              uid: data.ownerUid
             });
           }
         }
@@ -132,7 +135,7 @@ export const TrustKeyService: React.FC = () => {
     try {
       setStatus(`Connecting to ${providerName.toUpperCase()}...`);
       await signInWithPopup(auth, provider);
-      setStatus(`Authenticated. Checking identity availability...`);
+      setStatus(`Authenticated. Identity identified.`);
     } catch (err: any) {
       setStatus(`Auth Error: ${err.message}`);
     }
@@ -143,6 +146,25 @@ export const TrustKeyService: React.FC = () => {
       await signOut(auth);
       setCurrentUser(null);
       setStatus("Logged out.");
+    }
+  };
+
+  const handleAdminRevoke = async () => {
+    const id = identityInput.trim().toLowerCase();
+    if (!id || !db || !isAdmin) return;
+    if (!confirm(`ADMIN ACTION: Permanently revoke global anchor "${id}"? This allows any user to claim the ID.`)) return;
+
+    setIsGenerating(true);
+    setStatus("ADMIN: Revoking Global Anchor...");
+    const anchor = `${PROTOCOL_AUTHORITY}${SEPARATOR}${id}`;
+    try {
+      await deleteDoc(doc(db, "identities", anchor));
+      setAvailability({ status: 'available' });
+      setStatus(`SUCCESS: Anchor "${id}" has been purged from the Global Registry.`);
+    } catch (err: any) {
+      setStatus(`ADMIN ERROR: ${err.message}`);
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -164,23 +186,21 @@ export const TrustKeyService: React.FC = () => {
 
     try {
       if (db && currentUser) {
-        setStatus(`STEP 2/4: Synchronizing with Global Registry...`);
+        setStatus(`STEP 2/4: Establishing Protocol Link...`);
         const docRef = doc(db, "identities", anchor);
         const docSnap = await getDoc(docRef);
         
-        let isOverwriting = false;
         if (docSnap.exists()) {
           const data = docSnap.data();
           const isOwnerByUid = data.ownerUid === currentUser.uid;
           const isOwnerByEmail = data.ownerEmail && currentUser.email && data.ownerEmail.toLowerCase() === currentUser.email.toLowerCase();
           
-          if (!isOwnerByUid && !isOwnerByEmail) {
-             throw new Error(`PERMISSIONS FAULT: The ID "${identity}" belongs to another curator. Please choose a unique name.`);
+          if (!isOwnerByUid && !isOwnerByEmail && !isAdmin) {
+             throw new Error(`PERMISSIONS FAULT: Identity "${identity}" is already locked by another curator.`);
           }
-          isOverwriting = true;
-          setStatus("STEP 3/4: Overwriting existing anchor authority...");
+          setStatus("STEP 3/4: Updating Authority Manifest...");
         } else {
-          setStatus("STEP 3/4: Creating new protocol anchor...");
+          setStatus("STEP 3/4: Creating Global Anchor...");
         }
 
         setStatus(`STEP 4/4: Sealing Global Registry Block...`);
@@ -196,7 +216,7 @@ export const TrustKeyService: React.FC = () => {
         
         await setDoc(docRef, payload);
       } else {
-        setStatus(`STEP 4/4: Finalizing local-only vault...`);
+        setStatus(`STEP 4/4: Finalizing local vault...`);
       }
 
       const newVault: VaultRecord = {
@@ -218,13 +238,13 @@ export const TrustKeyService: React.FC = () => {
       if (!currentUser) {
         setStatus(`SUCCESS: Local vault sealed for ${identity}. Identity remains unverified (Guest Mode).`);
       } else {
-        setStatus(`SUCCESS: Vault Sealed for ${identity}. Your authority has been established in the Global Signet Registry.`);
+        setStatus(`SUCCESS: Vault Sealed for ${identity}. Global authority established.`);
       }
     } catch (err: any) {
       console.error("DEBUG: Registry Exception", err);
       let errMsg = err.message || "Unknown fault.";
       if (err.code === 'permission-denied' || errMsg.toLowerCase().includes("permission-denied") || errMsg.toLowerCase().includes("insufficient permissions")) {
-        errMsg = `CRITICAL: Permission denied. You do not have authority over the ID "${identity}". If you previously owned this ID, ensure you are using the same email address.`;
+        errMsg = `CRITICAL: Permission denied. Access to ID "${identity}" is restricted.`;
       }
       setStatus(`${errMsg}`);
     } finally {
@@ -242,8 +262,8 @@ export const TrustKeyService: React.FC = () => {
     a.click();
   };
 
-  const handlePurge = async (anchor: string) => {
-    if (confirm("DANGER: This only removes the vault locally. Your Global Registry record is immutable. Ensure you have backed up your mnemonic.")) {
+  const handlePurgeLocal = async (anchor: string) => {
+    if (confirm("DANGER: This removes the vault locally. Your Global Registry record is immutable unless you own it. Ensure you have backed up your mnemonic.")) {
       await PersistenceService.purgeVault(anchor);
       await refreshVaults();
       setStatus("Local vault purged.");
@@ -309,24 +329,34 @@ export const TrustKeyService: React.FC = () => {
                         {availability.status === 'loading' ? 'Checking Registry...' : 
                          availability.status === 'available' ? 'Available to Claim' : 
                          availability.status === 'owned' ? 'Verified Owner (You)' : 
-                         availability.status === 'taken' ? `Registered by ${availability.owner}` : ''}
+                         availability.status === 'taken' ? `Taken by ${availability.owner}` : ''}
                       </span>
                     )}
                   </div>
-                  <div className="flex gap-2 p-4 border border-[var(--border-light)] rounded-lg bg-white shadow-sm focus-within:ring-2 focus-within:ring-[var(--trust-blue)]/20 transition-all">
-                     <span className="font-mono text-sm opacity-30 flex items-center">{PROTOCOL_AUTHORITY}:</span>
-                     <input 
-                       type="text" 
-                       disabled={isGenerating}
-                       value={identityInput} 
-                       onChange={(e) => setIdentityInput(e.target.value)}
-                       placeholder="e.g. shengliang.song"
-                       className="flex-1 bg-transparent outline-none font-mono text-sm text-[var(--trust-blue)] font-bold"
-                     />
+                  <div className="relative group">
+                    <div className="flex gap-2 p-4 border border-[var(--border-light)] rounded-lg bg-white shadow-sm focus-within:ring-2 focus-within:ring-[var(--trust-blue)]/20 transition-all">
+                       <span className="font-mono text-sm opacity-30 flex items-center">{PROTOCOL_AUTHORITY}:</span>
+                       <input 
+                         type="text" 
+                         disabled={isGenerating}
+                         value={identityInput} 
+                         onChange={(e) => setIdentityInput(e.target.value)}
+                         placeholder="e.g. shengliang.song"
+                         className="flex-1 bg-transparent outline-none font-mono text-sm text-[var(--trust-blue)] font-bold"
+                       />
+                    </div>
+                    {isAdmin && availability?.status === 'taken' && (
+                      <button 
+                        onClick={handleAdminRevoke}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 px-3 py-1 bg-red-500 text-white font-mono text-[9px] font-bold uppercase rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        Revoke Anchor
+                      </button>
+                    )}
                   </div>
                   {availability?.status === 'owned' && (
                     <p className="text-[9px] font-serif italic text-blue-500 opacity-80">
-                      You already own this ID. Generating now will update your public key and provide a new recovery mnemonic.
+                      You are the verified owner of this anchor. Generating now will update your public key manifest.
                     </p>
                   )}
                 </div>
@@ -351,16 +381,16 @@ export const TrustKeyService: React.FC = () => {
                 <div className="pt-4">
                   <button 
                     onClick={handleGenerate}
-                    disabled={isGenerating || !identityInput || availability?.status === 'taken'}
+                    disabled={isGenerating || !identityInput || (availability?.status === 'taken' && !isAdmin)}
                     className={`w-full py-5 text-white font-mono text-xs uppercase font-bold tracking-[0.3em] rounded shadow-2xl transition-all relative overflow-hidden group ${
-                      availability?.status === 'taken' ? 'bg-neutral-400' :
+                      availability?.status === 'taken' && !isAdmin ? 'bg-neutral-400' :
                       securityGrade === 24 ? 'bg-emerald-600' : 'bg-[var(--trust-blue)]'
                     }`}
                   >
                     <div className="absolute inset-0 bg-white/20 -translate-x-full group-hover:translate-x-0 transition-transform duration-500"></div>
                     <span className="relative z-10">
                       {isGenerating ? 'SYNCING_PROTOCOL...' : 
-                       availability?.status === 'owned' ? 'Re-register & Sync Vault' : 'Seal & Register Signet'}
+                       availability?.status === 'owned' ? 'Re-register Authority' : 'Seal & Register Signet'}
                     </span>
                   </button>
                 </div>
@@ -421,7 +451,7 @@ export const TrustKeyService: React.FC = () => {
                            <p className="font-serif text-lg font-bold italic">{v.identity}</p>
                            <p className="font-mono text-[9px] opacity-40 uppercase tracking-tighter">{v.type} | {v.provider || 'ANONYMOUS'}</p>
                         </button>
-                        <button onClick={() => handlePurge(v.anchor)} className="p-3 opacity-0 group-hover:opacity-100 text-red-500 hover:scale-110 transition-all">✕</button>
+                        <button onClick={() => handlePurgeLocal(v.anchor)} className="p-3 opacity-0 group-hover:opacity-100 text-red-500 hover:scale-110 transition-all">✕</button>
                       </div>
                     ))}
                   </div>
@@ -431,9 +461,9 @@ export const TrustKeyService: React.FC = () => {
           )}
           
           {status && (
-            <div className={`p-6 border-l-4 rounded-r-lg animate-in fade-in shadow-sm ${status.includes('SUCCESS') ? 'bg-green-50 border-green-500' : (status.includes('CRITICAL') || status.toLowerCase().includes('permissions')) ? 'bg-red-50 border-red-500' : 'bg-blue-50 border-[var(--trust-blue)]'}`}>
-              <p className={`font-mono text-[11px] font-bold ${status.includes('SUCCESS') ? 'text-green-700' : (status.includes('CRITICAL') || status.toLowerCase().includes('permissions')) ? 'text-red-700' : 'text-[var(--trust-blue)]'}`}>
-                {status.includes('SUCCESS') ? '✓ ' : (status.includes('CRITICAL') || status.toLowerCase().includes('permissions')) ? '⚠️ ' : '∑ '}
+            <div className={`p-6 border-l-4 rounded-r-lg animate-in fade-in shadow-sm ${status.includes('SUCCESS') ? 'bg-green-50 border-green-500' : (status.includes('CRITICAL') || status.toLowerCase().includes('permissions') || status.includes('ERROR')) ? 'bg-red-50 border-red-500' : 'bg-blue-50 border-[var(--trust-blue)]'}`}>
+              <p className={`font-mono text-[11px] font-bold ${status.includes('SUCCESS') ? 'text-green-700' : (status.includes('CRITICAL') || status.toLowerCase().includes('permissions') || status.includes('ERROR')) ? 'text-red-700' : 'text-[var(--trust-blue)]'}`}>
+                {status.includes('SUCCESS') ? '✓ ' : (status.includes('CRITICAL') || status.toLowerCase().includes('permissions') || status.includes('ERROR')) ? '⚠️ ' : '∑ '}
                 {status}
               </p>
             </div>
