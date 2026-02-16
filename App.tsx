@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Hero } from './components/Hero';
 import { Architecture } from './components/Architecture';
@@ -28,7 +29,7 @@ const Sidebar: React.FC<{ currentView: string; isOpen: boolean }> = ({ currentVi
   >
     <div className="p-8 h-full flex flex-col">
       <div className="flex items-center gap-3 mb-12 cursor-pointer" onClick={() => window.location.hash = ''}>
-        <div className="cr-badge text-[var(--trust-blue)]">cr</div>
+        <img src="/icon.svg" alt="Signet Logo" className="w-8 h-8 rounded-lg shadow-sm" />
         <span className="font-bold tracking-tight text-xl text-[var(--text-header)]">Signet v0.2.7</span>
       </div>
 
@@ -61,7 +62,14 @@ const Sidebar: React.FC<{ currentView: string; isOpen: boolean }> = ({ currentVi
   </aside>
 );
 
-const Header: React.FC<{ onToggleSidebar: () => void; theme: Theme; onToggleTheme: () => void; onOpenPortal: () => void }> = ({ onToggleSidebar, theme, onToggleTheme, onOpenPortal }) => (
+const Header: React.FC<{ 
+  onToggleSidebar: () => void; 
+  theme: Theme; 
+  onToggleTheme: () => void; 
+  onOpenPortal: () => void;
+  installPrompt: any;
+  onInstall: () => void;
+}> = ({ onToggleSidebar, theme, onToggleTheme, onOpenPortal, installPrompt, onInstall }) => (
   <header className="fixed top-0 right-0 left-0 lg:left-72 h-16 bg-[var(--bg-standard)] border-b border-[var(--border-light)] z-30 flex items-center justify-between px-8">
     <button onClick={onToggleSidebar} className="lg:hidden p-2 text-2xl text-[var(--text-header)]">☰</button>
     <div className="hidden lg:block text-[11px] font-mono text-[var(--text-body)] opacity-40 uppercase tracking-widest">
@@ -69,6 +77,15 @@ const Header: React.FC<{ onToggleSidebar: () => void; theme: Theme; onToggleThem
     </div>
     
     <div className="flex items-center gap-6">
+      {installPrompt && (
+        <button 
+          onClick={onInstall}
+          className="flex items-center gap-2 px-3 py-1.5 bg-[var(--bg-sidebar)] border border-[var(--border-light)] rounded hover:bg-[var(--admonition-bg)] transition-all"
+        >
+          <img src="/icon.svg" className="w-3 h-3" alt="" />
+          <span className="text-[10px] font-mono uppercase font-bold text-[var(--text-header)] tracking-wider">Install App</span>
+        </button>
+      )}
       <a 
         href="https://github.com/signetai-io/website" 
         target="_blank" 
@@ -101,6 +118,7 @@ const App: React.FC = () => {
   const [theme, setTheme] = useState<Theme>('standard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isPortalOpen, setIsPortalOpen] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -144,6 +162,26 @@ const App: React.FC = () => {
     return () => window.removeEventListener('hashchange', handleNavigation);
   }, []);
 
+  // PWA Install Prompt Listener
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstall = () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    installPrompt.userChoice.then((choiceResult: any) => {
+      if (choiceResult.outcome === 'accepted') {
+        setInstallPrompt(null);
+      }
+    });
+  };
+
   return (
     <div className="min-h-screen bg-[var(--bg-standard)] transition-colors duration-200">
       <Sidebar currentView={view} isOpen={isSidebarOpen} />
@@ -152,6 +190,8 @@ const App: React.FC = () => {
         theme={theme}
         onToggleTheme={() => setTheme(theme === 'standard' ? 'midnight' : 'standard')}
         onOpenPortal={() => setIsPortalOpen(true)}
+        installPrompt={installPrompt}
+        onInstall={handleInstall}
       />
       
       <main className="lg:pl-72 pt-16">
