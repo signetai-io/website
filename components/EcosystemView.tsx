@@ -3,44 +3,63 @@ import { Admonition } from './Admonition';
 
 const ECOSYSTEM_REPOS = [
   {
-    name: "signetai",
-    tagline: "Core Protocol & SDK",
-    desc: "The primary specification, TypeScript SDK, and JUMBF orchestration engine for Signet VPR.",
+    name: "website",
+    tagline: "Core Platform & Specification",
+    desc: "The primary interactive portal, documentation hub, and landing zone for the Signet Protocol.",
     status: "v0.2.7_ACTIVE",
     color: "bg-blue-500",
-    url: "https://github.com/shengliangsong-ai/signetai"
+    url: "https://github.com/signetai-io/website"
   },
   {
-    name: "signetai-benchmark",
+    name: "spec",
+    tagline: "Technical Standard Drafts",
+    desc: "Formal documentation of VPR and JUMBF implementation details for ISO/TC 290 alignment.",
+    status: "STABLE",
+    color: "bg-neutral-800",
+    url: "https://github.com/signetai-io/spec"
+  },
+  {
+    name: "benchmark",
     tagline: "Parity & Logic Scoring",
-    desc: "Public test suites and performance metrics for Verifiable Proof of Reasoning (VPR) drift.",
+    desc: "Public test suites and performance metrics for Verifiable Proof of Reasoning (VPR). Monitors logic drift in frontier models.",
     status: "STABLE",
     color: "bg-emerald-500",
-    url: "https://github.com/shengliangsong-ai/signetai-benchmark"
+    url: "https://github.com/signetai-io/benchmark"
   },
   {
-    name: "signetai-tools",
+    name: "tools",
     tagline: "CLI & Injection Utilities",
-    desc: "Industrial-grade CLI tools for manifest injection, sidecar generation, and pHash soft-binding.",
+    desc: "Industrial-grade CLI tools for manifest injection, sidecar generation, and pHash soft-binding discovery.",
     status: "BETA",
     color: "bg-amber-500",
-    url: "https://github.com/shengliangsong-ai/signetai-tools"
+    url: "https://github.com/signetai-io/tools"
   },
   {
-    name: "signetai-agents",
+    name: "agents",
     tagline: "Autonomous Signing Nodes",
-    desc: "Integration layers for LLM reasoning agents to natively sign their own logic paths.",
+    desc: "Built on the openClaw pattern. Integration layers for LLM reasoning agents to natively sign their own logic paths autonomously.",
     status: "DRAFT",
+    pattern: "openClaw",
     color: "bg-purple-500",
-    url: "https://github.com/shengliangsong-ai/signetai-agents"
+    url: "https://github.com/signetai-io/agents"
   },
   {
-    name: "signetai-skills",
+    name: "skills",
     tagline: "Reasoning Attestation Modules",
-    desc: "Specialized attestation modules for specific reasoning vertical like math, code, and ethics.",
+    desc: "Modular skills following the openClaw architecture for specialized reasoning in math, code, and ethical alignment.",
     status: "EXPERIMENTAL",
+    pattern: "openClaw",
     color: "bg-red-500",
-    url: "https://github.com/shengliangsong-ai/signetai-skills"
+    url: "https://github.com/signetai-io/skills"
+  },
+  {
+    name: "llm",
+    tagline: "Native Reasoning Engine",
+    desc: "Specialized model integrations and adapters for high-fidelity reasoning capture directly from the inference substrate.",
+    status: "ALPHA",
+    pattern: "openClaw",
+    color: "bg-indigo-500",
+    url: "https://github.com/signetai-io/llm"
   }
 ];
 
@@ -49,12 +68,12 @@ export const EcosystemView: React.FC = () => {
     <div className="py-12 space-y-16 animate-in fade-in duration-700">
       <header className="space-y-4">
         <div className="flex items-center gap-3">
-          <span className="font-mono text-[10px] text-[var(--trust-blue)] tracking-[0.4em] uppercase font-bold">Protocol Infrastructure</span>
-          <div className="px-2 py-0.5 bg-black text-white text-[8px] font-bold rounded font-mono">ECOSYSTEM_v1</div>
+          <span className="font-mono text-[10px] text-[var(--trust-blue)] tracking-[0.4em] uppercase font-bold">Organization Infrastructure</span>
+          <div className="px-2 py-0.5 bg-black text-white text-[8px] font-bold rounded font-mono">ORG_SYNC_v1.2</div>
         </div>
-        <h2 className="text-5xl font-bold italic tracking-tighter text-[var(--text-header)]">The Signet Repositories.</h2>
+        <h2 className="text-5xl font-bold italic tracking-tighter text-[var(--text-header)]">The signetai-io Org.</h2>
         <p className="text-xl opacity-60 max-w-3xl font-serif italic leading-relaxed">
-          Mapped for parity with the official C2PA repository structure. These modules form the backbone of the Cognitive Provenance standard.
+          The Signet Protocol is officially decentralized into the <code>signetai-io</code> GitHub organization. All repositories follow the <a href="https://github.com/shengliangsong-ai/openclaw" target="_blank" className="text-[var(--trust-blue)] hover:underline decoration-1">openClaw</a> agent pattern where applicable.
         </p>
       </header>
 
@@ -65,8 +84,14 @@ export const EcosystemView: React.FC = () => {
             href={repo.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="group p-10 border border-[var(--border-light)] bg-[var(--bg-standard)] rounded-xl shadow-sm hover:shadow-2xl hover:border-[var(--trust-blue)] transition-all flex flex-col h-full"
+            className="group p-10 border border-[var(--border-light)] bg-[var(--bg-standard)] rounded-xl shadow-sm hover:shadow-2xl hover:border-[var(--trust-blue)] transition-all flex flex-col h-full relative overflow-hidden"
           >
+            {repo.pattern && (
+              <div className="absolute top-0 right-12 px-3 py-1 bg-neutral-900 text-white font-mono text-[8px] font-bold uppercase tracking-widest rounded-b-sm">
+                Pattern: {repo.pattern}
+              </div>
+            )}
+            
             <div className="flex justify-between items-start mb-8">
               <div className="space-y-1">
                 <span className="font-mono text-[10px] opacity-40 font-bold uppercase tracking-widest">Signet Protocol Group</span>
@@ -97,8 +122,8 @@ export const EcosystemView: React.FC = () => {
         ))}
       </div>
 
-      <Admonition type="note" title="Contribution Model">
-        The Signet Protocol follows the "Accountability First" contribution model. All merges into these repositories must be attested by a Master Curator and accompanied by a logic audit trace.
+      <Admonition type="note" title="Unified Namespace">
+        Repositories under the <code>signetai-io</code> organization are strictly for protocol artifacts. Personal projects and experimental forks are maintained separately to ensure the integrity of the Master Signatory root.
       </Admonition>
     </div>
   );

@@ -70,7 +70,7 @@ const Header: React.FC<{ onToggleSidebar: () => void; theme: Theme; onToggleThem
     
     <div className="flex items-center gap-6">
       <a 
-        href="https://github.com/shengliangsong-ai/signetai" 
+        href="https://github.com/signetai-io/website" 
         target="_blank" 
         rel="noopener noreferrer"
         className="text-[var(--text-body)] opacity-40 hover:opacity-100 hover:text-[var(--trust-blue)] transition-all"
