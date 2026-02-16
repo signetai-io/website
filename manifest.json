@@ -14,26 +14,24 @@
     {
       "src": "/icon.svg",
       "type": "image/svg+xml",
-      "sizes": "192x192",
-      "purpose": "any"
-    },
+      "sizes": "192x192 512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
     {
       "src": "/icon.svg",
-      "type": "image/svg+xml",
-      "sizes": "192x192",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/icon.svg",
-      "type": "image/svg+xml",
       "sizes": "512x512",
-      "purpose": "any"
+      "type": "image/svg+xml",
+      "form_factor": "wide",
+      "label": "Signet Dashboard"
     },
     {
       "src": "/icon.svg",
-      "type": "image/svg+xml",
       "sizes": "512x512",
-      "purpose": "maskable"
+      "type": "image/svg+xml",
+      "form_factor": "narrow",
+      "label": "Mobile Verification"
     }
   ]
 }
