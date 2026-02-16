@@ -16,6 +16,8 @@ export interface VaultRecord {
   type: 'SOVEREIGN' | 'CONSUMER';
   provider?: string;
   verificationSource?: string;
+  ownerEmail?: string;
+  ownerUid?: string;
 }
 
 export const PersistenceService = {

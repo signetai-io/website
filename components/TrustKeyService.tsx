@@ -242,7 +242,9 @@ export const TrustKeyService: React.FC = () => {
         timestamp: Date.now(),
         type: securityGrade === 24 ? 'SOVEREIGN' : 'CONSUMER',
         provider: currentUser ? PROTOCOL_AUTHORITY : 'LOCAL_GUEST',
-        verificationSource: currentUser?.providerData[0]?.providerId
+        verificationSource: currentUser?.providerData[0]?.providerId,
+        ownerEmail: currentUser?.email?.toLowerCase(),
+        ownerUid: currentUser?.uid
       };
 
       await PersistenceService.saveVault(newVault);
@@ -448,6 +450,12 @@ export const TrustKeyService: React.FC = () => {
                       <div className="space-y-1">
                         <p className="font-mono text-[9px] opacity-40 uppercase font-bold">Public Registry Anchor</p>
                         <p className="font-mono text-[11px] text-[var(--trust-blue)] break-all p-4 bg-[var(--code-bg)] rounded border border-[var(--border-light)]">{activeVault.anchor}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="font-mono text-[9px] opacity-40 uppercase font-bold">Verified Curator Account</p>
+                        <p className="font-mono text-[11px] opacity-60 break-all p-4 border border-[var(--border-light)] rounded bg-[var(--bg-sidebar)]">
+                          {activeVault.ownerEmail || 'Unverified Local-Only Account'}
+                        </p>
                       </div>
                       <div className="space-y-1">
                         <p className="font-mono text-[9px] opacity-40 uppercase font-bold">Cryptographic Key (Ed25519 - 256bit)</p>
