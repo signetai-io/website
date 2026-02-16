@@ -102,6 +102,19 @@ const Header: React.FC<{
           <span className="text-[10px] font-mono uppercase font-bold text-[var(--trust-blue)] tracking-wider">Install App</span>
         </button>
       )}
+
+      <button 
+        onClick={() => window.location.reload()}
+        className="text-[var(--text-body)] opacity-40 hover:opacity-100 hover:text-[var(--trust-blue)] transition-all"
+        title="Check for Updates / Reload"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M23 4v6h-6"></path>
+          <path d="M1 20v-6h6"></path>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+      </button>
+
       <a 
         href="https://github.com/signetai-io/website" 
         target="_blank" 
