@@ -24,6 +24,57 @@ const SPEC_PAGES = [
     )
   },
   {
+    title: "Technical Implementation",
+    text: "Developer SDK Implementation (Node.js/Python). For production-grade C2PA 2.3 signing, use the following logic to handle AI-generated assertions and certificate chains.",
+    content: (
+      <div className="space-y-8 animate-in fade-in duration-500">
+        <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">Developer API Snippets</h2>
+        <p className="opacity-80 leading-loose">
+          Implement C2PA v2.3 manifests natively in your pipeline.
+        </p>
+        <div className="space-y-4">
+          <div className="p-6 bg-[var(--code-bg)] border border-[var(--border-light)] rounded-xl font-mono text-[11px] space-y-2">
+            <p className="text-[var(--trust-blue)] font-bold"># Node.js: Creating a v2.3 Manifest</p>
+            <pre className="opacity-70 overflow-x-auto p-2 bg-black/5 rounded">
+{`const { createManifest } = require('@signet-ai/sdk');
+
+async function signAsset(imagePath, author) {
+  const manifest = createManifest({
+    actions: [{ action: 'c2pa.created', softwareAgent: 'Signet AI v0.2.7' }],
+    metadata: { author: author, title: 'AI Generated Vision' }
+  });
+
+  // PRODUCTION: Use HSM/KMS for private key
+  const signer = await getHSMSigner('signet-master-prod');
+  await manifest.sign(signer);
+  
+  return manifest.embed(imagePath);
+}`}
+            </pre>
+          </div>
+
+          <div className="p-6 bg-[var(--code-bg)] border border-[var(--border-light)] rounded-xl font-mono text-[11px] space-y-2">
+            <p className="text-emerald-600 font-bold"># Python: Soft-Binding Discovery (pHash)</p>
+            <pre className="opacity-70 overflow-x-auto p-2 bg-black/5 rounded">
+{`import imagehash
+from signet_registry import Registry
+
+def recover_manifest(image_file):
+    # Compute perceptual hash
+    current_hash = imagehash.phash(image_file)
+    
+    # Search Signet Global Registry
+    manifest = Registry.lookup_phash(current_hash)
+    if manifest:
+        print(f"Verified: {manifest.author}")
+    return manifest`}
+            </pre>
+          </div>
+        </div>
+      </div>
+    )
+  },
+  {
     title: "C2PA v2.3 Alignment (A.7)",
     text: "Signet Protocol 0.2.7 is strictly aligned with the C2PA v2.3 Technical Specification (Released Jan 2026).\n\nKey Implementation Blocks:\n• Section A.7: C2PATextManifestWrapper for text streams using Unicode Variation Selectors.\n• Section 18.6: Merkle Tree Piecewise Audit for fragmented MP4 video.\n• Section 19.4: verifiable-segment-info for real-time AI live streams.",
     content: (
