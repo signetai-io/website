@@ -135,7 +135,7 @@ export const TrustKeyService: React.FC = () => {
     try {
       setStatus(`Connecting to ${providerName.toUpperCase()}...`);
       await signInWithPopup(auth, provider);
-      setStatus(`Authenticated. Identity identified.`);
+      setStatus(`SESSION VERIFIED: Ready for Global Registry sync.`);
     } catch (err: any) {
       setStatus(`Auth Error: ${err.message}`);
     }
@@ -145,7 +145,7 @@ export const TrustKeyService: React.FC = () => {
     if (auth) {
       await signOut(auth);
       setCurrentUser(null);
-      setStatus("Logged out.");
+      setStatus("Logged out. Registry sync now disabled.");
     }
   };
 
@@ -186,7 +186,7 @@ export const TrustKeyService: React.FC = () => {
 
     try {
       if (db && currentUser) {
-        setStatus(`STEP 2/4: Establishing Protocol Link...`);
+        setStatus(`STEP 2/4: Establishing Protocol Link (Firestore)...`);
         const docRef = doc(db, "identities", anchor);
         const docSnap = await getDoc(docRef);
         
@@ -216,7 +216,7 @@ export const TrustKeyService: React.FC = () => {
         
         await setDoc(docRef, payload);
       } else {
-        setStatus(`STEP 4/4: Finalizing local vault...`);
+        setStatus(`STEP 4/4: Finalizing local-only vault (No Cloud Sync)...`);
       }
 
       const newVault: VaultRecord = {
@@ -295,7 +295,14 @@ export const TrustKeyService: React.FC = () => {
 
               <div className="space-y-6">
                 <div className="space-y-3">
-                  <label className="font-mono text-[10px] uppercase font-bold opacity-40">Verification Source (Required for Global Registry)</label>
+                  <div className="flex justify-between items-center">
+                    <label className="font-mono text-[10px] uppercase font-bold opacity-40">Verification Source</label>
+                    {currentUser ? (
+                      <span className="font-mono text-[9px] text-green-500 font-bold uppercase">Verified: {currentUser.email}</span>
+                    ) : (
+                      <span className="font-mono text-[9px] text-amber-500 font-bold uppercase">Not Signed In (Local Only)</span>
+                    )}
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {[
                       { id: 'google', label: 'Google', color: 'hover:border-red-500' },
@@ -359,6 +366,11 @@ export const TrustKeyService: React.FC = () => {
                       You are the verified owner of this anchor. Generating now will update your public key manifest.
                     </p>
                   )}
+                  {!currentUser && (
+                     <p className="text-[9px] font-serif italic text-amber-600 opacity-80">
+                       WARNING: You are not signed in. This ID will only be stored locally in this browser.
+                     </p>
+                  )}
                 </div>
 
                 <div className="p-1 border border-[var(--border-light)] rounded-lg flex bg-[var(--bg-sidebar)]">
@@ -384,13 +396,15 @@ export const TrustKeyService: React.FC = () => {
                     disabled={isGenerating || !identityInput || (availability?.status === 'taken' && !isAdmin)}
                     className={`w-full py-5 text-white font-mono text-xs uppercase font-bold tracking-[0.3em] rounded shadow-2xl transition-all relative overflow-hidden group ${
                       availability?.status === 'taken' && !isAdmin ? 'bg-neutral-400' :
+                      !currentUser ? 'bg-amber-600' :
                       securityGrade === 24 ? 'bg-emerald-600' : 'bg-[var(--trust-blue)]'
                     }`}
                   >
                     <div className="absolute inset-0 bg-white/20 -translate-x-full group-hover:translate-x-0 transition-transform duration-500"></div>
                     <span className="relative z-10">
                       {isGenerating ? 'SYNCING_PROTOCOL...' : 
-                       availability?.status === 'owned' ? 'Re-register Authority' : 'Seal & Register Signet'}
+                       !currentUser ? 'Seal Local Vault (Guest)' :
+                       availability?.status === 'owned' ? 'Re-register Global Authority' : 'Seal & Register Globally'}
                     </span>
                   </button>
                 </div>
