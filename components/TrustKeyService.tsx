@@ -45,7 +45,7 @@ const BIP39_WORDS = [
   "captain", "caption", "car", "carbon", "card", "cargo", "carpet", "carry", "cart", "case", "cash", "casino", "castle",
   "casual", "cat", "catalog", "catch", "category", "cattle", "caught", "cause", "caution", "cave", "ceiling", "celery",
   "cement", "census", "century", "cereal", "certain", "chair", "chalk", "champion", "change", "chaos", "chapter", "charge",
-  "chase", "chat", "cheap", "check", "cheese", "chef", "cherry", "chest", "chicken", "chief", "child", "chimney", "china",
+  "chase", "chat", "cheap", "check", "cheese", "chef", "cherry", "chest", "chicken", "child", "chimney", "china",
   "chose", "chronic", "chuckle", "chunk", "churn", "cigar", "cinema", "circle", "citizen", "city", "civil", "claim",
   "clap", "clarify", "claw", "clay", "clean", "clerk", "clever", "click", "client", "cliff", "climb", "clinic", "clip",
   "clock", "clog", "close", "cloth", "cloud", "clown", "club", "clump", "cluster", "clutch", "coach", "coast", "coconut",
@@ -218,7 +218,7 @@ export const TrustKeyService: React.FC = () => {
         setStatus("STEP 4/4: Skipping Global Registry (Guest Mode)...");
       }
 
-      // ALWAYS Save locally
+      // ALWAYS Save locally to IndexedDB
       const newVault: VaultRecord = {
         anchor,
         identity,
@@ -236,7 +236,8 @@ export const TrustKeyService: React.FC = () => {
       setIsRegistering(false);
       
       if (!currentUser) {
-        setStatus(`SUCCESS: Vault Sealed for ${identity} (Guest Mode). Saved in local IndexedDB. You may now download it to your local disk.`);
+        // Confirm guest success clearly
+        setStatus(`∑ STEP 4/4: Skipping Global Registry (Guest Mode)... saved in local indexedDB. you may download it to your local disk.`);
       } else {
         setStatus(`SUCCESS: Vault Sealed for ${identity}. Identity successfully synchronized with the Global Signet Registry.`);
       }
@@ -245,7 +246,7 @@ export const TrustKeyService: React.FC = () => {
       let errMsg = err.message || "Unknown fault.";
       
       if (errMsg.includes("permission-denied") || errMsg.includes("PERMISSION_DENIED")) {
-        errMsg = `CRITICAL: Missing or insufficient permissions. Authenticated as: ${currentUser?.email || 'NONE'} (UID: ${currentUser?.uid || 'N/A'}). Evaluation failed at Step 4/4. This usually means the anchor ID is locked by another project or owner.`;
+        errMsg = `CRITICAL: Missing or insufficient permissions. Authenticated as: ${currentUser?.email || 'NONE'} (UID: ${currentUser?.uid || 'N/A'}). Evaluation failed at Step 4/4. This usually means the anchor ID is locked by another owner or your project permissions are restricted.`;
       } else if (errMsg.includes("index") || errMsg.includes("FAILED_PRECONDITION")) {
         setStatus("CRITICAL: Missing Registry Index.");
         const match = errMsg.match(/https:\/\/console\.firebase\.google\.com[^\s]*/);
@@ -435,9 +436,9 @@ export const TrustKeyService: React.FC = () => {
           )}
           
           {status && (
-            <div className={`p-6 border-l-4 rounded-r-lg animate-in fade-in shadow-sm ${status.includes('SUCCESS') ? 'bg-green-50 border-green-500' : status.includes('CRITICAL') ? 'bg-red-50 border-red-500' : 'bg-blue-50 border-[var(--trust-blue)]'}`}>
-              <p className={`font-mono text-[11px] font-bold ${status.includes('SUCCESS') ? 'text-green-700' : status.includes('CRITICAL') ? 'text-red-700' : 'text-[var(--trust-blue)]'}`}>
-                {status.includes('SUCCESS') ? '✓ ' : status.includes('CRITICAL') ? '⚠️ ' : '∑ '}
+            <div className={`p-6 border-l-4 rounded-r-lg animate-in fade-in shadow-sm ${status.includes('SUCCESS') || status.includes('saved in local') ? 'bg-green-50 border-green-500' : status.includes('CRITICAL') ? 'bg-red-50 border-red-500' : 'bg-blue-50 border-[var(--trust-blue)]'}`}>
+              <p className={`font-mono text-[11px] font-bold ${status.includes('SUCCESS') || status.includes('saved in local') ? 'text-green-700' : status.includes('CRITICAL') ? 'text-red-700' : 'text-[var(--trust-blue)]'}`}>
+                {status.includes('SUCCESS') || status.includes('saved in local') ? '✓ ' : status.includes('CRITICAL') ? '⚠️ ' : '∑ '}
                 {status}
               </p>
               {indexUrl && (

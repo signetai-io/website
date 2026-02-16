@@ -14,8 +14,14 @@ service cloud.firestore {
     function isAdmin() {
       return isAuthenticated() && (
         request.auth.token.email == 'shengliang.song.ai@gmail.com' || 
+        request.auth.token.email == 'shenglaing.song@gmail.com' ||
         request.auth.token.email == 'shengliang.song@gmail.com'
       );
+    }
+
+    // Helper to safely get ownerUid or default to ANONYMOUS
+    function getExistingOwner() {
+      return resource.data.get('ownerUid', 'ANONYMOUS');
     }
 
     // ----------------------------------------------------------------------
@@ -25,20 +31,20 @@ service cloud.firestore {
       allow read: if true;
       
       // Allow creation if the ID is within range (10-256 chars)
-      // If doc doesn't exist, this rule triggers
-      allow create: if anchorId.size() >= 10 && anchorId.size() <= 256;
+      // Must be authenticated to save to global registry
+      allow create: if anchorId.size() >= 10 && anchorId.size() <= 256 
+                    && isAuthenticated() 
+                    && request.resource.data.ownerUid == request.auth.uid;
       
-      // Allow update if doc exists. This is where most "Permission Denied" errors happen.
-      // 1. Admin can always update
-      // 2. The existing owner can update
-      // 3. Anyone authenticated can update if the existing doc is "unowned"
+      // Allow update if:
+      // 1. User is an admin
+      // 2. User is authenticated and the record is currently unowned or owned by them
       allow update: if isAdmin() 
                     || (isAuthenticated() && (
-                        !('ownerUid' in resource.data) || 
-                        resource.data.ownerUid == 'ANONYMOUS' || 
-                        resource.data.ownerUid == request.auth.uid ||
-                        resource.data.ownerUid == null ||
-                        resource.data.ownerUid == ""
+                        getExistingOwner() == 'ANONYMOUS' || 
+                        getExistingOwner() == request.auth.uid ||
+                        getExistingOwner() == null ||
+                        getExistingOwner() == ""
                     ));
       
       allow delete: if isAdmin();
