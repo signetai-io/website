@@ -169,7 +169,16 @@ export const TrustKeyService: React.FC = () => {
           provider: currentUser.providerData[0]?.providerId || 'GOOGLE',
           timestamp: Date.now()
         };
-        await withTimeout(setDoc(docRef, payload), 15000);
+        
+        try {
+          await withTimeout(setDoc(docRef, payload), 15000);
+        } catch (setErr: any) {
+          // If Firestore permission denied, the rules disagreed with our client check
+          if (setErr.code === 'permission-denied' || setErr.message?.toLowerCase().includes('permissions')) {
+             throw new Error(`CRITICAL: Access Denied. The Curatorial ID "${identity}" is already locked in the global registry. Ensure you have not previously claimed this name with a different account.`);
+          }
+          throw setErr;
+        }
       } else {
         // GUEST MODE: Skip Step 2 & 3 completely
         setStatus(`STEP 4/4: Finalizing local-only vault...`);
@@ -202,10 +211,10 @@ export const TrustKeyService: React.FC = () => {
       console.error("DEBUG: Registry Exception", err);
       let errMsg = err.message || "Unknown fault.";
       
-      // Handle Firebase specific error codes
-      if (errMsg.includes("permission-denied") || errMsg.includes("PERMISSION_DENIED")) {
-        errMsg = `CRITICAL: Permission denied. The ID "${identity}" is already registered by another user in the global registry. If you believe you own this identity, please ensure you are signed in with the correct account.`;
-      } else if (errMsg.includes("not-found") || errMsg.includes("NOT_FOUND")) {
+      // Handle Firebase specific error codes or message fragments
+      if (err.code === 'permission-denied' || errMsg.toLowerCase().includes("permission-denied") || errMsg.toLowerCase().includes("permissions")) {
+        errMsg = `CRITICAL: Permission denied. The ID "${identity}" is already registered in the global registry. If you believe you own this identity, please ensure you are signed in with the correct account.`;
+      } else if (err.code === 'not-found' || errMsg.includes("not-found") || errMsg.includes("NOT_FOUND")) {
         errMsg = `CRITICAL: Registry connection error. The global authority could not be reached.`;
       }
 
@@ -392,9 +401,9 @@ export const TrustKeyService: React.FC = () => {
           )}
           
           {status && (
-            <div className={`p-6 border-l-4 rounded-r-lg animate-in fade-in shadow-sm ${status.includes('SUCCESS') || status.includes('saved in local') ? 'bg-green-50 border-green-500' : (status.includes('CRITICAL') || status.includes('denied')) ? 'bg-red-50 border-red-500' : 'bg-blue-50 border-[var(--trust-blue)]'}`}>
-              <p className={`font-mono text-[11px] font-bold ${status.includes('SUCCESS') || status.includes('saved in local') ? 'text-green-700' : (status.includes('CRITICAL') || status.includes('denied')) ? 'text-red-700' : 'text-[var(--trust-blue)]'}`}>
-                {status.includes('SUCCESS') || status.includes('saved in local') ? '✓ ' : (status.includes('CRITICAL') || status.includes('denied')) ? '⚠️ ' : '∑ '}
+            <div className={`p-6 border-l-4 rounded-r-lg animate-in fade-in shadow-sm ${status.includes('SUCCESS') || status.includes('saved in local') ? 'bg-green-50 border-green-500' : (status.includes('CRITICAL') || status.toLowerCase().includes('permissions')) ? 'bg-red-50 border-red-500' : 'bg-blue-50 border-[var(--trust-blue)]'}`}>
+              <p className={`font-mono text-[11px] font-bold ${status.includes('SUCCESS') || status.includes('saved in local') ? 'text-green-700' : (status.includes('CRITICAL') || status.toLowerCase().includes('permissions')) ? 'text-red-700' : 'text-[var(--trust-blue)]'}`}>
+                {status.includes('SUCCESS') || status.includes('saved in local') ? '✓ ' : (status.includes('CRITICAL') || status.toLowerCase().includes('permissions')) ? '⚠️ ' : '∑ '}
                 {status}
               </p>
               {indexUrl && (
