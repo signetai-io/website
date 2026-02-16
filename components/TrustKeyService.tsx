@@ -167,6 +167,7 @@ export const TrustKeyService: React.FC = () => {
     console.log("DEBUG: handleGenerate State", {
       isAuthenticated: !!currentUser,
       uid: currentUser?.uid,
+      email: currentUser?.email,
       anchor,
       securityGrade
     });
@@ -181,7 +182,7 @@ export const TrustKeyService: React.FC = () => {
     try {
       // ONLY attempt Global Registry if authenticated
       if (db && currentUser) {
-        setStatus("STEP 2/4: Verifying Global Ownership...");
+        setStatus(`STEP 2/4: Verifying Global Ownership (UID: ${currentUser.uid.slice(0, 6)}...)...`);
         const docSnap = await withTimeout(getDoc(doc(db, "identities", anchor)), 10000);
         
         if (docSnap.exists()) {
@@ -200,7 +201,7 @@ export const TrustKeyService: React.FC = () => {
           setStatus("STEP 3/4: Creating Global Anchor...");
         }
 
-        setStatus("STEP 4/4: Sealing Global Registry Block...");
+        setStatus(`STEP 4/4: Sealing Global Registry Block (UID: ${currentUser.uid.slice(0, 6)}...)...`);
         const payload = {
           identity,
           publicKey: pubKey,
@@ -233,13 +234,18 @@ export const TrustKeyService: React.FC = () => {
       
       await refreshVaults();
       setIsRegistering(false);
-      setStatus(`SUCCESS: Vault Sealed for ${identity}${!currentUser ? ' (Local-Only)' : ' (Global Sync)'}.`);
+      
+      if (!currentUser) {
+        setStatus(`SUCCESS: Vault Sealed for ${identity} (Guest Mode). Saved in local IndexedDB. You may now download it to your local disk.`);
+      } else {
+        setStatus(`SUCCESS: Vault Sealed for ${identity}. Identity successfully synchronized with the Global Signet Registry.`);
+      }
     } catch (err: any) {
       console.error("DEBUG: Registry Exception", err);
       let errMsg = err.message || "Unknown fault.";
       
       if (errMsg.includes("permission-denied") || errMsg.includes("PERMISSION_DENIED")) {
-        errMsg = `Permission Denied (Step 4/4). Current UID: ${currentUser?.uid || 'NONE'}. This usually means the ID is already claimed by a different account.`;
+        errMsg = `CRITICAL: Missing or insufficient permissions. Authenticated as: ${currentUser?.email || 'NONE'} (UID: ${currentUser?.uid || 'N/A'}). Evaluation failed at Step 4/4. This usually means the anchor ID is locked by another project or owner.`;
       } else if (errMsg.includes("index") || errMsg.includes("FAILED_PRECONDITION")) {
         setStatus("CRITICAL: Missing Registry Index.");
         const match = errMsg.match(/https:\/\/console\.firebase\.google\.com[^\s]*/);
@@ -316,7 +322,7 @@ export const TrustKeyService: React.FC = () => {
                     )}
                   </div>
                   <p className="text-[9px] font-serif italic opacity-40">
-                    {currentUser ? `Signed in as ${currentUser.email}. Identity will be synced globally.` : `Guest mode: Identity will be saved to local IndexedDB only.`}
+                    {currentUser ? `Authenticated as ${currentUser.email}. Identity will be synced globally.` : `Guest mode: Identity will be saved in local IndexedDB only. Global sync disabled.`}
                   </p>
                 </div>
 
