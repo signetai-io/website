@@ -78,6 +78,24 @@ export const ManualView: React.FC = () => {
         </div>
       </ManualSection>
 
+      <ManualSection title="04. Vector Attestation (SVG)">
+        <p className="text-lg leading-loose text-[var(--text-body)] opacity-80 font-serif mb-8">
+          Unlike raster images, Vector Graphics require <strong>XML-DSig Hybrid</strong> attestation to maintain code readability and portability.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <FeatureCard 
+            icon="📐" 
+            title="Metadata Injection" 
+            desc="Signet injects a JSON-LD manifest into a custom <metadata> block just before the closing tag, ensuring the visual rendering is unaffected." 
+          />
+          <FeatureCard 
+            icon="🔍" 
+            title="Visual Hashing" 
+            desc="The verification engine separates the 'Code' (Metadata) from the 'Art' (Paths), calculating a SHA-256 hash of the visual data to detect tampering." 
+          />
+        </div>
+      </ManualSection>
+
       <div className="mt-20 pt-10 border-t border-[var(--border-light)] flex justify-between items-center">
         <a href="#" onClick={(e) => { e.preventDefault(); window.location.hash = ''; }} className="text-[var(--trust-blue)] hover:underline font-mono text-[10px] uppercase tracking-widest font-bold">
           &larr; Return to Dashboard
