@@ -1,4 +1,4 @@
-const CACHE_NAME = 'signet-v0.4.1-fix';
+const CACHE_NAME = 'signet-v0.4.2-fix';
 // Use relative paths to ensure it works on any origin (including sandboxed previews)
 const URLS_TO_CACHE = [
   './',

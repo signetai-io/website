@@ -161,11 +161,32 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          // FIX: Use simple relative path to avoid Origin Mismatch errors in sandboxed previews.
-          // This allows the browser to resolve './sw.js' against the current iframe location.
-          navigator.serviceWorker.register('./sw.js', { scope: './' })
-            .then(reg => console.log('SW registered!', reg))
-            .catch(err => console.error('SW failed!', err));
+          // Robust Service Worker Registration
+          // 1. Verify Protocol: SW only works on https or localhost.
+          if (!window.location.protocol.startsWith('http')) {
+             console.warn('Signet SW: Skipping registration (invalid protocol).');
+             return;
+          }
+
+          // 2. Manual URL Construction:
+          // The environment may inject a <base> tag pointing to 'ai.studio' (the parent frame),
+          // causing relative paths like './sw.js' to resolve to the parent origin.
+          // We must explicitly construct the URL using 'window.location' to force 
+          // registration on the current sandboxed origin.
+          try {
+            const currentPath = window.location.pathname;
+            // Get directory path (e.g. / or /app/)
+            const basePath = currentPath.substring(0, currentPath.lastIndexOf('/') + 1);
+            const swUrl = window.location.protocol + '//' + window.location.host + basePath + 'sw.js';
+            
+            console.log('Signet SW: Registering at', swUrl);
+
+            navigator.serviceWorker.register(swUrl, { scope: basePath })
+              .then(reg => console.log('SW registered!', reg))
+              .catch(err => console.error('SW failed!', err));
+          } catch (e) {
+            console.error('Signet SW: Construction Error', e);
+          }
         });
       }
     </script>
