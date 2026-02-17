@@ -21,6 +21,45 @@ app.use((req, res, next) => {
     next();
 });
 
+// --- CRITICAL STATIC ASSETS ---
+// Explicitly handle these SVGs before any other middleware to ensure they are served 
+// with the correct MIME type and are not caught by the SPA fallback.
+
+app.get('/signed_signetai-solar-system.svg', (req, res) => {
+    res.type('image/svg+xml');
+    const publicPath = path.join(__dirname, 'public/signed_signetai-solar-system.svg');
+    const rootPath = path.join(__dirname, 'signed_signetai-solar-system.svg');
+
+    res.sendFile(publicPath, (err) => {
+        if (err) {
+            // Fallback to root if not in public
+            res.sendFile(rootPath, (err2) => {
+                if (err2) {
+                    console.error('SVG Asset Not Found:', err2);
+                    res.status(404).send('Asset not found');
+                }
+            });
+        }
+    });
+});
+
+app.get('/signetai-solar-system.svg', (req, res) => {
+    res.type('image/svg+xml');
+    const publicPath = path.join(__dirname, 'public/signetai-solar-system.svg');
+    const rootPath = path.join(__dirname, 'signetai-solar-system.svg');
+
+    res.sendFile(publicPath, (err) => {
+        if (err) {
+            res.sendFile(rootPath, (err2) => {
+                if (err2) {
+                    console.error('SVG Asset Not Found:', err2);
+                    res.status(404).send('Asset not found');
+                }
+            });
+        }
+    });
+});
+
 // Serve static assets from 'public' (Standard for source assets)
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -29,18 +68,6 @@ app.use(express.static(path.join(__dirname, 'dist')));
 
 // Fallback to index.html for SPA routing
 app.get('*', (req, res) => {
-    // Explicit serving of root-level SVGs if they fail static middleware for any reason
-    if (req.path === '/signed_signetai-solar-system.svg') {
-        return res.sendFile(path.join(__dirname, 'public/signed_signetai-solar-system.svg'), (err) => {
-             if (err) res.sendFile(path.join(__dirname, 'dist/index.html'));
-        });
-    }
-    if (req.path === '/signetai-solar-system.svg') {
-        return res.sendFile(path.join(__dirname, 'public/signetai-solar-system.svg'), (err) => {
-             if (err) res.sendFile(path.join(__dirname, 'dist/index.html'));
-        });
-    }
-    
     res.sendFile(path.join(__dirname, 'dist/index.html'));
 });
 

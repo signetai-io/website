@@ -26,7 +26,7 @@ export const Hero: React.FC<{ onOpenPortal: () => void }> = ({ onOpenPortal }) =
           </button>
           
           <button 
-            onClick={() => window.location.href = '#verify?url=./signed_signetai-solar-system.svg'}
+            onClick={() => window.location.href = '#verify?url=/signed_signetai-solar-system.svg'}
             className="px-8 py-3 border border-[var(--trust-blue)] text-[var(--trust-blue)] text-[11px] font-bold uppercase tracking-widest rounded hover:bg-[var(--trust-blue)] hover:text-white transition-all flex items-center gap-2"
           >
             <span>⚡</span> Try Demo

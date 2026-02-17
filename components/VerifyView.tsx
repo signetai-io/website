@@ -166,7 +166,8 @@ export const VerifyView: React.FC = () => {
   };
 
   const loadDemo = () => {
-    const demoUrl = './signed_signetai-solar-system.svg';
+    // Use absolute path to ensure correct routing
+    const demoUrl = '/signed_signetai-solar-system.svg';
     setUrlInput(demoUrl);
     handleUrlFetch(demoUrl);
   };
@@ -307,7 +308,7 @@ export const VerifyView: React.FC = () => {
                   >
                     <span>⚡</span> Load Demo: signed_signetai-solar-system.svg
                   </button>
-                  <a href="./signetai-solar-system.svg" target="_blank" className="text-[10px] text-[var(--text-body)] opacity-40 hover:opacity-100 font-mono uppercase font-bold">
+                  <a href="/signetai-solar-system.svg" target="_blank" className="text-[10px] text-[var(--text-body)] opacity-40 hover:opacity-100 font-mono uppercase font-bold">
                     (View Original)
                   </a>
                 </div>
