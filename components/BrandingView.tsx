@@ -83,12 +83,12 @@ export const BrandingView: React.FC = () => {
               <div className="flex gap-4">
                 <div className="w-16 h-16 bg-black rounded-xl border border-neutral-700 shadow-lg relative overflow-hidden">
                    {/* Abstract representation of the 192px icon content */}
-                   <div className="absolute inset-0 bg-[url('./192.png')] bg-cover opacity-80"></div>
+                   <div className="absolute inset-0 bg-[url('/192.png')] bg-cover opacity-80"></div>
                    <div className="absolute inset-0 flex items-center justify-center text-white font-bold text-xs opacity-50">192</div>
                 </div>
                 <div className="w-32 h-32 bg-black rounded-xl border border-neutral-700 shadow-lg relative overflow-hidden">
                    {/* Abstract representation of the 512px icon content */}
-                   <div className="absolute inset-0 bg-[url('./512.png')] bg-cover opacity-80"></div>
+                   <div className="absolute inset-0 bg-[url('/512.png')] bg-cover opacity-80"></div>
                    <div className="absolute inset-0 flex items-center justify-center text-white font-bold text-lg opacity-50">512</div>
                 </div>
               </div>

@@ -11,18 +11,18 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Signet">
     
-    <!-- PWA Manifest (Relative Path) -->
-    <link rel="manifest" href="./manifest.json">
+    <!-- PWA Manifest (Absolute Path) -->
+    <link rel="manifest" href="/manifest.json">
     
     <!-- Favicon Strategy: Multi-Layer Fallback -->
     <!-- 1. Legacy ICO (Simulated via Data URI) -->
     <link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAAAeElEQVRYhe3WMQqDQBSE4f986S186S186S1SuAiKiIVrs00hF0h8bAJZ16TMrElW984cAAAAAElFTkSuQmCC" sizes="any">
     
-    <!-- 2. Modern PNG (Relative Path) -->
-    <link rel="icon" type="image/png" href="./192.png">
+    <!-- 2. Modern PNG (Absolute Path - Served from Public) -->
+    <link rel="icon" type="image/png" href="/192.png">
     
-    <!-- 3. Apple Touch (Relative Path) -->
-    <link rel="apple-touch-icon" href="./192.png">
+    <!-- 3. Apple Touch (Absolute Path - Served from Public) -->
+    <link rel="apple-touch-icon" href="/192.png">
     
     <title>Signet AI | Technical Specification & VPR Standard</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -161,21 +161,12 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          // Robust Service Worker Registration
-          // 1. Verify Protocol: SW only works on https or localhost.
           if (!window.location.protocol.startsWith('http')) {
              console.warn('Signet SW: Skipping registration (invalid protocol).');
              return;
           }
-
-          // 2. Manual URL Construction:
-          // The environment may inject a <base> tag pointing to 'ai.studio' (the parent frame),
-          // causing relative paths like './sw.js' to resolve to the parent origin.
-          // We must explicitly construct the URL using 'window.location' to force 
-          // registration on the current sandboxed origin.
           try {
             const currentPath = window.location.pathname;
-            // Get directory path (e.g. / or /app/)
             const basePath = currentPath.substring(0, currentPath.lastIndexOf('/') + 1);
             const swUrl = window.location.protocol + '//' + window.location.host + basePath + 'sw.js';
             

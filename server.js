@@ -18,27 +18,27 @@ app.use((req, res, next) => {
 // --- 1. DUAL STATIC MOUNT STRATEGY ---
 
 // A. Serve 'public' folder at '/public' URL 
-// (Fixes: https://signetai.io/public/signed_signetai-solar-system.svg)
 app.use('/public', express.static(path.join(__dirname, 'public')));
 
+// SECURITY: Explicitly forbid directory listing on /public root
+app.get('/public', (req, res) => {
+    res.status(403).send('Signet Protocol: Directory Listing Prohibited');
+});
+
 // B. Serve 'public' & 'dist' at Root URL 
-// (Standard: https://signetai.io/signed_signetai-solar-system.svg)
+// This allows files in 'public' (like 192.png) to be accessed at root (signetai.io/192.png)
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname, 'dist')));
 
 
 // --- 2. ROBUST FALLBACK FOR CRITICAL ASSETS ---
-// Even if static middleware fails (e.g. file is in root but requested via /public),
-// these handlers manually hunt for the file in all possible locations.
-
 function serveWithFallback(res, filename, contentType) {
     const locations = [
-        path.join(__dirname, 'public', filename), // 1. Source Public
-        path.join(__dirname, 'dist', filename),   // 2. Build Output
-        path.join(__dirname, filename)            // 3. Project Root
+        path.join(__dirname, 'public', filename), 
+        path.join(__dirname, 'dist', filename),   
+        path.join(__dirname, filename)            
     ];
 
-    // Find the first location that actually exists on disk
     const validPath = locations.find(loc => fs.existsSync(loc));
 
     if (validPath) {
@@ -50,17 +50,16 @@ function serveWithFallback(res, filename, contentType) {
     }
 }
 
-// Critical Signed Assets (Allow access via root or /public/*)
 const criticalAssets = [
     'signed_signetai-solar-system.svg',
-    'signetai-solar-system.svg'
+    'signetai-solar-system.svg',
+    '192.png',
+    '512.png'
 ];
 
 criticalAssets.forEach(file => {
-    // Handle root access
-    app.get(`/${file}`, (req, res) => serveWithFallback(res, file, 'image/svg+xml'));
-    // Handle /public/ access manually as backup
-    app.get(`/public/${file}`, (req, res) => serveWithFallback(res, file, 'image/svg+xml'));
+    app.get(`/${file}`, (req, res) => serveWithFallback(res, file, file.endsWith('svg') ? 'image/svg+xml' : 'image/png'));
+    app.get(`/public/${file}`, (req, res) => serveWithFallback(res, file, file.endsWith('svg') ? 'image/svg+xml' : 'image/png'));
 });
 
 
