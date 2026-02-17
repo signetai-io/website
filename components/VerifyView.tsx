@@ -202,6 +202,13 @@ export const VerifyView: React.FC = () => {
     handleUrlFetch(demoUrl);
   };
 
+  const loadUnsignedDemo = () => {
+    // Use absolute path to ensure correct routing
+    const demoUrl = 'https://www.signetai.io/public/signetai-solar-system.svg';
+    setUrlInput(demoUrl);
+    handleUrlFetch(demoUrl);
+  };
+
   const renderPreview = () => {
     if (!file || !previewUrl) return null;
 
@@ -384,17 +391,27 @@ export const VerifyView: React.FC = () => {
                 </button>
              </div>
 
-             <div className="flex justify-between items-center">
-                <div className="flex items-center gap-4">
+             <div className="space-y-2 border-t border-[var(--border-light)] pt-4 mt-2">
+                <p className="font-mono text-[9px] uppercase opacity-40 font-bold tracking-widest mb-1">Quick Demos</p>
+                
+                <div className="flex items-center justify-between hover:bg-white/5 p-1 rounded transition-colors">
                   <button 
                     onClick={loadDemo}
                     className="text-[10px] text-[var(--trust-blue)] hover:underline font-mono uppercase font-bold flex items-center gap-2"
                   >
-                    <span>⚡</span> Load Demo: signed_signetai-solar-system.svg
+                    <span>⚡</span> signed_signetai-solar-system.svg
                   </button>
-                  <a href="https://www.signetai.io/public/signetai-solar-system.svg" target="_blank" className="text-[10px] text-[var(--text-body)] opacity-40 hover:opacity-100 font-mono uppercase font-bold">
-                    (View Original)
-                  </a>
+                  <span className="text-[9px] font-bold text-emerald-500 bg-emerald-50 px-1.5 rounded border border-emerald-100">VALID</span>
+                </div>
+
+                <div className="flex items-center justify-between hover:bg-white/5 p-1 rounded transition-colors">
+                  <button 
+                    onClick={loadUnsignedDemo}
+                    className="text-[10px] text-[var(--text-body)] hover:text-red-500 hover:underline font-mono uppercase font-bold flex items-center gap-2 transition-colors opacity-70 hover:opacity-100"
+                  >
+                    <span>⚡</span> signetai-solar-system.svg
+                  </button>
+                  <span className="text-[9px] font-bold text-red-500 bg-red-50 px-1.5 rounded border border-red-100">UNSIGNED</span>
                 </div>
              </div>
 
