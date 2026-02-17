@@ -14,14 +14,30 @@ export const VerifyView: React.FC = () => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Check for deep-linked URL params on mount
+  // Robust URL Param Extraction (Search + Hash)
+  const getUrlParam = (param: string) => {
+    // 1. Check standard query string
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get(param)) return searchParams.get(param);
+
+    // 2. Check Hash string (e.g. #verify?url=...)
+    const hash = window.location.hash;
+    const qIndex = hash.indexOf('?');
+    if (qIndex !== -1) {
+      const hashParams = new URLSearchParams(hash.substring(qIndex));
+      return hashParams.get(param);
+    }
+    return null;
+  };
+
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const deepLinkUrl = params.get('url') || params.get('verify_url');
+    const deepLinkUrl = getUrlParam('url') || getUrlParam('verify_url');
     
     if (deepLinkUrl) {
-      setUrlInput(deepLinkUrl);
-      handleUrlFetch(deepLinkUrl);
+      // Decode if encoded
+      const decodedUrl = decodeURIComponent(deepLinkUrl);
+      setUrlInput(decodedUrl);
+      handleUrlFetch(decodedUrl);
     }
   }, []);
 
@@ -40,6 +56,7 @@ export const VerifyView: React.FC = () => {
     setFetchError(null);
     setFile(null);
     setManifest(null);
+    setShowL2(false);
     
     try {
       // In a real env, this might need a CORS proxy if the target doesn't allow cross-origin
@@ -55,11 +72,15 @@ export const VerifyView: React.FC = () => {
       const fetchedFile = new File([blob], urlFileName, { type: blob.type });
       
       setFile(fetchedFile);
+      // Auto-trigger verify for deep links to streamline UX
+      handleVerify(fetchedFile);
     } catch (err: any) {
       console.error("Fetch error:", err);
       let msg = "Failed to fetch asset.";
       if (err.message.includes('Failed to fetch') || err.name === 'TypeError') {
         msg = "CORS Error: The hosting server blocked this request. Try downloading the file and dragging it here instead.";
+      } else {
+        msg = `Fetch Error: ${err.message}`;
       }
       setFetchError(msg);
     } finally {
@@ -90,27 +111,47 @@ export const VerifyView: React.FC = () => {
     }
   }, []);
 
-  const handleVerify = () => {
-    if (!file) return;
+  const handleVerify = (targetFile: File | null = file) => {
+    if (!targetFile) return;
     setIsVerifying(true);
     
     // Simulated C2PA v2.3 Verification Loop
     setTimeout(() => {
+      // Logic: If it's our specific demo file, show a specific manifest
+      const isDemo = targetFile.name.includes('solar-system');
+      
       setManifest({
         signature: {
-          identity: "Signet Alpha Model",
+          identity: isDemo ? "signetai.io:ssl" : "Signet Alpha Model",
           anchor: "signetai.io:ssl",
-          timestamp: Date.now() - 1000 * 60 * 5,
+          timestamp: Date.now() - (isDemo ? 1000 * 60 * 60 * 24 : 1000 * 60 * 5), // 24h ago for demo
         },
-        assertions: [{
-          data: {
-            actions: [{ softwareAgent: "Signet AI Neural Prism v0.2.7" }]
+        assertions: [
+          {
+            label: "c2pa.actions",
+            data: {
+              actions: [{ action: "c2pa.created", softwareAgent: "Neural Prism v0.2.7" }]
+            }
+          },
+          {
+            label: "org.signetai.vpr",
+            data: {
+              score: 0.9998,
+              logic_hash: isDemo ? "sha256:c17e...907b" : "sha256:dynamic..."
+            }
           }
-        }]
+        ],
+        isDemo
       });
       setIsVerifying(false);
       setShowL2(true);
     }, 1500);
+  };
+
+  const loadDemo = () => {
+    const demoUrl = './signed_signetai-solar-system.svg';
+    setUrlInput(demoUrl);
+    handleUrlFetch(demoUrl);
   };
 
   return (
@@ -142,13 +183,18 @@ export const VerifyView: React.FC = () => {
             {isFetching ? (
                <div className="text-center space-y-4 relative z-10 animate-pulse">
                  <span className="text-6xl">🌐</span>
-                 <p className="font-mono text-[10px] uppercase font-bold tracking-[0.3em]">Resolving Remote Asset...</p>
+                 <p className="font-mono text-[10px] uppercase font-bold tracking-[0.3em] text-[var(--trust-blue)]">Resolving Remote Asset...</p>
+                 <p className="text-xs font-mono opacity-50">{urlInput}</p>
                </div>
             ) : file ? (
-              <div className="text-center space-y-4 relative z-10">
+              <div className="text-center space-y-4 relative z-10 animate-in zoom-in-95 duration-300">
                 <span className="text-6xl">🛡️</span>
                 <p className="font-mono text-sm font-bold text-[var(--text-header)]">{file.name}</p>
-                <p className="text-xs opacity-40 uppercase font-mono tracking-widest">Substrate Ready for Audit</p>
+                <div className="flex justify-center gap-2">
+                   <p className="text-xs opacity-40 uppercase font-mono tracking-widest">Substrate Ready</p>
+                   <span className="text-xs opacity-30 font-mono">|</span>
+                   <p className="text-xs opacity-40 uppercase font-mono tracking-widest">{(file.size / 1024).toFixed(1)} KB</p>
+                </div>
                 
                 {manifest && (
                   <div className="absolute top-0 right-[-60px]">
@@ -204,14 +250,23 @@ export const VerifyView: React.FC = () => {
                 </button>
              </div>
 
+             <div className="flex justify-between items-center">
+                <button 
+                  onClick={loadDemo}
+                  className="text-[10px] text-[var(--trust-blue)] hover:underline font-mono uppercase font-bold flex items-center gap-2"
+                >
+                  <span>⚡</span> Load Demo: signed_signetai-solar-system.svg
+                </button>
+             </div>
+
              {fetchError && (
-               <div className="p-3 bg-red-50 text-red-600 border border-red-100 rounded text-xs font-serif italic">
-                 ⚠️ {fetchError}
+               <div className="p-3 bg-red-50 text-red-600 border border-red-100 rounded text-xs font-serif italic flex gap-2 items-center">
+                 <span>⚠️</span> {fetchError}
                </div>
              )}
 
              <button 
-               onClick={handleVerify}
+               onClick={() => handleVerify(file)}
                disabled={!file || isVerifying || isFetching}
                className="w-full py-5 bg-[var(--trust-blue)] text-white font-mono text-xs uppercase font-bold tracking-[0.3em] rounded-lg shadow-2xl transition-all disabled:opacity-30 disabled:shadow-none hover:brightness-110 active:scale-95"
              >

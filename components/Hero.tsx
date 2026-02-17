@@ -24,12 +24,14 @@ export const Hero: React.FC<{ onOpenPortal: () => void }> = ({ onOpenPortal }) =
           >
             Verify Asset (/verify)
           </button>
-          <a 
-            href="#auditor" 
-            className="px-8 py-3 border border-[var(--trust-blue)] text-[var(--trust-blue)] text-[11px] font-bold uppercase tracking-widest rounded hover:bg-[var(--admonition-bg)] transition-all text-center"
+          
+          <button 
+            onClick={() => window.location.href = '#verify?url=./signed_signetai-solar-system.svg'}
+            className="px-8 py-3 border border-[var(--trust-blue)] text-[var(--trust-blue)] text-[11px] font-bold uppercase tracking-widest rounded hover:bg-[var(--trust-blue)] hover:text-white transition-all flex items-center gap-2"
           >
-            Sign Asset
-          </a>
+            <span>⚡</span> Try Demo
+          </button>
+
           <a 
             href="#spec" 
             className="px-8 py-3 border border-[var(--border-light)] text-[var(--text-header)] text-[11px] font-bold uppercase tracking-widest rounded hover:bg-white/5 transition-all text-center"
