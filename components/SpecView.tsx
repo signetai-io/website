@@ -97,6 +97,37 @@ def recover_manifest(image_file):
     )
   },
   {
+    title: "Universal Tail-Wrap (UTW)",
+    text: "For binary media formats where native C2PA injection is computationally prohibitive in the browser, Signet mandates the Universal Tail-Wrap (UTW) protocol.\n\nStructure:\n[BINARY_DATA] + [EOF] + [\\n%SIGNET_VPR_START\\n] + [JSON_MANIFEST] + [\\n%SIGNET_VPR_END]\n\nThis ensures 100% reader compatibility while maintaining cryptographic linkage via the 'Content Body Hash' assertion.",
+    content: (
+      <div className="space-y-8 animate-in fade-in duration-500">
+        <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">2.5 Universal Tail-Wrap (UTW)</h2>
+        <p className="opacity-80 leading-loose mb-6">
+          For binary media formats where native C2PA injection is computationally prohibitive in the browser, Signet mandates the <strong>Universal Tail-Wrap (UTW)</strong> protocol.
+        </p>
+        <div className="p-6 bg-[var(--code-bg)] border border-[var(--border-light)] rounded font-mono text-[11px] space-y-4">
+          <p className="text-[var(--trust-blue)] font-bold">Injection Topology:</p>
+          <div className="flex items-center gap-2 text-center text-white">
+             <div className="flex-1 bg-neutral-600 p-2 rounded">Original Binary (MP4/JPG/WAV)</div>
+             <div className="text-black">➜</div>
+             <div className="bg-red-500 p-2 rounded w-16">EOF</div>
+             <div className="text-black">➜</div>
+             <div className="flex-1 bg-[var(--trust-blue)] p-2 rounded">Signet Manifest (JSON)</div>
+          </div>
+          <div className="mt-4 pt-4 border-t border-black/10">
+             <p className="text-[var(--text-header)] font-bold mb-2">Structure Definition:</p>
+             <code className="block p-2 bg-black/5 rounded text-[10px]">
+               [BINARY_BYTES] + [0x0A] + "%SIGNET_VPR_START" + [0x0A] + [VPR_JSON] + [0x0A] + "%SIGNET_VPR_END"
+             </code>
+          </div>
+        </div>
+        <p className="text-xs font-serif italic opacity-60">
+          Note: This method is compliant with Signet Level 3 verification but requires specialized extractors (UniversalSigner) to read, as standard C2PA tools expect JUMBF boxes.
+        </p>
+      </div>
+    )
+  },
+  {
     title: "Identity & Vault Recovery",
     text: "Signet identities are anchored to a System Anchor in the global registry. If a local curatorial vault is lost, the Vault Recovery Protocol (VRP-R) enables the re-derivation of signing keys via a 24-word mnemonic.\n\nLayer 0: Cryptographic Root\n• ALGORITHM: ED25519-256\n• PUBLIC KEY: 256-BIT (64 HEX CHARS)\n• ENTROPY: 264-BIT SOVEREIGN\n• RECOVERY: VRP-R (24-WORD MNEMONIC)",
     content: (
