@@ -119,7 +119,9 @@ export const UniversalSigner: React.FC = () => {
         setVerificationResult({
             success: match,
             identity: manifest.signature.signer,
+            timestamp: manifest.signature.timestamp,
             hash: manifest.asset.content_hash,
+            fileName: manifest.asset.filename,
             strategy: manifest.strategy,
             msg: match ? `Authentic. ${manifest.asset.type} integrity verified.` : "TAMPERED. Binary hash mismatch."
         });
@@ -421,7 +423,7 @@ export const UniversalSigner: React.FC = () => {
             <div className={`text-4xl ${verificationResult.success ? 'grayscale-0' : 'grayscale'}`}>
                 {verificationResult.success ? '🛡️' : '⚠️'}
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 w-full">
                 <h4 className={`font-serif text-2xl font-bold italic ${verificationResult.success ? 'text-emerald-800' : 'text-red-800'}`}>
                     {verificationResult.success ? 'Universal Integrity Verified' : 'Verification Failed'}
                 </h4>
@@ -430,17 +432,29 @@ export const UniversalSigner: React.FC = () => {
                 </p>
                 {verificationResult.success && verificationResult.identity && (
                     <div className="pt-4 grid grid-cols-2 gap-4">
-                        <div className="bg-white/50 p-2 rounded">
+                        <div className="bg-white/50 p-3 rounded">
                             <p className="font-mono text-[9px] uppercase font-bold opacity-40">Signed By</p>
-                            <p className="font-mono text-[10px] font-bold">{verificationResult.identity}</p>
+                            <p className="font-mono text-[10px] font-bold break-all">{verificationResult.identity}</p>
                         </div>
-                        <div className="bg-white/50 p-2 rounded">
+                        <div className="bg-white/50 p-3 rounded">
                             <p className="font-mono text-[9px] uppercase font-bold opacity-40">Method</p>
                             <p className="font-mono text-[10px] font-bold truncate">{verificationResult.strategy}</p>
                         </div>
-                        <div className="bg-white/50 p-2 rounded col-span-2">
+                        {verificationResult.timestamp && (
+                            <div className="bg-white/50 p-3 rounded">
+                                <p className="font-mono text-[9px] uppercase font-bold opacity-40">Timestamp</p>
+                                <p className="font-mono text-[10px] font-bold">{new Date(verificationResult.timestamp).toLocaleString()}</p>
+                            </div>
+                        )}
+                        {verificationResult.fileName && (
+                            <div className="bg-white/50 p-3 rounded">
+                                <p className="font-mono text-[9px] uppercase font-bold opacity-40">Original Filename</p>
+                                <p className="font-mono text-[10px] font-bold truncate">{verificationResult.fileName}</p>
+                            </div>
+                        )}
+                        <div className="bg-white/50 p-3 rounded col-span-2">
                             <p className="font-mono text-[9px] uppercase font-bold opacity-40">Verified Hash (Streamed)</p>
-                            <p className="font-mono text-[10px] font-bold truncate">{verificationResult.hash}</p>
+                            <p className="font-mono text-[10px] font-bold break-all">{verificationResult.hash}</p>
                         </div>
                     </div>
                 )}

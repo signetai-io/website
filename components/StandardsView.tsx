@@ -16,6 +16,13 @@ export const StandardsView: React.FC = () => {
     { feature: "Compatibility", c2pa: "Standard Adobe Tools", signet: "Signet Verifier (Schema Aligned)" }
   ];
 
+  const keyMatrix = [
+    { feature: "Root of Trust", c2pa: "Centralized CA (DigiCert)", signet: "Decentralized Registry (TKS)" },
+    { feature: "Algorithm", c2pa: "RSA / ECDSA (X.509)", signet: "Ed25519 (Raw Public Key)" },
+    { feature: "Cost / Access", c2pa: "$$$ (Enterprise Only)", signet: "Near-Zero (Democratized)" },
+    { feature: "Revocation", c2pa: "OCSP / CRL Lists", signet: "Registry State Updates" }
+  ];
+
   const architecturalComparison = [
     { 
       metric: "Injection Strategy", 
@@ -155,6 +162,140 @@ export const StandardsView: React.FC = () => {
               ))}
             </tbody>
           </table>
+        </div>
+      </section>
+
+      <section className="mb-16">
+        <h3 className="text-xl font-bold mb-4 border-b border-[var(--border-light)] pb-2 text-[var(--text-header)]">1.4 Identity & Key Infrastructure</h3>
+        <p className="mb-6 text-[var(--text-body)]">
+          Signet departs from the traditional <strong>X.509 PKI</strong> infrastructure used by major C2PA providers (Adobe/Microsoft) in favor of a decentralized <strong>Ed25519</strong> system. This reduces the barrier to entry for the "8 Billion" human curators.
+        </p>
+        
+        <div className="overflow-x-auto my-8 border border-[var(--border-light)] rounded bg-[var(--bg-standard)]">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-[var(--table-header)] border-b border-[var(--border-light)]">
+              <tr>
+                <th className="px-6 py-4 font-bold text-[var(--text-header)]">Infrastructure</th>
+                <th className="px-6 py-4 font-bold text-[var(--text-header)]">C2PA (Institutional)</th>
+                <th className="px-6 py-4 font-bold text-[var(--trust-blue)]">Signet (Sovereign)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--border-light)]">
+              {keyMatrix.map((row, i) => (
+                <tr key={i} className="hover:bg-white/5 transition-colors">
+                  <td className="px-6 py-4 font-medium text-[var(--text-header)]">{row.feature}</td>
+                  <td className="px-6 py-4 text-[var(--text-body)] opacity-70">{row.c2pa}</td>
+                  <td className="px-6 py-4 font-semibold text-[var(--trust-blue)]">{row.signet}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pros & Cons Analysis */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
+          {/* C2PA X.509 Analysis */}
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 pb-2 border-b border-[var(--border-light)]">
+              <span className="text-xl">🏢</span>
+              <h4 className="font-bold text-[var(--text-header)]">C2PA (X.509 PKI)</h4>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <p className="font-mono text-[9px] uppercase font-bold text-green-600 mb-2">Pros</p>
+                <ul className="space-y-2">
+                  <li className="flex gap-2 text-sm opacity-80">
+                    <span className="text-green-500 font-bold">✓</span>
+                    <span>Broad enterprise trust (Adobe/Microsoft roots).</span>
+                  </li>
+                  <li className="flex gap-2 text-sm opacity-80">
+                    <span className="text-green-500 font-bold">✓</span>
+                    <span>Standardized revocation (OCSP/CRL).</span>
+                  </li>
+                  <li className="flex gap-2 text-sm opacity-80">
+                    <span className="text-green-500 font-bold">✓</span>
+                    <span>Legal recognition in regulated industries.</span>
+                  </li>
+                </ul>
+              </div>
+              
+              <div>
+                <p className="font-mono text-[9px] uppercase font-bold text-red-600 mb-2">Cons</p>
+                <ul className="space-y-2">
+                  <li className="flex gap-2 text-sm opacity-80">
+                    <span className="text-red-500 font-bold">✕</span>
+                    <span>High cost ($$$/yr per seat).</span>
+                  </li>
+                  <li className="flex gap-2 text-sm opacity-80">
+                    <span className="text-red-500 font-bold">✕</span>
+                    <span>Gatekept by centralized CAs (DigiCert).</span>
+                  </li>
+                  <li className="flex gap-2 text-sm opacity-80">
+                    <span className="text-red-500 font-bold">✕</span>
+                    <span>Complex certificate chain management.</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* Signet Ed25519 Analysis */}
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 pb-2 border-b border-[var(--border-light)]">
+              <span className="text-xl">🛡️</span>
+              <h4 className="font-bold text-[var(--trust-blue)]">Signet (Sovereign)</h4>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <p className="font-mono text-[9px] uppercase font-bold text-green-600 mb-2">Pros</p>
+                <ul className="space-y-4">
+                  <li className="flex gap-2 text-sm opacity-80">
+                    <span className="text-green-500 font-bold mt-1">✓</span>
+                    <div className="space-y-2">
+                      <span className="font-bold text-[var(--trust-blue)]">Amortized Trust Economy (Near Zero Cost)</span>
+                      <p className="text-xs leading-relaxed">
+                        Signet absorbs the minimal registry OpEx. While content generation is high-value (~$3000/yr), the signing cost is negligible (~$3).
+                      </p>
+                      <div className="bg-[var(--bg-standard)] border border-[var(--border-light)] p-3 rounded text-[10px] font-mono shadow-sm">
+                        <p className="font-bold mb-1">Effective Cost = Gen_Cost / N_Verifiers</p>
+                        <p className="opacity-70">
+                          If a $3000 asset is verified by 100 people, the cost per trust-unit drops to $30. As N grows, the amortized cost approaches zero.
+                        </p>
+                      </div>
+                    </div>
+                  </li>
+                  <li className="flex gap-2 text-sm opacity-80">
+                    <span className="text-green-500 font-bold">✓</span>
+                    <span>Non-custodial (You own your keys).</span>
+                  </li>
+                  <li className="flex gap-2 text-sm opacity-80">
+                    <span className="text-green-500 font-bold">✓</span>
+                    <span>Quantum-resistant key sizes (Small/Fast).</span>
+                  </li>
+                </ul>
+              </div>
+              
+              <div>
+                <p className="font-mono text-[9px] uppercase font-bold text-red-600 mb-2">Cons</p>
+                <ul className="space-y-2">
+                  <li className="flex gap-2 text-sm opacity-80">
+                    <span className="text-red-500 font-bold">✕</span>
+                    <span>Trust is reputation-based (Web of Trust).</span>
+                  </li>
+                  <li className="flex gap-2 text-sm opacity-80">
+                    <span className="text-red-500 font-bold">✕</span>
+                    <span>Responsibility: Lost keys = Lost Identity.</span>
+                  </li>
+                  <li className="flex gap-2 text-sm opacity-80">
+                    <span className="text-red-500 font-bold">✕</span>
+                    <span>Newer standard (ISO/TC 290 adoption pending).</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
