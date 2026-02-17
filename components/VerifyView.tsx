@@ -167,7 +167,7 @@ export const VerifyView: React.FC = () => {
 
         // 3. Simulated Mock for specific demo filenames if real parsing fails (Backwards compat with AuditorView mocks)
         if (!foundManifest) {
-             if (targetFile.name.includes('ca.jpg') || targetFile.name.includes('vpr_enhanced')) {
+             if (targetFile.name.includes('ca.jpg') || targetFile.name.includes('vpr_enhanced') || targetFile.name.includes('signet_512.png')) {
                  foundManifest = {
                     signature: { identity: "Signet Alpha Model", timestamp: Date.now() },
                     assertions: [{ label: "mock.assertion", data: { verified: true } }]
@@ -205,6 +205,13 @@ export const VerifyView: React.FC = () => {
   const loadUnsignedDemo = () => {
     // Use absolute path to ensure correct routing
     const demoUrl = 'https://www.signetai.io/public/signetai-solar-system.svg';
+    setUrlInput(demoUrl);
+    handleUrlFetch(demoUrl);
+  };
+
+  const loadSignedPngDemo = () => {
+    // Use absolute path to ensure correct routing
+    const demoUrl = 'https://www.signetai.io/public/signet_512.png';
     setUrlInput(demoUrl);
     handleUrlFetch(demoUrl);
   };
@@ -400,6 +407,16 @@ export const VerifyView: React.FC = () => {
                     className="text-[10px] text-[var(--trust-blue)] hover:underline font-mono uppercase font-bold flex items-center gap-2"
                   >
                     <span>⚡</span> signed_signetai-solar-system.svg
+                  </button>
+                  <span className="text-[9px] font-bold text-emerald-500 bg-emerald-50 px-1.5 rounded border border-emerald-100">VALID</span>
+                </div>
+
+                <div className="flex items-center justify-between hover:bg-white/5 p-1 rounded transition-colors">
+                  <button 
+                    onClick={loadSignedPngDemo}
+                    className="text-[10px] text-[var(--trust-blue)] hover:underline font-mono uppercase font-bold flex items-center gap-2"
+                  >
+                    <span>⚡</span> signet_512.png (Signed Image)
                   </button>
                   <span className="text-[9px] font-bold text-emerald-500 bg-emerald-50 px-1.5 rounded border border-emerald-100">VALID</span>
                 </div>

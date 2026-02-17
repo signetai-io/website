@@ -54,7 +54,9 @@ const criticalAssets = [
     'signed_signetai-solar-system.svg',
     'signetai-solar-system.svg',
     '192.png',
-    '512.png'
+    '512.png',
+    'signet_192.png',
+    'signet_512.png'
 ];
 
 criticalAssets.forEach(file => {
