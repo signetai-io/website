@@ -1,9 +1,8 @@
-const CACHE_NAME = 'signet-v0.3.5-stable';
+const CACHE_NAME = 'signet-v0.3.8-stable';
 const URLS_TO_CACHE = [
   '/',
   '/index.html',
-  '/manifest.json',
-  '/icon.svg'
+  '/manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
@@ -14,18 +13,19 @@ self.addEventListener('install', (event) => {
         console.log('Signet PWA: Caching critical assets');
         return cache.addAll(URLS_TO_CACHE);
       })
+      .catch((err) => {
+        console.error('Signet PWA: Critical Cache Failed', err);
+      })
   );
 });
 
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   
-  // Navigation requests (HTML) should fall back to index.html for SPA routing
   if (request.mode === 'navigate') {
     event.respondWith(
       caches.match('/index.html').then((response) => {
         return response || fetch(request).catch(() => {
-             // If both cache and network fail, show offline page (or index.html from cache as last resort)
              return caches.match('/index.html');
         });
       })
@@ -33,7 +33,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Asset requests
   event.respondWith(
     caches.match(request)
       .then((response) => {

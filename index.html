@@ -14,14 +14,14 @@
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json">
     
-    <!-- Favicons -->
-    <!-- 1. Base64 PNG (Universal Fallback - Guaranteed to show) -->
-    <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAAAeElEQVRYhe3WMQqDQBSE4f986S186S186S1SuAiKiIVrs00hF0h8bAJZ16TMrElW984cAAAAAElFTkSuQmCC">
+    <!-- Favicon Strategy: Multi-Layer Fallback -->
+    <!-- 1. Legacy ICO (Simulated via Data URI) -->
+    <link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAAAeElEQVRYhe3WMQqDQBSE4f986S186S186S1SuAiKiIVrs00hF0h8bAJZ16TMrElW984cAAAAAElFTkSuQmCC" sizes="any">
     
-    <!-- 2. SVG (Modern Browsers - Prioritized via sizes="any") -->
-    <link rel="icon" type="image/svg+xml" sizes="any" href="/icon.svg">
+    <!-- 2. Modern SVG -->
+    <link rel="icon" type="image/svg+xml" href="/icon.svg">
     
-    <!-- 3. Apple Touch Icon -->
+    <!-- 3. Apple Touch (Using SVG as high-res source) -->
     <link rel="apple-touch-icon" href="/icon.svg">
     
     <title>Signet AI | Technical Specification & VPR Standard</title>
@@ -162,12 +162,8 @@
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-              console.log('Signet PWA ServiceWorker registered: ', registration.scope);
-            })
-            .catch(err => {
-              console.log('Signet PWA ServiceWorker registration failed: ', err);
-            });
+            .then(reg => console.log('SW registered!', reg))
+            .catch(err => console.error('SW failed!', err));
         });
       }
     </script>
