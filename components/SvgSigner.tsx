@@ -72,6 +72,7 @@ export const SvgSigner: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'PREVIEW' | 'CODE' | 'DIFF'>('PREVIEW');
   const [verificationResult, setVerificationResult] = useState<any>(null);
   const [fileName, setFileName] = useState<string>('upload.svg');
+  const [showADR, setShowADR] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -287,10 +288,34 @@ ${JSON.stringify(manifest, null, 2)}
             <div className="px-2 py-0.5 bg-black text-white text-[8px] font-bold rounded font-mono">XML_DSIG_HYBRID</div>
         </div>
         <h2 className="text-5xl font-bold italic tracking-tighter text-[var(--text-header)]">SVG Signer.</h2>
-        <p className="text-xl opacity-60 max-w-2xl font-serif italic">
-            Injects a verifiable JUMBF-equivalent JSON manifest directly into the SVG <code>&lt;metadata&gt;</code> block. Supports chain-signing for multi-party attestation.
-        </p>
+        <div className="flex flex-col gap-2">
+            <p className="text-xl opacity-60 max-w-2xl font-serif italic">
+                Injects a verifiable JUMBF-equivalent JSON manifest directly into the SVG <code>&lt;metadata&gt;</code> block. Supports chain-signing for multi-party attestation.
+            </p>
+            <div className="flex items-center gap-2 mt-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span className="font-mono text-[10px] text-[var(--text-body)] opacity-60 uppercase font-bold">Implementation: Signet Native (No c2pa-js/WASM Dependency)</span>
+                <button onClick={() => setShowADR(!showADR)} className="text-[10px] text-[var(--trust-blue)] underline hover:text-blue-600 ml-2">Why not JUMBF?</button>
+            </div>
+        </div>
       </header>
+
+      {showADR && (
+        <div className="p-6 bg-amber-50 border border-amber-200 rounded-lg animate-in slide-in-from-top-2 relative">
+            <button onClick={() => setShowADR(false)} className="absolute top-2 right-2 opacity-30 hover:opacity-100">✕</button>
+            <h4 className="font-mono text-[11px] uppercase font-bold text-amber-800 mb-2">Architectural Decision Record (ADR): Signet vs C2PA Standard</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm opacity-80 leading-relaxed font-serif">
+                <div>
+                    <strong className="block text-amber-900 mb-1">Why C2PA uses Binary JUMBF:</strong>
+                    The C2PA specification prioritizes <em>Universal Parsing</em>. Since most media formats (JPEG, MP4, PDF) are binary, they force SVG to use the same binary container (base64 encoded JUMBF) so a single library (`c2pa-rs`) can parse everything without needing specialized XML logic.
+                </div>
+                <div>
+                    <strong className="block text-amber-900 mb-1">Why Signet uses XML-Native:</strong>
+                    We treat SVG as <em>Source Code</em>. Wrapping code in a binary blob destroys its transparency and git-diffability. Signet's XML-DSig approach allows the provenance to be read via `View Source` and tracked in version control, honoring the open nature of the vector web.
+                </div>
+            </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-[600px]">
         {/* Left Column: Input / Visual */}

@@ -9,6 +9,13 @@ export const StandardsView: React.FC = () => {
     { feature: "Scope", c2pa: "Pixels/Text", signet: "Reasoning Substrate" }
   ];
 
+  const svgMatrix = [
+    { feature: "Format", c2pa: "Binary JUMBF (c2pa-js)", signet: "XML Metadata (Signet-Native)" },
+    { feature: "Readability", c2pa: "Binary Blob (Base64)", signet: "Human-Readable XML" },
+    { feature: "Tooling", c2pa: "Requires WASM/Rust", signet: "Lightweight JS/Regex" },
+    { feature: "Compatibility", c2pa: "Standard Adobe Tools", signet: "Signet Verifier (Schema Aligned)" }
+  ];
+
   return (
     <article className="prose prose-slate max-w-none">
       <header className="mb-16">
@@ -46,13 +53,41 @@ export const StandardsView: React.FC = () => {
           </table>
         </div>
       </section>
+      
+      <section className="mb-16">
+        <h3 className="text-xl font-bold mb-4 border-b border-[var(--border-light)] pb-2 text-[var(--text-header)]">1.2 Vector Attestation Strategy</h3>
+        <p className="mb-6 text-[var(--text-body)]">
+          For SVG assets, Signet employs a specialized <strong>XML-Hybrid</strong> approach. While C2PA defines a standard for embedding binary JUMBF data within SVGs, Signet prioritizes code readability for vector formats.
+        </p>
+        
+        <div className="overflow-x-auto my-8 border border-[var(--border-light)] rounded bg-[var(--bg-standard)]">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-[var(--table-header)] border-b border-[var(--border-light)]">
+              <tr>
+                <th className="px-6 py-4 font-bold text-[var(--text-header)]">Metric</th>
+                <th className="px-6 py-4 font-bold text-[var(--text-header)]">Standard C2PA-JS</th>
+                <th className="px-6 py-4 font-bold text-[var(--trust-blue)]">Signet Native SVG</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--border-light)]">
+              {svgMatrix.map((row, i) => (
+                <tr key={i} className="hover:bg-white/5 transition-colors">
+                  <td className="px-6 py-4 font-medium text-[var(--text-header)]">{row.feature}</td>
+                  <td className="px-6 py-4 text-[var(--text-body)] opacity-70">{row.c2pa}</td>
+                  <td className="px-6 py-4 font-semibold text-[var(--trust-blue)]">{row.signet}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       <Admonition type="security" title="Cryptographic Assurance">
         All L4 attestation signatures MUST use 256-bit Ed25519. This ensures the integrity of the Human-in-the-loop signet against modern computational brute-force techniques.
       </Admonition>
 
       <section className="mb-16">
-        <h3 className="text-xl font-bold mb-4 text-[var(--text-header)]">1.2 External References</h3>
+        <h3 className="text-xl font-bold mb-4 text-[var(--text-header)]">1.3 External References</h3>
         <ul className="space-y-4">
           <li>
             <a href="https://spec.c2pa.org/specifications/specifications/2.3/index.html" target="_blank" className="text-[var(--trust-blue)] hover:underline font-medium">
