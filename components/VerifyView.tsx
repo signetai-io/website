@@ -4,6 +4,7 @@ import { NutritionLabel } from './NutritionLabel';
 
 export const VerifyView: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const [manifest, setManifest] = useState<any>(null);
@@ -41,6 +42,17 @@ export const VerifyView: React.FC = () => {
     }
   }, []);
 
+  // Effect to manage object URLs to avoid memory leaks
+  useEffect(() => {
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setPreviewUrl(null);
+    }
+  }, [file]);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
@@ -63,6 +75,11 @@ export const VerifyView: React.FC = () => {
       const response = await fetch(url);
       
       if (!response.ok) {
+        // If we get an HTML response (like the SPA fallback), throw a specific error
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('text/html')) {
+             throw new Error("Target is HTML (SPA Fallback?), not a raw asset.");
+        }
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       
@@ -154,6 +171,35 @@ export const VerifyView: React.FC = () => {
     handleUrlFetch(demoUrl);
   };
 
+  const renderPreview = () => {
+    if (!file || !previewUrl) return null;
+
+    if (file.type.startsWith('image/')) {
+        return (
+            <img 
+              src={previewUrl} 
+              alt="Verification Target" 
+              className="max-w-full max-h-[80%] object-contain shadow-lg rounded border border-white/20"
+            />
+        );
+    } else if (file.type.startsWith('video/')) {
+        return (
+            <video 
+              src={previewUrl} 
+              controls 
+              className="max-w-full max-h-[80%] rounded shadow-lg"
+            />
+        );
+    } else {
+        return (
+            <div className="text-center space-y-4">
+                <span className="text-6xl">🛡️</span>
+                <p className="font-mono text-sm font-bold text-[var(--text-header)] uppercase tracking-widest">{file.type || 'BINARY_FILE'}</p>
+            </div>
+        );
+    }
+  };
+
   return (
     <div className="py-12 space-y-12 animate-in fade-in duration-700">
       <header className="space-y-4">
@@ -187,17 +233,20 @@ export const VerifyView: React.FC = () => {
                  <p className="text-xs font-mono opacity-50">{urlInput}</p>
                </div>
             ) : file ? (
-              <div className="text-center space-y-4 relative z-10 animate-in zoom-in-95 duration-300">
-                <span className="text-6xl">🛡️</span>
-                <p className="font-mono text-sm font-bold text-[var(--text-header)]">{file.name}</p>
-                <div className="flex justify-center gap-2">
-                   <p className="text-xs opacity-40 uppercase font-mono tracking-widest">Substrate Ready</p>
-                   <span className="text-xs opacity-30 font-mono">|</span>
-                   <p className="text-xs opacity-40 uppercase font-mono tracking-widest">{(file.size / 1024).toFixed(1)} KB</p>
+              <div className="relative z-10 w-full h-full flex flex-col items-center justify-center p-8 animate-in zoom-in-95 duration-300">
+                {renderPreview()}
+                
+                <div className="mt-6 flex flex-col items-center gap-1 bg-black/5 p-3 rounded-lg backdrop-blur-sm border border-black/5">
+                   <p className="font-mono text-sm font-bold text-[var(--text-header)]">{file.name}</p>
+                   <div className="flex gap-3">
+                        <p className="text-[10px] opacity-40 uppercase font-mono tracking-widest">Substrate Ready</p>
+                        <span className="text-[10px] opacity-20">|</span>
+                        <p className="text-[10px] opacity-40 uppercase font-mono tracking-widest">{(file.size / 1024).toFixed(1)} KB</p>
+                   </div>
                 </div>
                 
                 {manifest && (
-                  <div className="absolute top-0 right-[-60px]">
+                  <div className="absolute top-4 right-4">
                     <div className="cr-badge w-12 h-12 bg-white text-[var(--trust-blue)] shadow-xl animate-bounce">cr</div>
                   </div>
                 )}
@@ -251,12 +300,17 @@ export const VerifyView: React.FC = () => {
              </div>
 
              <div className="flex justify-between items-center">
-                <button 
-                  onClick={loadDemo}
-                  className="text-[10px] text-[var(--trust-blue)] hover:underline font-mono uppercase font-bold flex items-center gap-2"
-                >
-                  <span>⚡</span> Load Demo: signed_signetai-solar-system.svg
-                </button>
+                <div className="flex items-center gap-4">
+                  <button 
+                    onClick={loadDemo}
+                    className="text-[10px] text-[var(--trust-blue)] hover:underline font-mono uppercase font-bold flex items-center gap-2"
+                  >
+                    <span>⚡</span> Load Demo: signed_signetai-solar-system.svg
+                  </button>
+                  <a href="./signetai-solar-system.svg" target="_blank" className="text-[10px] text-[var(--text-body)] opacity-40 hover:opacity-100 font-mono uppercase font-bold">
+                    (View Original)
+                  </a>
+                </div>
              </div>
 
              {fetchError && (

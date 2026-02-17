@@ -21,11 +21,26 @@ app.use((req, res, next) => {
     next();
 });
 
-// Serve static assets for the main app
+// Serve static assets from 'public' (Standard for source assets)
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Serve static assets from 'dist' (Production build artifacts)
 app.use(express.static(path.join(__dirname, 'dist')));
 
 // Fallback to index.html for SPA routing
 app.get('*', (req, res) => {
+    // Explicit serving of root-level SVGs if they fail static middleware for any reason
+    if (req.path === '/signed_signetai-solar-system.svg') {
+        return res.sendFile(path.join(__dirname, 'public/signed_signetai-solar-system.svg'), (err) => {
+             if (err) res.sendFile(path.join(__dirname, 'dist/index.html'));
+        });
+    }
+    if (req.path === '/signetai-solar-system.svg') {
+        return res.sendFile(path.join(__dirname, 'public/signetai-solar-system.svg'), (err) => {
+             if (err) res.sendFile(path.join(__dirname, 'dist/index.html'));
+        });
+    }
+    
     res.sendFile(path.join(__dirname, 'dist/index.html'));
 });
 
