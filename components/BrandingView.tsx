@@ -74,6 +74,55 @@ export const BrandingView: React.FC = () => {
         </div>
       </section>
 
+      <section className="mb-24">
+        <h2 className="text-2xl font-bold mb-12 border-b border-[var(--border-light)] pb-2 text-[var(--text-header)]">3. PWA Iconography</h2>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+          <div className="space-y-6">
+            <div className="p-8 border border-[var(--border-light)] bg-[var(--bg-sidebar)] rounded-xl space-y-6">
+              <div className="flex gap-4">
+                <div className="w-16 h-16 bg-black rounded-xl border border-neutral-700 shadow-lg relative overflow-hidden">
+                   {/* Abstract representation of the 192px icon content */}
+                   <div className="absolute inset-0 bg-[url('./192.png')] bg-cover opacity-80"></div>
+                   <div className="absolute inset-0 flex items-center justify-center text-white font-bold text-xs opacity-50">192</div>
+                </div>
+                <div className="w-32 h-32 bg-black rounded-xl border border-neutral-700 shadow-lg relative overflow-hidden">
+                   {/* Abstract representation of the 512px icon content */}
+                   <div className="absolute inset-0 bg-[url('./512.png')] bg-cover opacity-80"></div>
+                   <div className="absolute inset-0 flex items-center justify-center text-white font-bold text-lg opacity-50">512</div>
+                </div>
+              </div>
+              <div>
+                <h4 className="font-serif text-lg font-bold italic text-[var(--text-header)]">The "Trust Stack" Metaphor</h4>
+                <p className="text-sm opacity-70 mt-2 leading-relaxed">
+                  The PWA icons utilize a "Zoom-in" macro composition. Instead of showing the full logo, we crop into the <strong>Digital Fingerprint</strong>. This communicates "Inspection" and "Granularity"—Signet verifies the microscopic reasoning path, not just the final output.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-8">
+            <div className="space-y-4">
+              <h4 className="font-mono text-[10px] uppercase font-bold text-[var(--trust-blue)] tracking-widest">Technical Implementation</h4>
+              <ul className="space-y-6">
+                <li className="flex gap-4">
+                  <span className="font-mono text-xs font-bold text-[var(--text-header)]">192px (The Token)</span>
+                  <p className="text-xs opacity-60 leading-relaxed">
+                    Optimized for Android Homescreens and Task Switchers. The high-contrast black hexagon against the white/transparent background ensures the silhouette is legible even at 48dp.
+                  </p>
+                </li>
+                <li className="flex gap-4">
+                  <span className="font-mono text-xs font-bold text-[var(--text-header)]">512px (The Manifest)</span>
+                  <p className="text-xs opacity-60 leading-relaxed">
+                    Required for PWA Splash Screens and Desktop Installs. The high resolution allows the <strong>interwoven circuitry</strong> (The AI Agent) to be clearly visible threading through the <strong>fingerprint ridges</strong> (The Human N=100).
+                  </p>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <Admonition type="important" title="Typography Usage">
         The Wordmark MUST use a clean, bold sans-serif (Inter Bold or similar) with 100% spelling accuracy. The tagline MUST be set in a lighter weight with increased letter-spacing.
       </Admonition>
