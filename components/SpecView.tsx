@@ -103,27 +103,26 @@ def recover_manifest(image_file):
       <div className="space-y-8 animate-in fade-in duration-500">
         <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">2.5 Universal Tail-Wrap (UTW)</h2>
         <p className="opacity-80 leading-loose mb-6">
-          For binary media formats where native C2PA injection is computationally prohibitive in the browser, Signet mandates the <strong>Universal Tail-Wrap (UTW)</strong> protocol.
+          To support infinite file sizes (e.g., 4K RAW Video) without browser memory crashes, Signet implements <strong>Zero-Copy Streaming</strong> with <strong>Block-Chained Hashing</strong>.
         </p>
         <div className="p-6 bg-[var(--code-bg)] border border-[var(--border-light)] rounded font-mono text-[11px] space-y-4">
-          <p className="text-[var(--trust-blue)] font-bold">Injection Topology:</p>
+          <p className="text-[var(--trust-blue)] font-bold">Injection Topology (Zero-Copy):</p>
           <div className="flex items-center gap-2 text-center text-white">
-             <div className="flex-1 bg-neutral-600 p-2 rounded">Original Binary (MP4/JPG/WAV)</div>
+             <div className="flex-1 bg-neutral-600 p-2 rounded" title="Reference Only (Disk)">Original Binary (Reference)</div>
              <div className="text-black">➜</div>
-             <div className="bg-red-500 p-2 rounded w-16">EOF</div>
-             <div className="text-black">➜</div>
-             <div className="flex-1 bg-[var(--trust-blue)] p-2 rounded">Signet Manifest (JSON)</div>
+             <div className="flex-1 bg-[var(--trust-blue)] p-2 rounded">Signet Manifest (Memory)</div>
           </div>
+          <p className="opacity-50 italic mt-2">
+            The browser stitches these parts virtually during download, consuming only ~5KB of RAM regardless of file size.
+          </p>
           <div className="mt-4 pt-4 border-t border-black/10">
-             <p className="text-[var(--text-header)] font-bold mb-2">Structure Definition:</p>
+             <p className="text-[var(--text-header)] font-bold mb-2">Block-Chained Hash (Stream V1):</p>
              <code className="block p-2 bg-black/5 rounded text-[10px]">
-               [BINARY_BYTES] + [0x0A] + "%SIGNET_VPR_START" + [0x0A] + [VPR_JSON] + [0x0A] + "%SIGNET_VPR_END"
+               H_i = SHA256(H_prev + Chunk_i)
              </code>
+             <p className="opacity-50 mt-1">Allows authenticating 10GB+ streams using standard WebCrypto chunks.</p>
           </div>
         </div>
-        <p className="text-xs font-serif italic opacity-60">
-          Note: This method is compliant with Signet Level 3 verification but requires specialized extractors (UniversalSigner) to read, as standard C2PA tools expect JUMBF boxes.
-        </p>
       </div>
     )
   },
