@@ -54,7 +54,7 @@ export const StandardsView: React.FC = () => {
     <article className="prose prose-slate max-w-none">
       <header className="mb-16">
         <div className="text-[10px] font-mono text-[var(--trust-blue)] uppercase font-bold mb-4 tracking-[0.3em]">Section 1.0</div>
-        <h2 className="text-4xl font-bold mb-6 text-[var(--text-header)]">Standards & Compliance (v2.3)</h2>
+        <h2 className="text-4xl font-bold mb-6 text-[var(--text-header)]">Standards & Compliance (v0.3.1)</h2>
         <p className="text-lg text-[var(--text-body)] opacity-80">
           Signet Protocol adheres to the <strong>C2PA 2.3 Technical Specification</strong> while introducing specialized architectural patterns for lightweight, browser-native verification.
         </p>
@@ -256,12 +256,13 @@ export const StandardsView: React.FC = () => {
                     <div className="space-y-2">
                       <span className="font-bold text-[var(--trust-blue)]">Amortized Trust Economy (Near Zero Cost)</span>
                       <p className="text-xs leading-relaxed">
-                        Signet absorbs the minimal registry OpEx (~$3/sign). While content generation is high-value (~$3000/yr), the signing cost is negligible.
+                        Signet acts as the specification definer and key database service. The operational cost of signing is minimal (~$3). 
+                        While high-quality content generation costs ~$3000/year, sharing it with 100 people amortizes the cost.
                       </p>
                       <div className="bg-[var(--bg-standard)] border border-[var(--border-light)] p-3 rounded text-[10px] font-mono shadow-sm">
-                        <p className="font-bold mb-1">Effective Cost = Gen_Cost / N_Verifiers</p>
+                        <p className="font-bold mb-1">Cost Formula: $3000 / 100 = $30</p>
                         <p className="opacity-70">
-                          If a $3000 asset is verified by 100 people, cost drops to $30. As N grows, amortized cost approaches zero.
+                          As the number of verifiers (N) grows, the amortized cost per trust-unit approaches zero.
                         </p>
                       </div>
                     </div>

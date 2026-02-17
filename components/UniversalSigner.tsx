@@ -209,7 +209,7 @@ export const UniversalSigner: React.FC = () => {
     const manifest = {
       "@context": "https://signetai.io/contexts/vpr-v1.jsonld",
       "type": "org.signetai.media_provenance",
-      "version": "0.2.7",
+      "version": "0.3.1",
       "strategy": strategy,
       "hashing_mode": strategy === 'XML_INJECTION' ? 'SHA256_FULL' : 'SHA256_BLOCK_CHAINED',
       "asset": {

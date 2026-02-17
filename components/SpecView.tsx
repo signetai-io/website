@@ -4,13 +4,13 @@ import { jsPDF } from 'jspdf';
 const SPEC_PAGES = [
   {
     title: "Abstract & Introduction",
-    text: "The Signet Protocol defines a framework for the cryptographic attestation of AI-generated reasoning paths. Version 0.2.7 introduces the Vault Recovery Protocol (VRP-R) and Dual-Mode Manifest Delivery. By utilizing the Neural Lens engine, the protocol transforms non-deterministic LLM outputs into formally verified 'Signets,' while providing curators with a non-custodial 24-word mnemonic for identity restoration.\n\nAs AI moves from 'Chat' to 'Reasoning,' current watermarking standards (C2PA) are insufficient because they only sign the final result, not the process. Signet Protocol introduces 'Process Provenance' via Verifiable Proof of Reasoning (VPR).",
+    text: "The Signet Protocol defines a framework for the cryptographic attestation of AI-generated reasoning paths. Version 0.3.1 introduces the Universal Tail-Wrap (UTW) and Zero-Copy Streaming Engine. By utilizing the Neural Lens engine, the protocol transforms non-deterministic LLM outputs into formally verified 'Signets,' while providing curators with a non-custodial 24-word mnemonic for identity restoration.\n\nAs AI moves from 'Chat' to 'Reasoning,' current watermarking standards (C2PA) are insufficient because they only sign the final result, not the process. Signet Protocol introduces 'Process Provenance' via Verifiable Proof of Reasoning (VPR).",
     content: (
       <div className="space-y-8 animate-in fade-in duration-500">
         <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic underline underline-offset-8 decoration-1 decoration-neutral-500/30">Abstract</h2>
         <p className="indent-12 opacity-80 leading-loose">
           The Signet Protocol defines a framework for the cryptographic attestation of AI-generated reasoning paths. 
-          Version 0.2.7 introduces the <strong>Vault Recovery Protocol (VRP-R)</strong> and <strong>Dual-Mode Manifest Delivery</strong>. 
+          Version 0.3.1 introduces the <strong>Universal Tail-Wrap (UTW)</strong> and <strong>Zero-Copy Streaming Engine</strong>. 
           By utilizing the Neural Lens engine, the protocol transforms non-deterministic LLM outputs into formally verified "Signets," 
           while providing curators with a non-custodial 24-word mnemonic for identity restoration.
         </p>
@@ -96,7 +96,7 @@ const SPEC_PAGES = [
 
 async function signAsset(imagePath, author) {
   const manifest = createManifest({
-    actions: [{ action: 'c2pa.created', softwareAgent: 'Signet AI v0.2.7' }],
+    actions: [{ action: 'c2pa.created', softwareAgent: 'Signet AI v0.3.1' }],
     metadata: { author: author, title: 'AI Generated Vision' }
   });
 
@@ -132,7 +132,7 @@ def recover_manifest(image_file):
   },
   {
     title: "C2PA v2.3 Alignment (A.7)",
-    text: "Signet Protocol 0.2.7 is strictly aligned with the C2PA v2.3 Technical Specification (Released Jan 2026).\n\nKey Implementation Blocks:\n• Section A.7: C2PATextManifestWrapper for text streams using Unicode Variation Selectors.\n• Section 18.6: Merkle Tree Piecewise Audit for fragmented MP4 video.\n• Section 19.4: verifiable-segment-info for real-time AI live streams.",
+    text: "Signet Protocol 0.3.1 is strictly aligned with the C2PA v2.3 Technical Specification (Released Jan 2026).\n\nKey Implementation Blocks:\n• Section A.7: C2PATextManifestWrapper for text streams using Unicode Variation Selectors.\n• Section 18.6: Merkle Tree Piecewise Audit for fragmented MP4 video.\n• Section 19.4: verifiable-segment-info for real-time AI live streams.",
     content: (
       <div className="space-y-8 animate-in fade-in duration-500">
         <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">2. C2PA v2.3 Hardening</h2>
@@ -261,7 +261,7 @@ def recover_manifest(image_file):
   }
 ];
 
-const PDF_FILENAME = "Signet-Protocol-v027-Official.pdf";
+const PDF_FILENAME = "Signet-Protocol-v031-Official.pdf";
 
 export const SpecView: React.FC = () => {
   const [page, setPage] = useState(0);
@@ -293,8 +293,8 @@ export const SpecView: React.FC = () => {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(8);
         doc.setTextColor(180, 180, 180);
-        doc.text("TECHNICAL SPECIFICATION: DRAFT-SONG-SIGNET-02.7", margin + 5, 15);
-        doc.text(`RELEASE: v0.2.7-RELEASE`, pageWidth - margin - 40, 15);
+        doc.text("TECHNICAL SPECIFICATION: DRAFT-SONG-SIGNET-03.1", margin + 5, 15);
+        doc.text(`RELEASE: v0.3.1-RELEASE`, pageWidth - margin - 40, 15);
         
         // Page Number
         doc.text(`PAGE ${index + 1} OF ${SPEC_PAGES.length}`, pageWidth - margin - 20, pageHeight - 10);
@@ -351,7 +351,7 @@ export const SpecView: React.FC = () => {
     const manifest = {
       "@context": "https://signetai.io/contexts/vpr-v1.jsonld",
       "type": "org.signetai.vpr",
-      "version": "0.2.7",
+      "version": "0.3.1",
       "asset": {
         "name": PDF_FILENAME,
         "hash": "sha256:7b8c8f2d4a12b9c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4g5h6i7",
@@ -369,7 +369,7 @@ export const SpecView: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'spec_v027_official_manifest.json';
+    a.download = 'spec_v031_official_manifest.json';
     a.click();
   };
 
@@ -381,7 +381,7 @@ export const SpecView: React.FC = () => {
         <div className="flex flex-col md:flex-row justify-between mb-12 border-b border-[var(--border-light)] pb-6 text-[11px] font-mono uppercase tracking-[0.3em] opacity-40 font-bold">
           <div className="space-y-1">
             <p>Protocol Working Group | Page {page + 1}/{SPEC_PAGES.length}</p>
-            <p>Draft Song-02.7 (C2PA 2.3 Aligned)</p>
+            <p>Draft Song-03.1 (C2PA 2.3 Aligned)</p>
           </div>
           <div className="flex gap-4 mt-4 md:mt-0">
             <button 
@@ -444,7 +444,7 @@ export const SpecView: React.FC = () => {
         <div className="flex justify-center gap-8 opacity-20 hover:opacity-100 transition-opacity">
            <span className="font-mono text-[8px] uppercase font-bold tracking-widest">ISO/TC 290 COMPLIANT</span>
            <span className="font-mono text-[8px] uppercase font-bold tracking-widest">C2PA v2.3 NATIVE</span>
-           <span className="font-mono text-[8px] uppercase font-bold tracking-widest">NEURAL LENS 0.2.7</span>
+           <span className="font-mono text-[8px] uppercase font-bold tracking-widest">NEURAL LENS 0.3.1</span>
         </div>
       </div>
     </div>
