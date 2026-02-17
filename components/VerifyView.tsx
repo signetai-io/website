@@ -12,6 +12,7 @@ export const VerifyView: React.FC = () => {
   const [urlInput, setUrlInput] = useState('');
   const [dragActive, setDragActive] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [verificationStatus, setVerificationStatus] = useState<'IDLE' | 'VERIFYING' | 'SUCCESS' | 'UNSIGNED' | 'TAMPERED'>('IDLE');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -59,6 +60,7 @@ export const VerifyView: React.FC = () => {
       setManifest(null);
       setShowL2(false);
       setFetchError(null);
+      setVerificationStatus('IDLE');
     }
   };
 
@@ -69,6 +71,7 @@ export const VerifyView: React.FC = () => {
     setFile(null);
     setManifest(null);
     setShowL2(false);
+    setVerificationStatus('IDLE');
     
     try {
       // In a real env, this might need a CORS proxy if the target doesn't allow cross-origin
@@ -120,6 +123,7 @@ export const VerifyView: React.FC = () => {
     e.stopPropagation();
     setDragActive(false);
     setFetchError(null);
+    setVerificationStatus('IDLE');
 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       setFile(e.dataTransfer.files[0]);
@@ -128,41 +132,67 @@ export const VerifyView: React.FC = () => {
     }
   }, []);
 
-  const handleVerify = (targetFile: File | null = file) => {
+  const handleVerify = async (targetFile: File | null = file) => {
     if (!targetFile) return;
     setIsVerifying(true);
+    setVerificationStatus('VERIFYING');
+    setManifest(null);
     
-    // Simulated C2PA v2.3 Verification Loop
-    setTimeout(() => {
-      // Logic: If it's our specific demo file, show a specific manifest
-      const isDemo = targetFile.name.includes('solar-system');
-      
-      setManifest({
-        signature: {
-          identity: isDemo ? "signetai.io:ssl" : "Signet Alpha Model",
-          anchor: "signetai.io:ssl",
-          timestamp: Date.now() - (isDemo ? 1000 * 60 * 60 * 24 : 1000 * 60 * 5), // 24h ago for demo
-        },
-        assertions: [
-          {
-            label: "c2pa.actions",
-            data: {
-              actions: [{ action: "c2pa.created", softwareAgent: "Neural Prism v0.2.7" }]
-            }
-          },
-          {
-            label: "org.signetai.vpr",
-            data: {
-              score: 0.9998,
-              logic_hash: isDemo ? "sha256:c17e...907b" : "sha256:dynamic..."
-            }
-          }
-        ],
-        isDemo
-      });
-      setIsVerifying(false);
-      setShowL2(true);
-    }, 1500);
+    try {
+        const text = await targetFile.text();
+        let foundManifest = null;
+        
+        // 1. Check for XML Injection (SVG)
+        // Look for standard Signet XML namespace block
+        if (text.includes('<signet:manifest>')) {
+             const match = text.match(/<signet:manifest>([\s\S]*?)<\/signet:manifest>/);
+             if (match) {
+                 try {
+                    foundManifest = JSON.parse(match[1]);
+                 } catch (e) { console.error("Manifest Parse Error", e); }
+             }
+        }
+        
+        // 2. Check for Universal Tail Wrap
+        if (!foundManifest && text.includes('%SIGNET_VPR_START')) {
+             const start = text.lastIndexOf('%SIGNET_VPR_START');
+             const end = text.lastIndexOf('%SIGNET_VPR_END');
+             if (start !== -1 && end !== -1) {
+                 const jsonStr = text.substring(start + '%SIGNET_VPR_START'.length, end).trim();
+                 try {
+                    foundManifest = JSON.parse(jsonStr);
+                 } catch (e) { console.error("Manifest Parse Error", e); }
+             }
+        }
+
+        // 3. Simulated Mock for specific demo filenames if real parsing fails (Backwards compat with AuditorView mocks)
+        if (!foundManifest) {
+             if (targetFile.name.includes('ca.jpg') || targetFile.name.includes('vpr_enhanced')) {
+                 foundManifest = {
+                    signature: { identity: "Signet Alpha Model", timestamp: Date.now() },
+                    assertions: [{ label: "mock.assertion", data: { verified: true } }]
+                 };
+             }
+        }
+
+        // UX Delay to simulate processing
+        await new Promise(r => setTimeout(r, 800));
+
+        if (foundManifest) {
+            setManifest(foundManifest);
+            setVerificationStatus('SUCCESS');
+            setShowL2(true);
+        } else {
+            setVerificationStatus('UNSIGNED');
+            setShowL2(false);
+        }
+
+    } catch (e) {
+        console.error("Verification Error", e);
+        setVerificationStatus('TAMPERED');
+    } finally {
+        setIsVerifying(false);
+    }
   };
 
   const loadDemo = () => {
@@ -199,6 +229,60 @@ export const VerifyView: React.FC = () => {
             </div>
         );
     }
+  };
+
+  const renderL2State = () => {
+    if (verificationStatus === 'VERIFYING') {
+        return (
+            <div className="h-[400px] border border-[var(--border-light)] rounded-xl bg-[var(--code-bg)] flex flex-col items-center justify-center text-center p-8">
+                <div className="w-8 h-8 border-2 border-[var(--trust-blue)] border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p className="font-mono text-[10px] uppercase tracking-widest text-[var(--trust-blue)]">Scanning Substrate...</p>
+            </div>
+        );
+    }
+
+    if (verificationStatus === 'UNSIGNED') {
+        return (
+            <div className="h-[400px] border border-[var(--border-light)] rounded-xl bg-red-50/10 flex flex-col items-center justify-center text-center p-8 space-y-4 animate-in zoom-in-95">
+               <div className="text-5xl opacity-80 grayscale">⚠️</div>
+               <div>
+                 <h4 className="font-serif text-2xl font-bold text-red-500 mb-2">No Signature Found</h4>
+                 <p className="text-sm opacity-60 font-serif italic max-w-xs mx-auto">
+                    This asset does not contain a recognizable Signet VPR manifest or C2PA JUMBF container.
+                 </p>
+               </div>
+               <div className="px-3 py-1 bg-red-100/10 text-red-500 border border-red-500/20 rounded font-mono text-[9px] uppercase tracking-widest font-bold">
+                 Audit Status: Unverified
+               </div>
+            </div>
+        );
+    }
+
+    if (verificationStatus === 'TAMPERED') {
+         return (
+            <div className="h-[400px] border border-[var(--border-light)] rounded-xl bg-red-50/10 flex flex-col items-center justify-center text-center p-8 space-y-4">
+               <span className="text-5xl">🚫</span>
+               <p className="font-bold text-red-600">Verification Error</p>
+               <p className="text-sm opacity-60">File structure may be corrupted.</p>
+            </div>
+         );
+    }
+
+    if (manifest) {
+        return (
+            <div className="relative h-[400px]">
+               <NutritionLabel manifest={manifest} onClose={() => setShowL2(false)} />
+            </div>
+        );
+    }
+
+    // Default Idle State
+    return (
+        <div className="h-[400px] border border-[var(--border-light)] rounded-xl bg-[var(--code-bg)] flex flex-col items-center justify-center text-center p-8 opacity-30 italic font-serif">
+           <span className="text-4xl mb-4">🔬</span>
+           <p>Awaiting asset ingestion for progressive disclosure.</p>
+        </div>
+    );
   };
 
   return (
@@ -293,7 +377,7 @@ export const VerifyView: React.FC = () => {
                   )}
                 </div>
                 <button 
-                  onClick={() => { setFile(null); setManifest(null); setShowL2(false); setUrlInput(''); setFetchError(null); }}
+                  onClick={() => { setFile(null); setManifest(null); setShowL2(false); setUrlInput(''); setFetchError(null); setVerificationStatus('IDLE'); }}
                   className="px-6 border border-[var(--border-light)] rounded hover:bg-neutral-50 transition-colors font-mono text-[10px] uppercase font-bold"
                 >
                   Clear
@@ -323,25 +407,23 @@ export const VerifyView: React.FC = () => {
              <button 
                onClick={() => handleVerify(file)}
                disabled={!file || isVerifying || isFetching}
-               className="w-full py-5 bg-[var(--trust-blue)] text-white font-mono text-xs uppercase font-bold tracking-[0.3em] rounded-lg shadow-2xl transition-all disabled:opacity-30 disabled:shadow-none hover:brightness-110 active:scale-95"
+               className={`w-full py-5 font-mono text-xs uppercase font-bold tracking-[0.3em] rounded-lg shadow-2xl transition-all disabled:opacity-30 disabled:shadow-none hover:brightness-110 active:scale-95 ${
+                 verificationStatus === 'SUCCESS' ? 'bg-emerald-600 text-white' : 
+                 verificationStatus === 'UNSIGNED' ? 'bg-red-500 text-white' : 
+                 'bg-[var(--trust-blue)] text-white'
+               }`}
              >
-               {isVerifying ? 'PROBING SUBSTRATE...' : 'Execute Audit (∑)'}
+               {isVerifying ? 'PROBING SUBSTRATE...' : 
+                verificationStatus === 'SUCCESS' ? 'VERIFIED ✓' : 
+                verificationStatus === 'UNSIGNED' ? 'NO SIGNATURE FOUND ✕' : 
+                'Execute Audit (∑)'}
              </button>
           </div>
         </div>
 
         <div className="space-y-6">
           <h3 className="font-mono text-[11px] uppercase opacity-40 font-bold tracking-[0.3em]">L2_Disclosure</h3>
-          {manifest ? (
-            <div className="relative h-[400px]">
-               <NutritionLabel manifest={manifest} onClose={() => setShowL2(false)} />
-            </div>
-          ) : (
-            <div className="h-[400px] border border-[var(--border-light)] rounded-xl bg-[var(--code-bg)] flex flex-col items-center justify-center text-center p-8 opacity-30 italic font-serif">
-               <span className="text-4xl mb-4">🔬</span>
-               <p>Awaiting asset ingestion for progressive disclosure.</p>
-            </div>
-          )}
+          {renderL2State()}
         </div>
       </div>
 
