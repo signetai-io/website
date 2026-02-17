@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const app = express();
 
 /**
@@ -21,52 +22,45 @@ app.use((req, res, next) => {
     next();
 });
 
-// --- CRITICAL STATIC ASSETS ---
-// Explicitly handle these SVGs before any other middleware to ensure they are served 
-// with the correct MIME type and are not caught by the SPA fallback.
+// --- 1. STATIC ASSETS (High Priority) ---
+// Serve files from 'public' and 'dist' first. 
+// This handles standard file serving efficiently for any static asset.
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'dist')));
+
+// --- 2. SPECIFIC ASSET FALLBACKS ---
+// If static middleware missed them (e.g. deployment path issues where public isn't copied to dist),
+// we manually look in all possible directories to ensure availability.
+
+function serveWithFallback(res, filename, contentType) {
+    const locations = [
+        path.join(__dirname, 'public', filename),
+        path.join(__dirname, 'dist', filename),
+        path.join(__dirname, filename)
+    ];
+
+    // Find the first location that actually exists on disk
+    const validPath = locations.find(loc => fs.existsSync(loc));
+
+    if (validPath) {
+        res.type(contentType);
+        res.sendFile(validPath);
+    } else {
+        console.error(`Asset Not Found: ${filename}`);
+        res.status(404).send('Asset not found');
+    }
+}
 
 app.get('/signed_signetai-solar-system.svg', (req, res) => {
-    res.type('image/svg+xml');
-    const publicPath = path.join(__dirname, 'public/signed_signetai-solar-system.svg');
-    const rootPath = path.join(__dirname, 'signed_signetai-solar-system.svg');
-
-    res.sendFile(publicPath, (err) => {
-        if (err) {
-            // Fallback to root if not in public
-            res.sendFile(rootPath, (err2) => {
-                if (err2) {
-                    console.error('SVG Asset Not Found:', err2);
-                    res.status(404).send('Asset not found');
-                }
-            });
-        }
-    });
+    serveWithFallback(res, 'signed_signetai-solar-system.svg', 'image/svg+xml');
 });
 
 app.get('/signetai-solar-system.svg', (req, res) => {
-    res.type('image/svg+xml');
-    const publicPath = path.join(__dirname, 'public/signetai-solar-system.svg');
-    const rootPath = path.join(__dirname, 'signetai-solar-system.svg');
-
-    res.sendFile(publicPath, (err) => {
-        if (err) {
-            res.sendFile(rootPath, (err2) => {
-                if (err2) {
-                    console.error('SVG Asset Not Found:', err2);
-                    res.status(404).send('Asset not found');
-                }
-            });
-        }
-    });
+    serveWithFallback(res, 'signetai-solar-system.svg', 'image/svg+xml');
 });
 
-// Serve static assets from 'public' (Standard for source assets)
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Serve static assets from 'dist' (Production build artifacts)
-app.use(express.static(path.join(__dirname, 'dist')));
-
-// Fallback to index.html for SPA routing
+// --- 3. SPA FALLBACK ---
+// If no static file or specific route matched, serve index.html for React routing.
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'dist/index.html'));
 });
