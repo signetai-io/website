@@ -20,6 +20,7 @@ import { VerifyView } from './components/VerifyView';
 import { EcosystemView } from './components/EcosystemView';
 import { SvgSigner } from './components/SvgSigner';
 import { PdfSigner } from './components/PdfSigner';
+import { UniversalSigner } from './components/UniversalSigner';
 
 export type Theme = 'standard' | 'midnight';
 
@@ -47,7 +48,7 @@ const Sidebar: React.FC<{ currentView: string; isOpen: boolean }> = ({ currentVi
     <div className="p-8 h-full flex flex-col">
       <div className="flex items-center gap-3 mb-12 cursor-pointer" onClick={() => window.location.hash = ''}>
         <SignetLogo className="w-8 h-8 rounded-lg shadow-sm" />
-        <span className="font-bold tracking-tight text-xl text-[var(--text-header)]">Signet v0.3.0</span>
+        <span className="font-bold tracking-tight text-xl text-[var(--text-header)]">Signet v0.3.1</span>
       </div>
 
       <nav className="space-y-1 flex-1 overflow-y-auto">
@@ -62,12 +63,15 @@ const Sidebar: React.FC<{ currentView: string; isOpen: boolean }> = ({ currentVi
         <p className="px-4 pt-8 text-[10px] uppercase tracking-widest font-bold text-[var(--text-body)] opacity-40 mb-4">Identity & Trust</p>
         <a href="#identity" className={`sidebar-link ${currentView === 'identity' ? 'active' : ''}`}>5. TrustKey Registry (Register)</a>
         <a href="#verify" className={`sidebar-link ${currentView === 'verify' ? 'active' : ''}`}>6. Public Verifier (/verify)</a>
-        <a href="#auditor" className={`sidebar-link ${currentView === 'auditor' ? 'active' : ''}`}>7. Provenance Lab (Sign)</a>
+        <a href="#auditor" className={`sidebar-link ${currentView === 'auditor' ? 'active' : ''}`}>7. Provenance Lab (Sim)</a>
         <a href="#branding" className={`sidebar-link ${currentView === 'branding' ? 'active' : ''}`}>8. Branding Kit</a>
         <a href="#manual" className={`sidebar-link ${currentView === 'manual' ? 'active' : ''}`}>9. Operator's Manual</a>
         <a href="#ecosystem" className={`sidebar-link ${currentView === 'ecosystem' ? 'active' : ''}`}>10. Ecosystem Repositories</a>
-        <a href="#svg-lab" className={`sidebar-link ${currentView === 'svg-lab' ? 'active' : ''}`}>11. Vector Lab (SVG)</a>
-        <a href="#pdf-lab" className={`sidebar-link ${currentView === 'pdf-lab' ? 'active' : ''}`}>12. Document Lab (PDF)</a>
+        
+        <p className="px-4 pt-8 text-[10px] uppercase tracking-widest font-bold text-[var(--text-body)] opacity-40 mb-4">Media Labs (Active)</p>
+        <a href="#universal-lab" className={`sidebar-link ${currentView === 'universal-lab' ? 'active' : ''}`}>11. Universal Media Lab</a>
+        <a href="#svg-lab" className={`sidebar-link ml-4 opacity-70 ${currentView === 'svg-lab' ? 'active' : ''}`}>↳ SVG Vector Lab</a>
+        <a href="#pdf-lab" className={`sidebar-link ml-4 opacity-70 ${currentView === 'pdf-lab' ? 'active' : ''}`}>↳ PDF Doc Lab</a>
       </nav>
 
       <div className="pt-8 mt-8 border-t border-[var(--border-light)] space-y-6">
@@ -146,7 +150,7 @@ const Header: React.FC<{
 );
 
 const App: React.FC = () => {
-  const [view, setView] = useState<'home' | 'spec' | 'standards' | 'schema' | 'branding' | 'manual' | 'auditor' | 'identity' | 'compliance' | 'verify' | 'ecosystem' | 'svg-lab' | 'pdf-lab'>('home');
+  const [view, setView] = useState<'home' | 'spec' | 'standards' | 'schema' | 'branding' | 'manual' | 'auditor' | 'identity' | 'compliance' | 'verify' | 'ecosystem' | 'svg-lab' | 'pdf-lab' | 'universal-lab'>('home');
   const [theme, setTheme] = useState<Theme>('standard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isPortalOpen, setIsPortalOpen] = useState(false);
@@ -187,6 +191,8 @@ const App: React.FC = () => {
         setView('svg-lab');
       } else if (hash === '#pdf-lab') {
         setView('pdf-lab');
+      } else if (hash === '#universal-lab') {
+        setView('universal-lab');
       } else {
         setView('home');
       }
@@ -265,6 +271,7 @@ const App: React.FC = () => {
           {view === 'ecosystem' && <EcosystemView />}
           {view === 'svg-lab' && <SvgSigner />}
           {view === 'pdf-lab' && <PdfSigner />}
+          {view === 'universal-lab' && <UniversalSigner />}
 
           <footer className="mt-24 pt-12 border-t border-[var(--border-light)] flex flex-wrap justify-between items-center gap-6 text-[10px] font-mono opacity-50 uppercase tracking-widest text-[var(--text-body)]">
             <div className="flex items-center gap-4">
@@ -272,7 +279,7 @@ const App: React.FC = () => {
               <span>Signet Protocol Group © 2026 | Master Signatory: signetai.io:ssl</span>
             </div>
             <div>
-              VERSION: 0.3.0_STABLE
+              VERSION: 0.3.1_UTW
             </div>
           </footer>
         </div>
