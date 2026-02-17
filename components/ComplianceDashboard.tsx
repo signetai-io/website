@@ -29,14 +29,14 @@ const STRATEGY_PILLARS = [
 ];
 
 const ROADMAP = [
-  { phase: "I", days: "1-10", goal: "Substrate Hardening", status: "CURRENT", desc: "Deprecating v1 Action labels. Implementing Unicode A.7 invisible text wraps." },
-  { phase: "II", days: "11-20", goal: "L1-L3 UX Standards", status: "UPCOMING", desc: "Deploying the 'Cr' Nutrition Label standard for 2026 transparency." },
-  { phase: "III", days: "21-30", goal: "Security Escalation", status: "UPCOMING", desc: "Moving keys to HSM cluster. Enabling Merkle tree piecewise hashing for video." },
-  { phase: "IV", days: "31-40", goal: "Ecosystem Launch", status: "UPCOMING", desc: "Deploying public verifier and user analytics dashboard." }
+  { phase: "I", days: "1-10", goal: "Identity & Substrate", status: "COMPLETED", desc: "Established TrustKey Service (TKS), Sovereign Entropy (264-bit), and Base C2PA Injection." },
+  { phase: "II", days: "11-20", goal: "Vector & Doc Labs", status: "COMPLETED", desc: "Deployed SVG XML-Hybrid signing and PDF Post-EOF injection strategies." },
+  { phase: "III", days: "21-30", goal: "Universal Tail-Wrap", status: "CURRENT", desc: "Finalizing Zero-Copy Streaming Engine for GB-scale binary assets (Video/Audio)." },
+  { phase: "IV", days: "31-40", goal: "Public Verifier Launch", status: "UPCOMING", desc: "Deploying the universal /verify portal with deep-linking and drag-and-drop auditing." }
 ];
 
 export const ComplianceDashboard: React.FC = () => {
-  const [selectedPhase, setSelectedPhase] = useState(0);
+  const [selectedPhase, setSelectedPhase] = useState(2); // Default to Current Phase (III)
 
   return (
     <div className="py-12 space-y-16 animate-in fade-in duration-700">
@@ -47,7 +47,7 @@ export const ComplianceDashboard: React.FC = () => {
         </div>
         <h2 className="text-5xl font-bold italic tracking-tighter text-[var(--text-header)]">Improvement Roadmap.</h2>
         <p className="text-xl opacity-60 max-w-3xl font-serif italic leading-relaxed">
-          Signet AI's 2026 pivot focuses on three pillars: Technical Hardening, User Trust, and Platform Interoperability.
+          Signet AI's 40-day sprint focuses on three pillars: Technical Hardening, User Trust, and Platform Interoperability.
         </p>
       </header>
 
@@ -100,9 +100,14 @@ export const ComplianceDashboard: React.FC = () => {
                    </div>
                    <p className="text-xs font-serif italic opacity-70 leading-relaxed">{item.desc}</p>
                 </div>
-                {item.status === 'CURRENT' && (
-                  <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping"></div>
-                )}
+                <div className="flex flex-col items-center gap-1">
+                  {item.status === 'CURRENT' && (
+                    <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping"></div>
+                  )}
+                  {item.status === 'COMPLETED' && (
+                    <span className="text-emerald-500 font-bold text-xl">✓</span>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -113,34 +118,34 @@ export const ComplianceDashboard: React.FC = () => {
            <h3 className="font-mono text-[11px] uppercase opacity-40 font-bold tracking-[0.3em]">Strategy Map</h3>
            <div className="p-8 border border-[var(--border-light)] rounded-xl bg-[var(--code-bg)] space-y-8">
               <div className="space-y-4">
-                <p className="font-mono text-[10px] font-bold uppercase text-[var(--trust-blue)]">Transparency First</p>
+                <p className="font-mono text-[10px] font-bold uppercase text-[var(--trust-blue)]">Current Velocity</p>
                 <p className="text-sm font-serif italic leading-relaxed opacity-70">
-                  "In 2026, users are weary of AI. By making the 'How it was made' process visible via L1-L3 popups, we turn compliance into a marketing advantage."
+                  "Phase III (Universal Tail-Wrap) is effectively complete. The streaming engine now handles 4K video signatures. Focus shifting to Phase IV (Public Verification)."
                 </p>
               </div>
               <div className="pt-4 border-t border-[var(--border-light)] space-y-2">
                  <div className="flex justify-between text-[10px] font-mono font-bold">
-                    <span>Interoperability Parity</span>
-                    <span className="text-amber-500">92%</span>
+                    <span>Sprint Completion</span>
+                    <span className="text-emerald-500">75%</span>
                  </div>
                  <div className="h-1 bg-[var(--border-light)] rounded-full overflow-hidden">
-                    <div className="h-full bg-amber-500 w-[92%]"></div>
+                    <div className="h-full bg-emerald-500 w-[75%]"></div>
                  </div>
               </div>
               <div className="pt-2">
                  <button 
-                  onClick={() => window.location.hash = '#verify'}
+                  onClick={() => window.location.hash = '#universal-lab'}
                   className="w-full py-3 bg-[var(--trust-blue)] text-white font-mono text-[10px] uppercase font-bold tracking-widest rounded"
                  >
-                  View /verify Portal
+                  Launch Universal Lab
                  </button>
               </div>
            </div>
         </div>
       </div>
 
-      <Admonition type="important" title="2026 Regulatory Audit">
-        Compliance with Section 18.15.2 (Actions v2) is mandatory for all production manifests emitted by the Neural Prism pipeline effective Day 1.
+      <Admonition type="important" title="Phase IV Preparations">
+        The upcoming Public Verifier (Phase IV) will require strict CORS policy updates on the storage bucket to allow browser-based streaming verification from third-party origins.
       </Admonition>
     </div>
   );

@@ -21,6 +21,7 @@ import { EcosystemView } from './components/EcosystemView';
 import { SvgSigner } from './components/SvgSigner';
 import { PdfSigner } from './components/PdfSigner';
 import { UniversalSigner } from './components/UniversalSigner';
+import { ProjectStatusView } from './components/ProjectStatusView';
 
 export type Theme = 'standard' | 'midnight';
 
@@ -72,6 +73,9 @@ const Sidebar: React.FC<{ currentView: string; isOpen: boolean }> = ({ currentVi
         <a href="#universal-lab" className={`sidebar-link ${currentView === 'universal-lab' ? 'active' : ''}`}>11. Universal Media Lab</a>
         <a href="#svg-lab" className={`sidebar-link ml-4 opacity-70 ${currentView === 'svg-lab' ? 'active' : ''}`}>↳ SVG Vector Lab</a>
         <a href="#pdf-lab" className={`sidebar-link ml-4 opacity-70 ${currentView === 'pdf-lab' ? 'active' : ''}`}>↳ PDF Doc Lab</a>
+        
+        <p className="px-4 pt-8 text-[10px] uppercase tracking-widest font-bold text-[var(--text-body)] opacity-40 mb-4">Meta</p>
+        <a href="#status" className={`sidebar-link ${currentView === 'status' ? 'active' : ''}`}>12. Project Status & Log</a>
       </nav>
 
       <div className="pt-8 mt-8 border-t border-[var(--border-light)] space-y-6">
@@ -150,7 +154,7 @@ const Header: React.FC<{
 );
 
 const App: React.FC = () => {
-  const [view, setView] = useState<'home' | 'spec' | 'standards' | 'schema' | 'branding' | 'manual' | 'auditor' | 'identity' | 'compliance' | 'verify' | 'ecosystem' | 'svg-lab' | 'pdf-lab' | 'universal-lab'>('home');
+  const [view, setView] = useState<'home' | 'spec' | 'standards' | 'schema' | 'branding' | 'manual' | 'auditor' | 'identity' | 'compliance' | 'verify' | 'ecosystem' | 'svg-lab' | 'pdf-lab' | 'universal-lab' | 'status'>('home');
   const [theme, setTheme] = useState<Theme>('standard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isPortalOpen, setIsPortalOpen] = useState(false);
@@ -193,6 +197,8 @@ const App: React.FC = () => {
         setView('pdf-lab');
       } else if (hash === '#universal-lab') {
         setView('universal-lab');
+      } else if (hash === '#status') {
+        setView('status');
       } else {
         setView('home');
       }
@@ -272,6 +278,7 @@ const App: React.FC = () => {
           {view === 'svg-lab' && <SvgSigner />}
           {view === 'pdf-lab' && <PdfSigner />}
           {view === 'universal-lab' && <UniversalSigner />}
+          {view === 'status' && <ProjectStatusView />}
 
           <footer className="mt-24 pt-12 border-t border-[var(--border-light)] flex flex-wrap justify-between items-center gap-6 text-[10px] font-mono opacity-50 uppercase tracking-widest text-[var(--text-body)]">
             <div className="flex items-center gap-4">
