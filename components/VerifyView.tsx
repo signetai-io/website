@@ -32,38 +32,6 @@ export const VerifyView: React.FC = () => {
     return null;
   };
 
-  useEffect(() => {
-    const deepLinkUrl = getUrlParam('url') || getUrlParam('verify_url');
-    
-    if (deepLinkUrl) {
-      // Decode if encoded
-      const decodedUrl = decodeURIComponent(deepLinkUrl);
-      setUrlInput(decodedUrl);
-      handleUrlFetch(decodedUrl);
-    }
-  }, []);
-
-  // Effect to manage object URLs to avoid memory leaks
-  useEffect(() => {
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
-      return () => URL.revokeObjectURL(url);
-    } else {
-      setPreviewUrl(null);
-    }
-  }, [file]);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
-      setManifest(null);
-      setShowL2(false);
-      setFetchError(null);
-      setVerificationStatus('IDLE');
-    }
-  };
-
   const handleUrlFetch = async (url: string) => {
     if (!url) return;
     setIsFetching(true);
@@ -106,6 +74,38 @@ export const VerifyView: React.FC = () => {
       setFetchError(msg);
     } finally {
       setIsFetching(false);
+    }
+  };
+
+  useEffect(() => {
+    const deepLinkUrl = getUrlParam('url') || getUrlParam('verify_url');
+    
+    if (deepLinkUrl) {
+      // Decode if encoded
+      const decodedUrl = decodeURIComponent(deepLinkUrl);
+      setUrlInput(decodedUrl);
+      handleUrlFetch(decodedUrl);
+    }
+  }, []);
+
+  // Effect to manage object URLs to avoid memory leaks
+  useEffect(() => {
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setPreviewUrl(null);
+    }
+  }, [file]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setFile(e.target.files[0]);
+      setManifest(null);
+      setShowL2(false);
+      setFetchError(null);
+      setVerificationStatus('IDLE');
     }
   };
 
@@ -211,8 +211,13 @@ export const VerifyView: React.FC = () => {
   };
 
   const loadSignedPngDemo = () => {
-    // Root relative path - assumes file is in public folder
-    const demoUrl = `${window.location.origin}/signet_512.png`;
+    const demoUrl = `${window.location.origin}/public/signet_512.png`;
+    setUrlInput(demoUrl);
+    handleUrlFetch(demoUrl);
+  };
+
+  const loadUnsignedPngDemo = () => {
+    const demoUrl = `${window.location.origin}/public/512.png`;
     setUrlInput(demoUrl);
     handleUrlFetch(demoUrl);
   };
@@ -420,6 +425,16 @@ export const VerifyView: React.FC = () => {
                     <span>⚡</span> signet_512.png (Signed Image)
                   </button>
                   <span className="text-[9px] font-bold text-emerald-500 bg-emerald-50 px-1.5 rounded border border-emerald-100">VALID</span>
+                </div>
+
+                <div className="flex items-center justify-between hover:bg-white/5 p-1 rounded transition-colors">
+                  <button 
+                    onClick={loadUnsignedPngDemo}
+                    className="text-[10px] text-[var(--text-body)] hover:text-red-500 hover:underline font-mono uppercase font-bold flex items-center gap-2 transition-colors opacity-70 hover:opacity-100"
+                  >
+                    <span>⚡</span> 512.png (Unsigned Image)
+                  </button>
+                  <span className="text-[9px] font-bold text-red-500 bg-red-50 px-1.5 rounded border border-red-100">UNSIGNED</span>
                 </div>
 
                 <div className="flex items-center justify-between hover:bg-white/5 p-1 rounded transition-colors">

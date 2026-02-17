@@ -43,10 +43,12 @@ function serveWithFallback(res, filename, contentType) {
     const validPath = locations.find(loc => fs.existsSync(loc));
 
     if (validPath) {
+        console.log(`[Signet Gateway] Serving ${filename} from: ${validPath}`);
         res.type(contentType);
+        res.set('Cache-Control', 'public, max-age=3600');
         res.sendFile(validPath);
     } else {
-        console.error(`Asset Not Found: ${filename}`);
+        console.error(`[Signet Gateway] Asset Not Found: ${filename} in checked paths.`);
         res.status(404).send('Asset not found');
     }
 }
