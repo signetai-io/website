@@ -288,6 +288,123 @@ const SPEC_PAGES = [
         </div>
       </div>
     )
+  },
+  {
+    category: "TECHNICAL AUDIT",
+    title: "11. Soft-Binding & Resilience",
+    text: "11.1 Perceptual Fingerprint Layer\nTo protect the Trust Economy from 'Clean Slate' attacks, Signet implements a Soft-Binding layer. Unlike cryptographic hashes (SHA-256) which break if a single pixel changes, a Perceptual Hash (pHash) or Neural Fingerprint remains stable across resizing, compression, and metadata stripping.\n\n11.2 Conflict Resolution\nIf a stripped asset is resigned, the Registry uses visual matching (Hamming Distance) to identify the original Root Claim. The timestamped original (A1) takes precedence over the derived claim (B1), triggering a 'Stolen Heritage' flag.",
+    content: (
+      <div className="space-y-8 animate-in fade-in duration-500">
+        <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">11. Soft-Binding Resilience</h2>
+        
+        <div className="space-y-6">
+           <div>
+              <h4 className="font-bold text-[var(--text-header)] text-lg mb-2">11.1 The Perceptual Fingerprint</h4>
+              <p className="opacity-80 text-sm leading-relaxed">
+                While SHA-256 ensures <em className="text-[var(--trust-blue)]">Integrity</em>, pHash ensures <em className="text-[var(--trust-blue)]">Persistence</em>.
+                If malicious actor B1 strips the metadata from image A1 and resigns it, the system detects the visual similarity (Hamming Distance &lt; 5) and flags the conflict.
+              </p>
+           </div>
+
+           <div className="p-6 bg-red-500/10 border border-red-500/20 rounded-lg">
+              <h4 className="font-mono text-[10px] uppercase font-bold text-red-600 mb-2">11.2 Conflict Resolution Protocol</h4>
+              <ul className="list-disc pl-5 space-y-2 text-xs opacity-80">
+                 <li><strong>Priority of Claim:</strong> The Registry's timestamped record of A1 takes legal and technical precedence.</li>
+                 <li><strong>Flagging:</strong> The UI MUST display a "Stolen Heritage" or "Unverified Derivation" warning linking to A1.</li>
+              </ul>
+           </div>
+        </div>
+      </div>
+    )
+  },
+  {
+    category: "PROTOCOL GOVERNANCE",
+    title: "12. Trust Economy & Penalties",
+    text: "To discourage the stripping of provenance data, the Signet Protocol introduces Trust Score Attrition.\n\n12.1 Malicious Actor Penalties\nRepeated 'Clean Slate' signatures on assets found to be stripped versions of existing registry entries lead to Trust Score Decay. \n\nConsequences:\n- Automatic 'Low-Confidence' flags on all future content.\n- Exclusion from high-integrity distribution networks.\n- Revocation of Sovereign Identity status.",
+    content: (
+      <div className="space-y-8 animate-in fade-in duration-500">
+        <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">12. The Trust Economy</h2>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+           <div className="p-6 border border-[var(--border-light)] bg-[var(--bg-standard)] rounded">
+              <h4 className="font-bold text-[var(--text-header)] mb-2">Auditability</h4>
+              <p className="text-xs opacity-70 leading-relaxed">
+                Every signing event is logged. If a user (B1) signs an asset that matches a pHash of a pre-existing root (A1) without declaring it as a parent, the event is flagged as a <strong>"Hostile Claim"</strong>.
+              </p>
+           </div>
+           <div className="p-6 border border-[var(--border-light)] bg-[var(--bg-standard)] rounded">
+              <h4 className="font-bold text-[var(--text-header)] mb-2">Trust Score Decay</h4>
+              <p className="text-xs opacity-70 leading-relaxed">
+                Reputation is finite. Malicious stripping burns the user's "Social Collateral", eventually isolating their identity from the trusted graph.
+              </p>
+           </div>
+        </div>
+      </div>
+    )
+  },
+  {
+    category: "TECHNICAL AUDIT",
+    title: "13. Chain Compression (Virtual Nodes)",
+    text: "13.1 The Principle of 'Amortized Trust'\nLong provenance chains increase file size. Signet solves this via Recursive Chain Compression.\n\n13.2 The Virtual Node\nWhen a chain reaches a defined threshold (e.g., 50 nodes), the protocol 'bakes' these blocks into a single Compressed Provenance Document (CPD). The asset's tail-wrap then stores only a single 'Virtual Node' containing the CPD Hash and Merkle Root. This allows O(1) file size growth while preserving the full cryptographic history.",
+    content: (
+      <div className="space-y-8 animate-in fade-in duration-500">
+        <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">13. Recursive Chain Compression</h2>
+        
+        <div className="space-y-6">
+           <div className="p-6 bg-[var(--code-bg)] border border-[var(--border-light)] rounded-lg">
+              <h4 className="font-mono text-[10px] uppercase font-bold text-[var(--trust-blue)] mb-4">13.2 Technical Workflow: "The Checkpoint"</h4>
+              <ol className="list-decimal pl-5 space-y-3 text-xs opacity-80">
+                 <li><strong>Aggregation:</strong> Nodes A[1] through A[n] are serialized into a separate JSON-LD document.</li>
+                 <li><strong>Hashing:</strong> A Merkle Tree is built from these nodes. The root of this tree becomes the ID of the Virtual Node.</li>
+                 <li><strong>Verification:</strong> Auditors verify the history by checking the Virtual Node hash against the CPD. Granular "unzipping" is optional.</li>
+              </ol>
+           </div>
+        </div>
+      </div>
+    )
+  },
+  {
+    category: "STRATEGIC ALIGNMENT",
+    title: "14. ISO/TC 290 Submission Strategy",
+    text: "How to Pitch 'Compression' to ISO/TC 290.\n\nFrame it as 'Scalable Reputation Infrastructure'.\nThe Problem: Long-term online reputation generates massive metadata ('Data Gravity').\nThe Solution: Virtual Nodes keep asset files 'light' and performant for mobile/web while maintaining 'heavy' cryptographic proof in decentralized sidecars.",
+    content: (
+      <div className="space-y-8 animate-in fade-in duration-500">
+        <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">14. ISO/TC 290 Strategy</h2>
+        
+        <p className="opacity-80 leading-loose mb-8">
+          <strong>Pitching to Mme. Hélène Xu:</strong> Frame Virtual Nodes as the solution to the "Data Gravity" problem in long-term reputation tracking.
+        </p>
+
+        <div className="overflow-hidden border border-[var(--border-light)] rounded-lg">
+           <table className="w-full text-xs text-left">
+              <thead className="bg-[var(--table-header)] border-b border-[var(--border-light)]">
+                 <tr>
+                    <th className="p-4 font-bold text-[var(--text-header)]">Feature</th>
+                    <th className="p-4 font-bold text-[var(--text-header)]">Linear Chain (Basic)</th>
+                    <th className="p-4 font-bold text-[var(--trust-blue)]">Compressed Virtual Chain (Signet)</th>
+                 </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border-light)]">
+                 <tr>
+                    <td className="p-4 font-bold">File Size</td>
+                    <td className="p-4 opacity-70">Increases with every edit.</td>
+                    <td className="p-4 font-bold text-emerald-600">Constant / O(1) growth.</td>
+                 </tr>
+                 <tr>
+                    <td className="p-4 font-bold">Audit Speed</td>
+                    <td className="p-4 opacity-70">Slower (must parse every block).</td>
+                    <td className="p-4 font-bold text-emerald-600">Instant (verify the Root Hash).</td>
+                 </tr>
+                 <tr>
+                    <td className="p-4 font-bold">Storage</td>
+                    <td className="p-4 opacity-70">Embedded only.</td>
+                    <td className="p-4 font-bold text-emerald-600">Hybrid (Embedded + Sidecar).</td>
+                 </tr>
+              </tbody>
+           </table>
+        </div>
+      </div>
+    )
   }
 ];
 
@@ -439,7 +556,7 @@ export const SpecView: React.FC = () => {
 
         <div className="mb-12 text-center space-y-4">
           <div className="inline-block mb-4">
-             <span className={`px-3 py-1 rounded-full text-[9px] font-mono font-bold uppercase tracking-widest ${SPEC_PAGES[page].category.includes('TECHNICAL') ? 'bg-[var(--code-bg)] text-[var(--trust-blue)]' : 'bg-emerald-500/10 text-emerald-600'}`}>
+             <span className={`px-3 py-1 rounded-full text-[9px] font-mono font-bold uppercase tracking-widest ${SPEC_PAGES[page].category.includes('TECHNICAL') ? 'bg-[var(--code-bg)] text-[var(--trust-blue)]' : SPEC_PAGES[page].category.includes('STRATEGIC') ? 'bg-purple-500/10 text-purple-600' : SPEC_PAGES[page].category.includes('GOVERNANCE') ? 'bg-amber-500/10 text-amber-600' : 'bg-emerald-500/10 text-emerald-600'}`}>
                 {SPEC_PAGES[page].category}
              </span>
           </div>
