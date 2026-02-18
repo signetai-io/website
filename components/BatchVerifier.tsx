@@ -363,7 +363,7 @@ export const BatchVerifier: React.FC = () => {
         </div>
         <h2 className="text-5xl font-bold italic tracking-tighter text-[var(--text-header)]">Batch Processor.</h2>
         <p className="text-xl opacity-60 max-w-2xl font-serif italic">
-          Discover, Audit, and Sign local assets. Benchmarking engine included.
+          Discover, Audit, and Sign local assets. Supports <strong>Images (PNG, JPG, SVG)</strong>, <strong>Video (MP4, MOV)</strong>, <strong>Audio (WAV)</strong>, and <strong>PDF</strong>.
         </p>
       </header>
 

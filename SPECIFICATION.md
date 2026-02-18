@@ -34,6 +34,7 @@ Compliance with C2PA 2.3 requires support for two primary transport modes.
   - Read the last 10KB of the file.
   - Search for the delimiter `%SIGNET_VPR_START`.
   - If found, extract the JSON payload.
+- **Validated Formats**: PNG, JPEG, GIF, WEBP, MP4, MOV, WAV, MP3, PDF (Post-EOF), SVG (XML).
 
 ### 3.3 Deep Verification Logic (UTW)
 When verifying an Embedded (UTW) asset, the file size has changed due to the appended signature. The verifier MUST NOT hash the entire file blindly.

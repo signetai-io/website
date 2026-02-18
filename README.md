@@ -18,6 +18,7 @@ The protocol now includes standalone Node.js tools and a Web Batch Processor.
 
 ### 3.1 Batch Processor (Web)
 A high-performance audit engine available at `/#batch`.
+- **Supported Formats**: Universal support for **Images** (PNG, JPG, SVG), **Video** (MP4, MOV), **Audio** (WAV, MP3), and **Documents** (PDF).
 - **Deep Audit**: Slices binary streams to verify original content integrity against appended signatures.
 - **Telemetry**: Real-time reporting of **Throughput (MB/s)** and **Velocity (Files/s)**.
 - **Dual Strategy**: Supports both **Embedded (UTW)** and **Sidecar (.json)** verification.
