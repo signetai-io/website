@@ -1,6 +1,12 @@
 import React from 'react';
 
 export const Hero: React.FC<{ onOpenPortal: () => void }> = ({ onOpenPortal }) => {
+  const handleDemoClick = () => {
+    const origin = window.location.origin;
+    const demoUrl = `${origin}/public/signed_signetai-solar-system.svg`;
+    window.location.href = `#verify?url=${encodeURIComponent(demoUrl)}`;
+  };
+
   return (
     <section className="mb-24">
       <div className="space-y-6">
@@ -26,7 +32,7 @@ export const Hero: React.FC<{ onOpenPortal: () => void }> = ({ onOpenPortal }) =
           </button>
           
           <button 
-            onClick={() => window.location.href = '#verify?url=https://www.signetai.io/public/signed_signetai-solar-system.svg'}
+            onClick={handleDemoClick}
             className="px-8 py-3 border border-[var(--trust-blue)] text-[var(--trust-blue)] text-[11px] font-bold uppercase tracking-widest rounded hover:bg-[var(--trust-blue)] hover:text-white transition-all flex items-center gap-2"
           >
             <span>⚡</span> Try Demo

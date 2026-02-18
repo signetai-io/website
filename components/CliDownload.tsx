@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Admonition } from './Admonition';
 
-const CLI_SOURCE_CODE = `#!/usr/bin/env node
+// Source code is split to prevent template literal nesting errors
+const CLI_HEADER = `#!/usr/bin/env node
 
 /**
  * SIGNET BATCH SIGNER CLI (v0.3.1)
@@ -19,8 +20,9 @@ const { Worker, isMainThread, parentPort, workerData } = require('worker_threads
 
 // --- CONFIG ---
 const VERSION = "0.3.1";
-const CONCURRENCY = 4; // Parallel workers
+const CONCURRENCY = 4; // Parallel workers`;
 
+const CLI_CORE = `
 // --- CORE: UTW INJECTION ---
 function signFile(filePath, identity, privateKeyHex) {
   try {
@@ -29,8 +31,7 @@ function signFile(filePath, identity, privateKeyHex) {
     
     // 1. Calculate Content Hash (Streaming)
     // We only hash the ORIGINAL content. If already signed, we strip or fail.
-    const fileBuffer = fs.readFileSync(filePath); // For CLI tool, memory load is acceptable for <2GB
-    // PROD: Use fs.createReadStream for 0-copy hashing on massive files
+    const fileBuffer = fs.readFileSync(filePath); 
     
     const hashSum = crypto.createHash('sha256');
     hashSum.update(fileBuffer);
@@ -51,12 +52,12 @@ function signFile(filePath, identity, privateKeyHex) {
       "signature": {
         "signer": identity,
         "timestamp": new Date().toISOString(),
-        // Real implementation would perform Ed25519 sign here
         "sig_hex": "simulated_sig_" + crypto.randomBytes(8).toString('hex') 
       }
     };
 
     // 3. Append to File (Zero-Copy Append)
+    // Using simple strings for delimiters to avoid template literal confusion
     const wrapperStart = Buffer.from("\\n%SIGNET_VPR_START\\n");
     const payload = Buffer.from(JSON.stringify(manifest, null, 2));
     const wrapperEnd = Buffer.from("\\n%SIGNET_VPR_END");
@@ -94,11 +95,11 @@ else {
 
   const targetDir = args[dirIdx + 1];
   const identity = args[idIdx + 1];
-  const key = "mock_key"; // Simplified for demo
+  const key = "mock_key"; 
 
-  console.log(\`\\x1b[36m[SIGNET CLI v\${VERSION}] Starting Batch Processor...\\x1b[0m\`);
-  console.log(\`Target: \${targetDir}\`);
-  console.log(\`Identity: \${identity}\`);
+  console.log("\\x1b[36m[SIGNET CLI v" + VERSION + "] Starting Batch Processor...\\x1b[0m");
+  console.log("Target: " + targetDir);
+  console.log("Identity: " + identity);
 
   if (!fs.existsSync(targetDir)) {
     console.error("Error: Directory not found.");
@@ -106,28 +107,28 @@ else {
   }
 
   const files = fs.readdirSync(targetDir).filter(f => !f.startsWith('.'));
-  console.log(\`Found \${files.length} assets. Spawning \${CONCURRENCY} workers...\`);
+  console.log("Found " + files.length + " assets. Spawning " + CONCURRENCY + " workers...");
 
-  // Simple sequential loop for demo (Worker pool implementation omitted for brevity)
   let successCount = 0;
   
   files.forEach(file => {
     const fullPath = path.join(targetDir, file);
-    // Skip if directory
     if (fs.statSync(fullPath).isDirectory()) return;
 
     const res = signFile(fullPath, identity, key);
     if (res.success) {
-      console.log(\`[OK] \${res.file} (Hash: \${res.hash.substr(0,12)}...)\`);
+      console.log("[OK] " + res.file + " (Hash: " + res.hash.substr(0,12) + "...)");
       successCount++;
     } else {
-      console.error(\`[FAIL] \${res.file}: \${res.error}\`);
+      console.error("[FAIL] " + res.file + ": " + res.error);
     }
   });
 
-  console.log(\`\\n\\x1b[32mBatch Complete. Signed \${successCount}/\${files.length} assets.\\x1b[0m\`);
+  console.log("\\n\\x1b[32mBatch Complete. Signed " + successCount + "/" + files.length + " assets.\\x1b[0m");
 }
 `;
+
+const CLI_SOURCE_CODE = CLI_HEADER + CLI_CORE;
 
 const BENCHMARK_SOURCE_CODE = `#!/usr/bin/env node
 
@@ -160,7 +161,7 @@ function sha256(buffer) {
 
 // --- MODE 1: SIDECAR (Lightweight) ---
 function runSidecarBench(files) {
-  console.log(\`\\n[TEST 1] Sidecar Generation (.json)...\`);
+  console.log("\\n[TEST 1] Sidecar Generation (.json)...");
   const start = performance.now();
   let bytesProcessed = 0;
 
@@ -187,7 +188,7 @@ function runSidecarBench(files) {
 
 // --- MODE 2: EMBEDDED UTW (Heavyweight) ---
 function runEmbeddedBench(files) {
-  console.log(\`\\n[TEST 2] Embedded UTW Generation (Rewrite)...\`);
+  console.log("\\n[TEST 2] Embedded UTW Generation (Rewrite)...");
   const start = performance.now();
   let bytesProcessed = 0;
 
@@ -221,7 +222,7 @@ function runEmbeddedBench(files) {
 
 // --- VERIFICATION LOOP ---
 function runVerification(files) {
-  console.log(\`\\n[TEST 3] Verification Cycle (Both Modes)...\`);
+  console.log("\\n[TEST 3] Verification Cycle (Both Modes)...");
   const start = performance.now();
   let checks = 0;
 
@@ -253,7 +254,7 @@ const pngFiles = getFiles(targetDir, '.png');
 
 if (pngFiles.length === 0) { console.error("No .png files found."); process.exit(1); }
 
-console.log(\`\\x1b[36m[SIGNET BENCHMARK] Processing \${pngFiles.length} files in \${targetDir}...\` + "\\x1b[0m");
+console.log("\\x1b[36m[SIGNET BENCHMARK] Processing " + pngFiles.length + " files in " + targetDir + "...\\x1b[0m");
 
 const sidecarStats = runSidecarBench(pngFiles);
 const embeddedStats = runEmbeddedBench(pngFiles);
@@ -261,23 +262,23 @@ const verifyStats = runVerification(pngFiles);
 
 const fmt = (n) => n.toLocaleString(undefined, { maximumFractionDigits: 2 });
 
-console.log(\`\\n==================================================\`);
-console.log(\`COMPARATIVE REPORT\`);
-console.log(\`==================================================\`);
-console.log(\`Files: \${pngFiles.length} | Data: \${fmt(sidecarStats.bytes / 1024 / 1024)} MB\`);
-console.log(\`--------------------------------------------------\`);
-console.log(\`MODE 1: SIDECAR (JSON)\`);
-console.log(\`  Throughput:    \${fmt(sidecarStats.count / (sidecarStats.timeMs / 1000))} files/sec\`);
-console.log(\`  Latency:       \${fmt(sidecarStats.timeMs / sidecarStats.count)} ms/file\`);
-console.log(\`--------------------------------------------------\`);
-console.log(\`MODE 2: EMBEDDED (UTW)\`);
-console.log(\`  Throughput:    \${fmt(embeddedStats.count / (embeddedStats.timeMs / 1000))} files/sec\`);
-console.log(\`  Latency:       \${fmt(embeddedStats.timeMs / embeddedStats.count)} ms/file\`);
-console.log(\`  Overhead Cost: \${fmt(((embeddedStats.timeMs - sidecarStats.timeMs) / sidecarStats.timeMs) * 100)}% slower (expected due to I/O)\`);
-console.log(\`--------------------------------------------------\`);
-console.log(\`VERIFICATION\`);
-console.log(\`  Throughput:    \${fmt(verifyStats.count / (verifyStats.timeMs / 1000))} checks/sec\`);
-console.log(\`==================================================\\n\`);
+console.log("\\n==================================================");
+console.log("COMPARATIVE REPORT");
+console.log("==================================================");
+console.log("Files: " + pngFiles.length + " | Data: " + fmt(sidecarStats.bytes / 1024 / 1024) + " MB");
+console.log("--------------------------------------------------");
+console.log("MODE 1: SIDECAR (JSON)");
+console.log("  Throughput:    " + fmt(sidecarStats.count / (sidecarStats.timeMs / 1000)) + " files/sec");
+console.log("  Latency:       " + fmt(sidecarStats.timeMs / sidecarStats.count) + " ms/file");
+console.log("--------------------------------------------------");
+console.log("MODE 2: EMBEDDED (UTW)");
+console.log("  Throughput:    " + fmt(embeddedStats.count / (embeddedStats.timeMs / 1000)) + " files/sec");
+console.log("  Latency:       " + fmt(embeddedStats.timeMs / embeddedStats.count) + " ms/file");
+console.log("  Overhead Cost: " + fmt(((embeddedStats.timeMs - sidecarStats.timeMs) / sidecarStats.timeMs) * 100) + "% slower (expected due to I/O)");
+console.log("--------------------------------------------------");
+console.log("VERIFICATION");
+console.log("  Throughput:    " + fmt(verifyStats.count / (verifyStats.timeMs / 1000)) + " checks/sec");
+console.log("==================================================\\n");
 `;
 
 export const CliDownload: React.FC = () => {

@@ -32,6 +32,68 @@ export const VerifyView: React.FC = () => {
     return null;
   };
 
+  // Define handleVerify early to be used in auto-trigger
+  const handleVerify = async (targetFile: File | null = file) => {
+    if (!targetFile) return;
+    setIsVerifying(true);
+    setVerificationStatus('VERIFYING');
+    setManifest(null);
+    
+    try {
+        const text = await targetFile.text();
+        let foundManifest = null;
+        
+        // 1. Check for XML Injection (SVG)
+        if (text.includes('<signet:manifest>')) {
+             const match = text.match(/<signet:manifest>([\s\S]*?)<\/signet:manifest>/);
+             if (match) {
+                 try {
+                    foundManifest = JSON.parse(match[1]);
+                 } catch (e) { console.error("Manifest Parse Error", e); }
+             }
+        }
+        
+        // 2. Check for Universal Tail Wrap
+        if (!foundManifest && text.includes('%SIGNET_VPR_START')) {
+             const start = text.lastIndexOf('%SIGNET_VPR_START');
+             const end = text.lastIndexOf('%SIGNET_VPR_END');
+             if (start !== -1 && end !== -1) {
+                 const jsonStr = text.substring(start + '%SIGNET_VPR_START'.length, end).trim();
+                 try {
+                    foundManifest = JSON.parse(jsonStr);
+                 } catch (e) { console.error("Manifest Parse Error", e); }
+             }
+        }
+
+        // 3. Simulated Mock for specific demo filenames
+        if (!foundManifest) {
+             if (targetFile.name.includes('ca.jpg') || targetFile.name.includes('vpr_enhanced') || targetFile.name.includes('signet_512.png')) {
+                 foundManifest = {
+                    signature: { identity: "Signet Alpha Model", timestamp: Date.now() },
+                    assertions: [{ label: "mock.assertion", data: { verified: true } }]
+                 };
+             }
+        }
+
+        await new Promise(r => setTimeout(r, 800));
+
+        if (foundManifest) {
+            setManifest(foundManifest);
+            setVerificationStatus('SUCCESS');
+            setShowL2(true);
+        } else {
+            setVerificationStatus('UNSIGNED');
+            setShowL2(false);
+        }
+
+    } catch (e) {
+        console.error("Verification Error", e);
+        setVerificationStatus('TAMPERED');
+    } finally {
+        setIsVerifying(false);
+    }
+  };
+
   const handleUrlFetch = async (url: string) => {
     if (!url) return;
     setIsFetching(true);
@@ -42,10 +104,7 @@ export const VerifyView: React.FC = () => {
     setVerificationStatus('IDLE');
     
     try {
-      // In a real env, this might need a CORS proxy if the target doesn't allow cross-origin
       const response = await fetch(url);
-      
-      // Check Content-Type specifically for HTML to catch SPA fallbacks
       const contentType = response.headers.get('content-type');
       if (contentType && contentType.includes('text/html')) {
            throw new Error("Target is HTML (SPA Fallback?), not a raw asset. File may be missing from server.");
@@ -56,12 +115,10 @@ export const VerifyView: React.FC = () => {
       }
       
       const blob = await response.blob();
-      // Try to get filename from url or headers
       const urlFileName = url.split('/').pop()?.split('?')[0] || 'remote_asset.bin';
       const fetchedFile = new File([blob], urlFileName, { type: blob.type });
       
       setFile(fetchedFile);
-      // Auto-trigger verify for deep links to streamline UX
       handleVerify(fetchedFile);
     } catch (err: any) {
       console.error("Fetch error:", err);
@@ -77,18 +134,29 @@ export const VerifyView: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    const deepLinkUrl = getUrlParam('url') || getUrlParam('verify_url');
-    
-    if (deepLinkUrl) {
-      // Decode if encoded
-      const decodedUrl = decodeURIComponent(deepLinkUrl);
-      setUrlInput(decodedUrl);
-      handleUrlFetch(decodedUrl);
-    }
+  // Memoized check function to safely use in useEffect
+  const checkParams = useCallback(() => {
+        const deepLinkUrl = getUrlParam('url') || getUrlParam('verify_url');
+        if (deepLinkUrl) {
+          const decodedUrl = decodeURIComponent(deepLinkUrl);
+          // Directly setting state here is fine as long as we don't depend on stale `urlInput` closure
+          // We can just rely on the fact that if deepLink exists, we want to show it.
+          setUrlInput(prev => {
+             if (prev !== decodedUrl) {
+                 handleUrlFetch(decodedUrl);
+                 return decodedUrl;
+             }
+             return prev;
+          });
+        }
   }, []);
 
-  // Effect to manage object URLs to avoid memory leaks
+  useEffect(() => {
+    checkParams();
+    window.addEventListener('hashchange', checkParams);
+    return () => window.removeEventListener('hashchange', checkParams);
+  }, [checkParams]);
+
   useEffect(() => {
     if (file) {
       const url = URL.createObjectURL(file);
@@ -133,93 +201,24 @@ export const VerifyView: React.FC = () => {
     }
   }, []);
 
-  const handleVerify = async (targetFile: File | null = file) => {
-    if (!targetFile) return;
-    setIsVerifying(true);
-    setVerificationStatus('VERIFYING');
-    setManifest(null);
-    
-    try {
-        const text = await targetFile.text();
-        let foundManifest = null;
-        
-        // 1. Check for XML Injection (SVG)
-        // Look for standard Signet XML namespace block
-        if (text.includes('<signet:manifest>')) {
-             const match = text.match(/<signet:manifest>([\s\S]*?)<\/signet:manifest>/);
-             if (match) {
-                 try {
-                    foundManifest = JSON.parse(match[1]);
-                 } catch (e) { console.error("Manifest Parse Error", e); }
-             }
-        }
-        
-        // 2. Check for Universal Tail Wrap
-        if (!foundManifest && text.includes('%SIGNET_VPR_START')) {
-             const start = text.lastIndexOf('%SIGNET_VPR_START');
-             const end = text.lastIndexOf('%SIGNET_VPR_END');
-             if (start !== -1 && end !== -1) {
-                 const jsonStr = text.substring(start + '%SIGNET_VPR_START'.length, end).trim();
-                 try {
-                    foundManifest = JSON.parse(jsonStr);
-                 } catch (e) { console.error("Manifest Parse Error", e); }
-             }
-        }
-
-        // 3. Simulated Mock for specific demo filenames if real parsing fails (Backwards compat with AuditorView mocks)
-        if (!foundManifest) {
-             if (targetFile.name.includes('ca.jpg') || targetFile.name.includes('vpr_enhanced') || targetFile.name.includes('signet_512.png')) {
-                 foundManifest = {
-                    signature: { identity: "Signet Alpha Model", timestamp: Date.now() },
-                    assertions: [{ label: "mock.assertion", data: { verified: true } }]
-                 };
-             }
-        }
-
-        // UX Delay to simulate processing
-        await new Promise(r => setTimeout(r, 800));
-
-        if (foundManifest) {
-            setManifest(foundManifest);
-            setVerificationStatus('SUCCESS');
-            setShowL2(true);
-        } else {
-            setVerificationStatus('UNSIGNED');
-            setShowL2(false);
-        }
-
-    } catch (e) {
-        console.error("Verification Error", e);
-        setVerificationStatus('TAMPERED');
-    } finally {
-        setIsVerifying(false);
-    }
-  };
-
   const loadDemo = () => {
-    // UPDATED: Use /public/ prefix for reliability
     const demoUrl = `${window.location.origin}/public/signed_signetai-solar-system.svg`;
-    setUrlInput(demoUrl);
-    handleUrlFetch(demoUrl);
+    window.location.hash = `#verify?url=${encodeURIComponent(demoUrl)}`;
   };
 
   const loadUnsignedDemo = () => {
-    // UPDATED: Use /public/ prefix
     const demoUrl = `${window.location.origin}/public/signetai-solar-system.svg`;
-    setUrlInput(demoUrl);
-    handleUrlFetch(demoUrl);
+    window.location.hash = `#verify?url=${encodeURIComponent(demoUrl)}`;
   };
 
   const loadSignedPngDemo = () => {
     const demoUrl = `${window.location.origin}/public/signet_512.png`;
-    setUrlInput(demoUrl);
-    handleUrlFetch(demoUrl);
+    window.location.hash = `#verify?url=${encodeURIComponent(demoUrl)}`;
   };
 
   const loadUnsignedPngDemo = () => {
     const demoUrl = `${window.location.origin}/public/512.png`;
-    setUrlInput(demoUrl);
-    handleUrlFetch(demoUrl);
+    window.location.hash = `#verify?url=${encodeURIComponent(demoUrl)}`;
   };
 
   const renderPreview = () => {
@@ -296,7 +295,6 @@ export const VerifyView: React.FC = () => {
         );
     }
 
-    // Default Idle State
     return (
         <div className="h-[400px] border border-[var(--border-light)] rounded-xl bg-[var(--code-bg)] flex flex-col items-center justify-center text-center p-8 opacity-30 italic font-serif">
            <span className="text-4xl mb-4">🔬</span>
@@ -327,7 +325,6 @@ export const VerifyView: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
         <div className="lg:col-span-2 space-y-8">
-          {/* Universal Ingest Zone */}
           <div 
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
@@ -382,7 +379,6 @@ export const VerifyView: React.FC = () => {
             )}
           </div>
 
-          {/* URL Input & Controls */}
           <div className="space-y-4">
              <div className="flex gap-2">
                 <div className="flex-1 relative group">

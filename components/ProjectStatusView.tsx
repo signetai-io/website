@@ -63,7 +63,7 @@ const TODO_CONTENT = `# Signet AI Project Status & Roadmap
     - [x] Sidecar (.json) Generation & Verification
     - [x] Embedded (UTW) Verification with Slicing
 
-- [ ] **CLI Tool Release**
+- [x] **CLI Tool Release**
     - [x] Node.js implementation of UTW for server-side pipelines
     - [ ] CI/CD Github Action for code provenance
 

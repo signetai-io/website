@@ -176,37 +176,39 @@ const App: React.FC = () => {
   useEffect(() => {
     const handleNavigation = () => {
       const hash = window.location.hash;
-      if (hash === '#auditor') {
+      const route = hash.split('?')[0]; // Ignore query params for routing match
+
+      if (route === '#auditor') {
         setView('auditor');
-      } else if (hash === '#identity') {
+      } else if (route === '#identity') {
         setView('identity');
-      } else if (hash === '#spec') {
+      } else if (route === '#spec') {
         setView('spec');
-      } else if (hash === '#standards') {
+      } else if (route === '#standards') {
         setView('standards');
-      } else if (hash === '#schema') {
+      } else if (route === '#schema') {
         setView('schema');
-      } else if (hash === '#branding') {
+      } else if (route === '#branding') {
         setView('branding');
-      } else if (hash === '#manual') {
+      } else if (route === '#manual') {
         setView('manual');
-      } else if (hash === '#compliance') {
+      } else if (route === '#compliance') {
         setView('compliance');
-      } else if (hash === '#verify') {
+      } else if (route === '#verify') {
         setView('verify');
-      } else if (hash === '#ecosystem') {
+      } else if (route === '#ecosystem') {
         setView('ecosystem');
-      } else if (hash === '#svg-lab') {
+      } else if (route === '#svg-lab') {
         setView('svg-lab');
-      } else if (hash === '#pdf-lab') {
+      } else if (route === '#pdf-lab') {
         setView('pdf-lab');
-      } else if (hash === '#universal-lab') {
+      } else if (route === '#universal-lab') {
         setView('universal-lab');
-      } else if (hash === '#status') {
+      } else if (route === '#status') {
         setView('status');
-      } else if (hash === '#batch') {
+      } else if (route === '#batch') {
         setView('batch');
-      } else if (hash === '#cli') {
+      } else if (route === '#cli') {
         setView('cli');
       } else {
         setView('home');
