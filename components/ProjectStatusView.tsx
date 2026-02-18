@@ -86,7 +86,7 @@ const TODO_CONTENT = `# Signet AI Project Status & Roadmap
 
 const LOG_CONTENT = `# Signet AI Evolution Log
 
-**Repository:** [github.com/signetai-io/website](https://github.com/signetai-io/website)  
+**Repository:** [github.com/shengliangsong-ai/signetai](https://github.com/shengliangsong-ai/signetai)  
 **Master Signatory:** signetai.io:ssl
 
 ---
@@ -222,6 +222,17 @@ The "Sign vs. Verify" dichotomy is artificial. The system should detect if a fil
 - **Solution**: Refactored \`verifyBlob\` to use \`Blob.slice()\` and \`calculateStreamingHash\`.
 - **Logic**: The app now scans the last 10KB of any selected file for \`%SIGNET_VPR_START\`. If found, it bypasses the signing flow and triggers immediate streaming verification.
 - **Outcome**: "Any Size. Zero RAM." UX is now fully realized for both Signing AND Verification.
+
+## Entry 23: Multimodal Documentation
+**Date:** Current
+**Task Goal:** Generate high-level explanatory content from the specification text.
+
+**Reasoning Path:**
+A text-only specification limits accessibility. We need "Cognitive Provenance" that explains itself.
+- **Tool**: Google NotebookLM.
+- **Input**: The raw text of this specification (SpecView.tsx).
+- **Output**: Autonomous "Deep Dive" Podcast summarizing the protocol.
+- **Link**: [notebooklm.google.com/notebook/f21cb...](https://notebooklm.google.com/notebook/f21cb4f4-4193-4497-b1c3-5d0b25e3b56a)
 
 ---
 *Signed: Master Curator, signetai.io:ssl*`;

@@ -25,10 +25,10 @@ export const MissionView: React.FC = () => {
           </div>
           <div className="md:col-span-8 space-y-6 text-lg leading-loose font-serif opacity-80 text-[var(--text-body)]">
              <p>
-               By 2027, Signet Risk Models—extrapolating from <a href="https://www.europol.europa.eu/media-press/newsroom/news/facing-reality-law-enforcement-and-challenge-of-deepfakes" target="_blank" className="underline decoration-dotted hover:text-[var(--trust-blue)]">Europol Innovation Lab projections</a> (90% by 2026)—estimate that <strong>97% of the internet's content will be synthetically generated</strong>.
+               Building on warnings from organizations such as the <a href="https://www.europol.europa.eu/media-press/newsroom/news/facing-reality-law-enforcement-and-challenge-of-deepfakes" target="_blank" className="underline decoration-dotted hover:text-[var(--trust-blue)]">Europol Innovation Lab</a>, many analysts expect synthetic and AI-assisted media to constitute a <strong>dominant share of newly created online content</strong> by the mid-to-late 2020s.
              </p>
              <p>
-               In this environment, "Truth" is no longer the default state of information. It is a luxury resource. Without a cryptographic chain of custody, logic drift becomes indistinguishable from fact, and hallucinations mask themselves as reality.
+               While precise global percentages are uncertain and depend on definitions and measurement methods, the overall trajectory suggests that a <strong>substantial majority</strong> of future internet content will involve generative systems, fundamentally reshaping how online information is produced, distributed, and trusted.
              </p>
              <div className="p-6 bg-red-500/5 border-l-2 border-red-500 text-red-600 text-sm font-sans">
                <span className="block font-bold mb-1 uppercase text-[10px] tracking-widest">Thesis Statement</span>

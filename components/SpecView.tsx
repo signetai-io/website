@@ -5,12 +5,15 @@ const SPEC_PAGES = [
   {
     category: "NARRATIVE STRATEGY",
     title: "1. The Crisis of Trust (Manifesto)",
-    text: "By 2027, extrapolating from Europol Innovation Lab projections (90% by 2026), it is estimated that 97% of the internet's content will be synthetically generated. In this environment of 'Infinite Content', Truth is no longer the default—it is a luxury resource.\n\nSignet Protocol proposes a new axiom: Verifiable Proof of Reasoning (VPR).\n\nIn alignment with ISO/TC 290 (Online Reputation), VPR serves as a critical defense against 'Reputation Poisoning'. By binding the 'Logic DAG'—the chain of thought—to the final asset, we create a permanent link between the prompt and the result. This prevents the weaponization of synthetic content by proving Human Intent via the L4 Human Seal.",
+    text: "Building on warnings from organizations such as the Europol Innovation Lab, many analysts expect synthetic and AI-assisted media to constitute a dominant share of newly created online content by the mid-to-late 2020s. While precise global percentages are uncertain and depend on definitions and measurement methods, the overall trajectory suggests that a substantial majority of future internet content will involve generative systems, fundamentally reshaping how online information is produced, distributed, and trusted.\n\nSignet Protocol proposes a new axiom: Verifiable Proof of Reasoning (VPR).\n\nIn alignment with ISO/TC 290 (Online Reputation), VPR serves as a critical defense against 'Reputation Poisoning'. By binding the 'Logic DAG'—the chain of thought—to the final asset, we create a permanent link between the prompt and the result. This prevents the weaponization of synthetic content by proving Human Intent via the L4 Human Seal.",
     content: (
       <div className="space-y-8 animate-in fade-in duration-500">
         <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">1. The Crisis of Trust</h2>
         <p className="opacity-80 leading-loose text-justify">
-          By 2027, extrapolating from <strong>Europol Innovation Lab</strong> projections (90% by 2026), it is estimated that <strong>97%</strong> of the internet's content will be synthetically generated.
+          Building on warnings from organizations such as the <strong>Europol Innovation Lab</strong>, many analysts expect synthetic and AI-assisted media to constitute a <strong>dominant share</strong> of newly created online content by the mid-to-late 2020s.
+        </p>
+        <p className="opacity-80 leading-loose text-justify">
+          While precise global percentages are uncertain and depend on definitions and measurement methods, the overall trajectory suggests that a substantial majority of future internet content will involve generative systems, fundamentally reshaping how online information is produced, distributed, and trusted.
         </p>
         <div className="p-6 bg-[var(--admonition-bg)] border-l-4 border-[var(--trust-blue)] space-y-4">
            <p className="font-serif italic text-lg text-[var(--text-header)]">
@@ -426,6 +429,42 @@ const SPEC_PAGES = [
                  </tr>
               </tbody>
            </table>
+        </div>
+      </div>
+    )
+  },
+  {
+    category: "TRANSPARENCY & AUDIT",
+    title: "15. Multimodal & Git Traceability",
+    text: "The Signet Protocol specification is not static text; it is a living, version-controlled artifact. \n\n15.1 Git Provenance\nAll architectural decisions (ADRs), code changes, and protocol updates are cryptographically traced in our public repository: https://github.com/shengliangsong-ai/signetai.\n\n15.2 AI-Generated Synthesis\nWe utilize Google's NotebookLM to autonomously generate high-level audio/video summaries of this very specification. This circular feedback loop—where the spec generates its own explainer material—validates our 'Cognitive Provenance' thesis.",
+    content: (
+      <div className="space-y-8 animate-in fade-in duration-500">
+        <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">15. Multimodal Audit</h2>
+        
+        <div className="space-y-6">
+           <div className="p-6 border border-[var(--border-light)] bg-[var(--bg-standard)] rounded-lg">
+              <h4 className="font-bold text-[var(--text-header)] mb-2 flex items-center gap-2">
+                <span className="text-xl">🐙</span> Git Provenance
+              </h4>
+              <p className="text-sm opacity-70 mb-4">
+                Full commit history and architectural evolution are public.
+              </p>
+              <a href="https://github.com/shengliangsong-ai/signetai" target="_blank" className="text-[var(--trust-blue)] hover:underline font-mono text-xs">
+                github.com/shengliangsong-ai/signetai
+              </a>
+           </div>
+
+           <div className="p-6 border border-[var(--border-light)] bg-[var(--bg-standard)] rounded-lg">
+              <h4 className="font-bold text-[var(--text-header)] mb-2 flex items-center gap-2">
+                <span className="text-xl">🎙️</span> NotebookLM Synthesis
+              </h4>
+              <p className="text-sm opacity-70 mb-4">
+                Listen to the AI-generated "Deep Dive" podcast derived from this specification.
+              </p>
+              <a href="https://notebooklm.google.com/notebook/f21cb4f4-4193-4497-b1c3-5d0b25e3b56a" target="_blank" className="text-[var(--trust-blue)] hover:underline font-mono text-xs">
+                notebooklm.google.com/notebook/f21cb...
+              </a>
+           </div>
         </div>
       </div>
     )
