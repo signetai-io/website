@@ -89,7 +89,7 @@ export const PdfSigner: React.FC = () => {
     const manifest = {
       "@context": "https://signetai.io/contexts/vpr-v1.jsonld",
       "type": "org.signetai.document_provenance",
-      "version": "0.2.7",
+      "version": "0.3.1",
       "strategy": "POST_EOF_INJECTION",
       "asset": {
         "type": "application/pdf",

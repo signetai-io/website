@@ -125,7 +125,7 @@ export const SvgSigner: React.FC = () => {
     const manifest = {
       "@context": "https://signetai.io/contexts/vpr-v1.jsonld",
       "type": "org.signetai.vector_provenance",
-      "version": "0.2.7",
+      "version": "0.3.1",
       "asset": {
         "type": "image/svg+xml",
         "hash_algorithm": "SHA-256",

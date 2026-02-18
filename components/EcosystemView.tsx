@@ -6,7 +6,7 @@ const ECOSYSTEM_REPOS = [
     name: "website",
     tagline: "Core Platform & Specification",
     desc: "The primary interactive portal, documentation hub, and landing zone for the Signet Protocol.",
-    status: "v0.2.7_ACTIVE",
+    status: "v0.3.1_ACTIVE",
     color: "bg-blue-500",
     url: "https://github.com/signetai-io/website"
   },

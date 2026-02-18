@@ -24,7 +24,7 @@ export const SecurityIntegrityMonitor: React.FC = () => {
   return (
     <div className="p-6 bg-black/40 border border-white/5 rounded-lg space-y-4">
       <div className="flex items-center justify-between border-b border-white/10 pb-2">
-        <span className="font-mono text-[9px] text-blue-500 font-bold uppercase tracking-widest">Neural Audit 02.7</span>
+        <span className="font-mono text-[9px] text-blue-500 font-bold uppercase tracking-widest">Neural Audit 03.1</span>
         <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>
       </div>
       <div className="space-y-3">

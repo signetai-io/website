@@ -41,7 +41,7 @@ export const ProvenanceLab: React.FC = () => {
       vault = {
         identity: 'ssl',
         anchor: 'signetai.io:ssl',
-        publicKey: 'ed25519:signet_v2.7_sovereign_5b9878a8583b7b38d719c7c8498f8981adc17bec0c311d76269e1275e4a8bdf9',
+        publicKey: 'ed25519:signet_v3.1_sovereign_5b9878a8583b7b38d719c7c8498f8981adc17bec0c311d76269e1275e4a8bdf9',
         mnemonic: '',
         timestamp: Date.now(),
         type: 'SOVEREIGN'
@@ -52,7 +52,7 @@ export const ProvenanceLab: React.FC = () => {
       const mockManifest = {
         "@context": "https://signetai.io/contexts/vpr-v1.jsonld",
         "type": "org.signetai.vpr",
-        "version": "0.2.7",
+        "version": "0.3.1",
         "c2pa_spec": "2.3 (Dec 2025)",
         "asset": {
           "name": file.name,
@@ -64,7 +64,7 @@ export const ProvenanceLab: React.FC = () => {
           {
             "label": "c2pa.actions.v2",
             "data": {
-              "actions": [{ "action": "c2pa.created", "softwareAgent": "Neural Prism v0.2.7 (2026)" }]
+              "actions": [{ "action": "c2pa.created", "softwareAgent": "Neural Prism v0.3.1 (2026)" }]
             }
           },
           {

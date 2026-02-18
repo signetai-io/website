@@ -51,7 +51,7 @@ const deriveMockKey = (identity: string) => {
     fullHex += generateHash(identity + i, 0x811c9dc5 + i);
   }
   
-  return `ed25519:signet_v2.7_sovereign_${fullHex}`;
+  return `ed25519:signet_v3.1_sovereign_${fullHex}`;
 };
 
 export const TrustKeyService: React.FC = () => {

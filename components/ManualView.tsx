@@ -27,7 +27,7 @@ export const ManualView: React.FC = () => {
       <header className="mb-20 space-y-4">
         <h1 className="text-6xl font-bold tracking-tighter italic text-[var(--text-header)]">Operator's Manual</h1>
         <p className="text-xl text-[var(--text-body)] opacity-60 font-serif leading-relaxed italic">
-          v0.2.7 — Standardized Guidance for the Signet Accountability Layer.
+          v0.3.1 — Standardized Guidance for the Signet Accountability Layer.
         </p>
       </header>
 
@@ -118,7 +118,7 @@ export const ManualView: React.FC = () => {
         <a href="#" onClick={(e) => { e.preventDefault(); window.location.hash = ''; }} className="text-[var(--trust-blue)] hover:underline font-mono text-[10px] uppercase tracking-widest font-bold">
           &larr; Return to Dashboard
         </a>
-        <p className="font-mono text-[9px] opacity-30 uppercase tracking-[0.2em]">Certified by signetai.io:ssl | v0.2.7</p>
+        <p className="font-mono text-[9px] opacity-30 uppercase tracking-[0.2em]">Certified by signetai.io:ssl | v0.3.1</p>
       </div>
     </div>
   );
