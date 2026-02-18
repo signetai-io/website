@@ -1138,7 +1138,48 @@ export const SpecView: React.FC = () => {
       doc.setTextColor(0); // Reset color
     });
     
-    doc.save("signet_spec_v0.3.1.pdf");
+    // --- SIGNATURE INJECTION (Universal Tail-Wrap) ---
+    const pdfBuffer = doc.output('arraybuffer');
+    
+    const manifest = {
+      "@context": "https://signetai.io/contexts/vpr-v1.jsonld",
+      "type": "org.signetai.document_provenance",
+      "version": "0.3.1",
+      "strategy": "POST_EOF_INJECTION",
+      "asset": {
+        "type": "application/pdf",
+        "hash_algorithm": "SHA-256",
+        "filename": "signet_spec_v0.3.1.pdf",
+        "generated_by": "signetai.io"
+      },
+      "signature": {
+        "signer": "signetai.io:ssl",
+        "timestamp": new Date().toISOString(),
+        "role": "MASTER_SIGNATORY",
+        "note": "Self-signed specification artifact (UTW)"
+      }
+    };
+
+    const injectionString = `
+%SIGNET_VPR_START
+${JSON.stringify(manifest, null, 2)}
+%SIGNET_VPR_END
+`;
+    const encoder = new TextEncoder();
+    const injectionBuffer = encoder.encode(injectionString);
+
+    // Combine PDF + Signature
+    const combinedBuffer = new Uint8Array(pdfBuffer.byteLength + injectionBuffer.byteLength);
+    combinedBuffer.set(new Uint8Array(pdfBuffer), 0);
+    combinedBuffer.set(injectionBuffer, pdfBuffer.byteLength);
+
+    const blob = new Blob([combinedBuffer], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = "signet_spec_v0.3.1.pdf";
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
