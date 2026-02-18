@@ -1,25 +1,5 @@
 import React from 'react';
 
-const CryptoCard: React.FC<{ symbol: string; name: string; address: string; color: string }> = ({ symbol, name, address, color }) => (
-  <div className="p-6 border border-[var(--border-light)] bg-[var(--bg-standard)] rounded-xl shadow-sm hover:shadow-md transition-all group overflow-hidden relative">
-    <div className={`absolute top-0 right-0 p-2 opacity-10 font-bold text-4xl ${color}`}>{symbol}</div>
-    <div className="relative z-10">
-        <h4 className="font-bold text-[var(--text-header)] mb-1">{name}</h4>
-        <p className="font-mono text-[10px] opacity-50 uppercase tracking-widest mb-4">Protocol Treasury</p>
-        
-        <div className="bg-[var(--code-bg)] p-3 rounded border border-[var(--border-light)] flex justify-between items-center gap-4">
-            <code className="text-[10px] font-mono text-[var(--trust-blue)] truncate">{address}</code>
-            <button 
-                onClick={() => navigator.clipboard.writeText(address)}
-                className="text-[10px] font-bold uppercase opacity-40 hover:opacity-100 hover:text-[var(--trust-blue)]"
-            >
-                Copy
-            </button>
-        </div>
-    </div>
-  </div>
-);
-
 export const DonationView: React.FC = () => {
   return (
     <div className="py-24 max-w-4xl mx-auto animate-in fade-in duration-700">
@@ -65,24 +45,6 @@ export const DonationView: React.FC = () => {
             </a>
          </div>
       </div>
-
-      <section>
-        <h3 className="font-mono text-[11px] uppercase tracking-widest font-bold mb-8 text-center opacity-40">Direct Crypto Contribution</h3>
-        <div className="grid grid-cols-1 gap-6">
-            <CryptoCard 
-                symbol="ETH" 
-                name="Ethereum / EVM" 
-                address="0x71C7656EC7ab88b098defB751B7401B5f6d8976F" 
-                color="text-indigo-500"
-            />
-            <CryptoCard 
-                symbol="SOL" 
-                name="Solana" 
-                address="H79V...Solana_Address_Placeholder...9XyZ" 
-                color="text-purple-500"
-            />
-        </div>
-      </section>
     </div>
   );
 };
