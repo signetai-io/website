@@ -3,265 +3,215 @@ import { jsPDF } from 'jspdf';
 
 const SPEC_PAGES = [
   {
-    title: "Abstract & Introduction",
-    text: "The Signet Protocol defines a framework for the cryptographic attestation of AI-generated reasoning paths. Version 0.3.1 introduces the Universal Tail-Wrap (UTW) and Zero-Copy Streaming Engine. By utilizing the Neural Lens engine, the protocol transforms non-deterministic LLM outputs into formally verified 'Signets,' while providing curators with a non-custodial 24-word mnemonic for identity restoration.\n\nAs AI moves from 'Chat' to 'Reasoning,' current watermarking standards (C2PA) are insufficient because they only sign the final result, not the process. Signet Protocol introduces 'Process Provenance' via Verifiable Proof of Reasoning (VPR).",
+    title: "1. Executive Summary & Abstract",
+    text: "The Signet Protocol (v0.3.1) defines a decentralized framework for the cryptographic attestation of AI-generated reasoning paths (VPR). \n\nUnlike traditional watermarking which focuses on asset attribution, Signet verifies the 'Reasoning DAG'—the logical chain of thought used to generate the output. \n\nThis document serves as a Technical Audit of the reference implementation hosted at signetai.io. It details the Client-Side PWA architecture, Zero-Copy memory management, Universal Tail-Wrap (UTW) injection strategy, and the Sovereign Identity capabilities utilizing Ed25519-256.",
     content: (
       <div className="space-y-8 animate-in fade-in duration-500">
-        <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic underline underline-offset-8 decoration-1 decoration-neutral-500/30">Abstract</h2>
-        <p className="indent-12 opacity-80 leading-loose">
-          The Signet Protocol defines a framework for the cryptographic attestation of AI-generated reasoning paths. 
-          Version 0.3.1 introduces the <strong>Universal Tail-Wrap (UTW)</strong> and <strong>Zero-Copy Streaming Engine</strong>. 
-          By utilizing the Neural Lens engine, the protocol transforms non-deterministic LLM outputs into formally verified "Signets," 
-          while providing curators with a non-custodial 24-word mnemonic for identity restoration.
+        <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic underline underline-offset-8 decoration-1 decoration-neutral-500/30">1. Executive Summary</h2>
+        <p className="indent-12 opacity-80 leading-loose text-justify">
+          The Signet Protocol (v0.3.1) defines a decentralized framework for the cryptographic attestation of AI-generated reasoning paths (VPR). 
+          Unlike traditional watermarking which focuses on asset attribution, Signet verifies the <strong>"Reasoning DAG"</strong>—the logical chain of thought used to generate the output.
         </p>
-        <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">1. Introduction</h2>
-        <p className="opacity-80 leading-loose">
-          As AI moves from "Chat" to "Reasoning," current watermarking standards (C2PA) are insufficient because 
-          they only sign the final result, not the process. Signet Protocol introduces <span className="text-[var(--text-header)] italic">"Process Provenance"</span> via 
-          Verifiable Proof of Reasoning (VPR).
+        <p className="opacity-80 leading-loose text-justify">
+          This document serves as a <strong>Technical Audit</strong> of the reference implementation hosted at signetai.io. It details the Client-Side PWA architecture, 
+          Zero-Copy memory management, Universal Tail-Wrap (UTW) injection strategy, and the Sovereign Identity capabilities utilizing Ed25519-256.
         </p>
       </div>
     )
   },
   {
-    title: "Economic Model & Amortization",
-    text: "Signet operates on an Amortized Trust Economy. While the value of high-quality AI content generation is significant (~$3000/year), the operational cost of signing is minimal (~$3). The protocol achieves near-zero effective cost through scale.\n\nFormula: Effective Cost = Generation Cost / N (Verifiers).\n\nIf a $3000 asset is shared and verified by 100 people, the cost per trust-unit drops to $30. As N grows towards population scale, the amortized cost approaches zero, making universal verification economically viable.",
+    title: "2. System Topology (Local-First)",
+    text: "The Signet architecture strictly adheres to a 'Local-First' privacy model. \n\n2.1 Client-Side Execution\nAll cryptographic operations—Hashing (SHA-256), Key Generation (Ed25519), and Signing—occur exclusively within the user's browser (V8 Sandbox). \n\n2.2 Data Isolation\nPrivate Keys and Mnemonics are stored in the browser's IndexedDB ('IdentityVault') and are never transmitted over the network. \n\n2.3 Registry Sync\nOnly Public Keys and Identity Anchors are synchronized to the global Firestore registry. This ensures verifiable identity without custodial risk.",
     content: (
       <div className="space-y-8 animate-in fade-in duration-500">
-        <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">1.4 Economic Model</h2>
+        <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">2. System Topology</h2>
         <p className="opacity-80 leading-loose mb-6">
-          Signet operates on an <strong>Amortized Trust Economy</strong>. The protocol achieves near-zero effective cost through scale.
+          The Signet architecture strictly adheres to a <strong>'Local-First'</strong> privacy model to prevent key leakage.
         </p>
-        <div className="p-6 bg-[var(--code-bg)] border border-[var(--border-light)] rounded font-mono text-[11px] space-y-4">
-          <p className="text-[var(--trust-blue)] font-bold">Amortization Formula:</p>
-          <code className="block p-3 bg-black/5 rounded text-sm">
-            Effective_Cost = Gen_Cost / N_Verifiers
-          </code>
-          <div className="space-y-2 pt-2">
-             <p><strong>Scenario A:</strong> Single Use. Cost = $3000.</p>
-             <p><strong>Scenario B:</strong> N=100 Verifiers. Cost = $30.</p>
-             <p><strong>Scenario C:</strong> N=1M Verifiers. Cost ≈ $0.</p>
-          </div>
-          <p className="opacity-60 italic mt-4">
-            While operational costs for the Registry exist (~$3 per sign event), they are negligible compared to the asset value and vanish at scale.
-          </p>
+        <div className="space-y-6">
+           <div className="p-6 bg-[var(--code-bg)] border border-[var(--border-light)] rounded-lg">
+              <h4 className="font-bold text-[var(--trust-blue)] text-sm uppercase mb-2">2.1 Client-Side Sandbox</h4>
+              <p className="text-xs opacity-70 leading-relaxed font-mono">
+                All cryptographic operations (SHA-256 Hashing, Ed25519 Signing) occur inside the browser's JS runtime. 
+                <strong>No asset data is ever uploaded to a processing server.</strong>
+              </p>
+           </div>
+           <div className="p-6 bg-[var(--code-bg)] border border-[var(--border-light)] rounded-lg">
+              <h4 className="font-bold text-[var(--trust-blue)] text-sm uppercase mb-2">2.2 Network Isolation</h4>
+              <p className="text-xs opacity-70 leading-relaxed font-mono">
+                <strong>Private Keys:</strong> Stored in IndexedDB (Local).<br/>
+                <strong>Public Keys:</strong> Synced to Firestore (Global).<br/>
+                This separation ensures that a compromise of the Signet servers cannot leak user credentials.
+              </p>
+           </div>
         </div>
       </div>
     )
   },
   {
-    title: "Key Infrastructure: X.509 vs Ed25519",
-    text: "Signet diverges from C2PA's reliance on Centralized X.509 PKI (DigiCert/Adobe) in favor of Sovereign Ed25519 keys.\n\nC2PA (X.509):\n- Root of Trust: Centralized CA\n- Cost: $$$ (Enterprise)\n- Pros: Broad Enterprise Trust\n- Cons: Gatekept, Expensive\n\nSignet (Ed25519):\n- Root of Trust: Decentralized Registry (TKS)\n- Cost: Zero (Democratized)\n- Pros: Sovereign, Fast, Free\n- Cons: Reputation-based Trust",
+    title: "3. Cryptographic Implementation",
+    text: "3.1 Algorithms\n- Signatures: Ed25519 (Edwards-curve Digital Signature Algorithm).\n- Hashing: SHA-256 (WebCrypto API).\n- Key Derivation: BIP-39 Mnemonic standard.\n\n3.2 Entropy Standards\nSignet enforces 'Sovereign Grade' entropy for Master Curators.\n- Dictionary: 2,048 words (2^11).\n- Mnemonic Length: 24 words.\n- Total Entropy: 24 * 11 = 264 bits.\n\nThis exceeds the 256-bit security floor of modern elliptic curves, rendering brute-force attacks computationally infeasible.",
     content: (
       <div className="space-y-8 animate-in fade-in duration-500">
-        <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">1.5 Key Infrastructure</h2>
-        <p className="opacity-80 leading-loose mb-6">
-          Comparison of cryptographic strategies for global provenance.
-        </p>
-        <div className="grid grid-cols-2 gap-6">
+        <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">3. Cryptography & Entropy</h2>
+        <div className="grid grid-cols-2 gap-4 text-xs font-mono">
            <div className="p-4 border border-[var(--border-light)] rounded">
-              <h4 className="font-bold mb-2">C2PA (X.509)</h4>
-              <ul className="text-sm space-y-1 list-disc pl-4 opacity-70">
-                 <li>Centralized CA (DigiCert)</li>
-                 <li>High Cost ($$$)</li>
-                 <li>Enterprise Focus</li>
-              </ul>
+              <span className="block font-bold text-[var(--trust-blue)] mb-1">Signature Algo</span>
+              Ed25519 (High-speed, constant-time)
            </div>
-           <div className="p-4 border border-[var(--trust-blue)] bg-[var(--admonition-bg)] rounded">
-              <h4 className="font-bold mb-2 text-[var(--trust-blue)]">Signet (Ed25519)</h4>
-              <ul className="text-sm space-y-1 list-disc pl-4 opacity-70">
-                 <li>Sovereign Registry</li>
-                 <li>Zero Cost</li>
-                 <li>Democratized Access</li>
-              </ul>
+           <div className="p-4 border border-[var(--border-light)] rounded">
+              <span className="block font-bold text-[var(--trust-blue)] mb-1">Hash Function</span>
+              SHA-256 (Native WebCrypto)
            </div>
         </div>
-      </div>
-    )
-  },
-  {
-    title: "Technical Implementation",
-    text: "Developer SDK Implementation (Node.js/Python). For production-grade C2PA 2.3 signing, use the following logic to handle AI-generated assertions and certificate chains.",
-    content: (
-      <div className="space-y-8 animate-in fade-in duration-500">
-        <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">Developer API Snippets</h2>
-        <p className="opacity-80 leading-loose">
-          Implement C2PA v2.3 manifests natively in your pipeline.
-        </p>
-        <div className="space-y-4">
-          <div className="p-6 bg-[var(--code-bg)] border border-[var(--border-light)] rounded-xl font-mono text-[11px] space-y-2">
-            <p className="text-[var(--trust-blue)] font-bold"># Node.js: Creating a v2.3 Manifest</p>
-            <pre className="opacity-70 overflow-x-auto p-2 bg-black/5 rounded">
-{`const { createManifest } = require('@signet-ai/sdk');
-
-async function signAsset(imagePath, author) {
-  const manifest = createManifest({
-    actions: [{ action: 'c2pa.created', softwareAgent: 'Signet AI v0.3.1' }],
-    metadata: { author: author, title: 'AI Generated Vision' }
-  });
-
-  // PRODUCTION: Use HSM/KMS for private key
-  const signer = await getHSMSigner('signet-master-prod');
-  await manifest.sign(signer);
-  
-  return manifest.embed(imagePath);
-}`}
-            </pre>
-          </div>
-
-          <div className="p-6 bg-[var(--code-bg)] border border-[var(--border-light)] rounded-xl font-mono text-[11px] space-y-2">
-            <p className="text-emerald-600 font-bold"># Python: Soft-Binding Discovery (pHash)</p>
-            <pre className="opacity-70 overflow-x-auto p-2 bg-black/5 rounded">
-{`import imagehash
-from signet_registry import Registry
-
-def recover_manifest(image_file):
-    # Compute perceptual hash
-    current_hash = imagehash.phash(image_file)
-    
-    # Search Signet Global Registry
-    manifest = Registry.lookup_phash(current_hash)
-    if manifest:
-        print(f"Verified: {manifest.author}")
-    return manifest`}
-            </pre>
-          </div>
-        </div>
-      </div>
-    )
-  },
-  {
-    title: "C2PA v2.3 Alignment (A.7)",
-    text: "Signet Protocol 0.3.1 is strictly aligned with the C2PA v2.3 Technical Specification (Released Jan 2026).\n\nKey Implementation Blocks:\n• Section A.7: C2PATextManifestWrapper for text streams using Unicode Variation Selectors.\n• Section 18.6: Merkle Tree Piecewise Audit for fragmented MP4 video.\n• Section 19.4: verifiable-segment-info for real-time AI live streams.",
-    content: (
-      <div className="space-y-8 animate-in fade-in duration-500">
-        <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">2. C2PA v2.3 Hardening</h2>
-        <p className="opacity-80 leading-loose mb-6">
-          The Jan 2026 update (v2.3) requires two fundamental delivery shifts for AI reasoning telemetry.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="p-8 bg-[var(--table-header)] border border-[var(--border-light)] rounded-xl space-y-4">
-            <h4 className="font-mono text-[10px] text-[var(--trust-blue)] font-bold uppercase tracking-widest">Unstructured Text (A.7)</h4>
-            <p className="text-sm opacity-70 italic leading-relaxed">Encoding JUMBF containers into invisible <strong>Unicode Variation Selectors (U+FE00 block)</strong>. This allows manifests to persist during copy-paste operations.</p>
-          </div>
-          <div className="p-8 bg-[var(--table-header)] border border-[var(--border-light)] rounded-xl space-y-4">
-            <h4 className="font-mono text-[10px] text-[var(--trust-blue)] font-bold uppercase tracking-widest">Live Video (19.4)</h4>
-            <p className="text-sm opacity-70 italic leading-relaxed">Implements <code>verifiable-segment-info</code> via <code>emsg</code> boxes. This signs AI video frame-by-frame for low-latency parity.</p>
-          </div>
-        </div>
-      </div>
-    )
-  },
-  {
-    title: "Universal Tail-Wrap (UTW)",
-    text: "For binary media formats where native C2PA injection is computationally prohibitive in the browser, Signet mandates the Universal Tail-Wrap (UTW) protocol.\n\nStructure:\n[BINARY_DATA] + [EOF] + [\\n%SIGNET_VPR_START\\n] + [JSON_MANIFEST] + [\\n%SIGNET_VPR_END]\n\nThis ensures 100% reader compatibility while maintaining cryptographic linkage via the 'Content Body Hash' assertion.",
-    content: (
-      <div className="space-y-8 animate-in fade-in duration-500">
-        <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">2.5 Universal Tail-Wrap (UTW)</h2>
-        <p className="opacity-80 leading-loose mb-6">
-          To support infinite file sizes (e.g., 4K RAW Video) without browser memory crashes, Signet implements <strong>Zero-Copy Streaming</strong> with <strong>Block-Chained Hashing</strong>.
-        </p>
+        
+        <h4 className="font-bold text-[var(--text-header)] mt-6">3.2 Sovereign Entropy (Math)</h4>
         <div className="p-6 bg-[var(--code-bg)] border border-[var(--border-light)] rounded font-mono text-[11px] space-y-4">
-          <p className="text-[var(--trust-blue)] font-bold">Injection Topology (Zero-Copy):</p>
-          <div className="flex items-center gap-2 text-center text-white">
-             <div className="flex-1 bg-neutral-600 p-2 rounded" title="Reference Only (Disk)">Original Binary (Reference)</div>
-             <div className="text-black">➜</div>
-             <div className="flex-1 bg-[var(--trust-blue)] p-2 rounded">Signet Manifest (Memory)</div>
-          </div>
-          <p className="opacity-50 italic mt-2">
-            The browser stitches these parts virtually during download, consuming only ~5KB of RAM regardless of file size.
-          </p>
-          <div className="mt-4 pt-4 border-t border-black/10">
-             <p className="text-[var(--text-header)] font-bold mb-2">Block-Chained Hash (Stream V1):</p>
-             <code className="block p-2 bg-black/5 rounded text-[10px]">
-               H_i = SHA256(H_prev + Chunk_i)
-             </code>
-             <p className="opacity-50 mt-1">Allows authenticating 10GB+ streams using standard WebCrypto chunks.</p>
-          </div>
+          <p className="opacity-70">Calculation for 24-Word Mnemonic strength:</p>
+          <code className="block p-3 bg-black/5 rounded">
+            Security = 24 words × log2(2048) bits/word<br/>
+            Security = 24 × 11 = <strong>264 bits</strong>
+          </code>
+          <p className="text-emerald-600 font-bold">✓ Exceeds NIST 256-bit requirement.</p>
         </div>
       </div>
     )
   },
   {
-    title: "Identity & Vault Recovery",
-    text: "Signet identities are anchored to a System Anchor in the global registry. If a local curatorial vault is lost, the Vault Recovery Protocol (VRP-R) enables the re-derivation of signing keys via a 24-word mnemonic.\n\nLayer 0: Cryptographic Root\n• ALGORITHM: ED25519-256\n• PUBLIC KEY: 256-BIT (64 HEX CHARS)\n• ENTROPY: 264-BIT SOVEREIGN\n• RECOVERY: VRP-R (24-WORD MNEMONIC)",
+    title: "4. Universal Tail-Wrap (UTW)",
+    text: "4.1 Definition\nUTW is a zero-dependency injection strategy for appending provenance data to binary files (PDF, MP4, WAV) without rewriting the internal file structure.\n\n4.2 Byte Layout\n[ORIGINAL_BINARY_DATA]\n[EOF_MARKER]\n[0x0A, 0x25] (%)\n[SIGNET_VPR_START]\n[0x0A] (Newline)\n[JSON_MANIFEST_PAYLOAD]\n[0x0A] (Newline)\n[0x25] (%)\n[SIGNET_VPR_END]\n\n4.3 Verification Logic\nParsers MUST scan the last 10KB of a file for the %SIGNET_VPR_START token to extract the manifest without reading the full file.",
     content: (
       <div className="space-y-8 animate-in fade-in duration-500">
-        <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">3. Registry & Recovery</h2>
+        <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">4. Universal Tail-Wrap (UTW)</h2>
         <p className="opacity-80 leading-loose mb-6">
-          Signet identities are anchored to a <strong>System Anchor</strong> in the global registry. If a local curatorial vault is lost, the 
-          <strong>Vault Recovery Protocol (VRP-R)</strong> enables the re-derivation of signing keys via a 24-word mnemonic.
+          UTW allows arbitrary binary files to be signed in the browser without expensive parsing libraries or file corruption.
         </p>
-        <div className="bg-[var(--admonition-bg)] p-8 border-l-4 border-[var(--trust-blue)] space-y-4 rounded-r">
-          <p className="font-mono text-[10px] uppercase font-bold tracking-widest text-[var(--trust-blue)]">Layer 0: Cryptographic Root</p>
-          <ul className="text-xs font-mono opacity-60 space-y-1">
-            <li>• ALGORITHM: ED25519-256</li>
-            <li>• PUBLIC KEY: 256-BIT (64 HEX CHARS)</li>
-            <li>• ENTROPY: 264-BIT SOVEREIGN</li>
-            <li>• RECOVERY: VRP-R (24-WORD MNEMONIC)</li>
-          </ul>
+        
+        <div className="border border-[var(--border-light)] rounded-lg overflow-hidden">
+           <div className="bg-[var(--table-header)] px-4 py-2 border-b border-[var(--border-light)] font-mono text-[10px] font-bold uppercase">Byte-Level Memory Layout</div>
+           <div className="p-4 bg-[var(--code-bg)] font-mono text-[10px] space-y-1">
+              <div className="p-2 bg-neutral-300 text-black text-center rounded opacity-50">[ ORIGINAL_BINARY_DATA (N Bytes) ]</div>
+              <div className="text-center opacity-30">↓</div>
+              <div className="p-2 bg-[var(--text-header)] text-[var(--bg-standard)] text-center rounded">[ EOF ]</div>
+              <div className="text-center opacity-30">↓</div>
+              <div className="p-2 border border-[var(--trust-blue)] text-[var(--trust-blue)] text-center rounded font-bold">
+                 \n%SIGNET_VPR_START\n
+              </div>
+              <div className="p-4 border-l-2 border-[var(--trust-blue)] bg-[var(--admonition-bg)] text-center">
+                 [ JSON_MANIFEST_PAYLOAD ]
+              </div>
+              <div className="p-2 border border-[var(--trust-blue)] text-[var(--trust-blue)] text-center rounded font-bold">
+                 \n%SIGNET_VPR_END
+              </div>
+           </div>
         </div>
       </div>
     )
   },
   {
-    title: "Sovereign Entropy (Section 2.3)",
-    text: "Signet implements Sovereign Grade Entropy to match the security levels of 256-bit elliptic curves.\n\nEntropy Calculation: 24 words × 11 bits/word = 264 bits\nPublic Key Derivation: 64 characters of Hexadecimal (256 bits)\nThis exceeds the 256-bit security floor of SHA-256 and Ed25519.",
+    title: "5. Zero-Copy Streaming Engine",
+    text: "5.1 The Problem\nLoading large assets (e.g., 2GB Video) into browser RAM (ArrayBuffer) causes crash loops on mobile devices.\n\n5.2 The Solution: Block-Chained Hashing\nSignet implements a stream reader that processes files in 5MB chunks. \nFormula: H(n) = SHA256( H(n-1) + Chunk(n) )\n\n5.3 Zero-Copy Composition\nThe final signed file is constructed using a Blob composition of pointers:\nconst final = new Blob([originalFileRef, signatureString]);\nThis requires O(1) memory overhead regardless of file size.",
     content: (
       <div className="space-y-8 animate-in fade-in duration-500">
-        <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">3.3 Sovereign Grade Entropy (VPR-S)</h2>
-        <p className="opacity-80 leading-loose">
-          Signet implements <strong>Sovereign Grade Entropy</strong> to match the security levels of 256-bit elliptic curves.
+        <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">5. Zero-Copy Streaming</h2>
+        <p className="opacity-80 leading-loose mb-6">
+          To support GB-scale assets on mobile, Signet avoids loading files into RAM.
         </p>
-        <div className="p-6 bg-[var(--code-bg)] border border-[var(--border-light)] rounded font-mono text-[11px] space-y-2">
-          <p className="text-[var(--trust-blue)] font-bold">Entropy Calculation:</p>
-          <code className="block p-2 bg-black/5 rounded">24 words × 11 bits/word = 264 bits</code>
-          <p className="text-[var(--trust-blue)] font-bold mt-4">Key Derivation Standard:</p>
-          <code className="block p-2 bg-black/5 rounded">64-char Hex Public Key = 256 bits</code>
-          <p className="opacity-40 italic mt-4">This exceeds the 256-bit security floor of SHA-256 and Ed25519.</p>
+        
+        <div className="space-y-6">
+           <div className="p-6 bg-[var(--code-bg)] border border-[var(--border-light)] rounded-lg">
+              <h4 className="font-bold text-[var(--text-header)] text-sm uppercase mb-4">5.2 Block-Chained Hashing</h4>
+              <div className="flex gap-2 font-mono text-[10px] overflow-x-auto pb-2">
+                 <div className="p-2 bg-blue-100 border border-blue-200 rounded min-w-[80px]">Chunk 1</div>
+                 <span className="self-center">→</span>
+                 <div className="p-2 bg-blue-100 border border-blue-200 rounded min-w-[80px]">Chunk 2</div>
+                 <span className="self-center">→</span>
+                 <div className="p-2 bg-emerald-100 border border-emerald-200 rounded min-w-[80px] font-bold">Final Hash</div>
+              </div>
+              <p className="mt-4 text-[10px] opacity-60 font-mono italic">
+                State is maintained between chunks. Memory usage is capped at 5MB (Chunk Size).
+              </p>
+           </div>
+
+           <div className="p-6 bg-[var(--code-bg)] border border-[var(--border-light)] rounded-lg">
+              <h4 className="font-bold text-[var(--text-header)] text-sm uppercase mb-2">5.3 Blob Composition Pointer</h4>
+              <pre className="text-[10px] p-2 bg-black/5 rounded overflow-x-auto">
+{`// No data duplication. Just reference concatenation.
+const signed = new Blob([originalFileRef, sigStr]);`}
+              </pre>
+           </div>
         </div>
       </div>
     )
   },
   {
-    title: "Manifest Delivery & JUMBF",
-    text: "Compliance with C2PA 2.3 requires support for two primary transport modes:\n\n3.1 Sidecar Mode (.json): Standalone JSON-LD objects for cloud-native pipelines.\n3.2 Embedded Mode (JUMBF): Tail-end binary injection via SIGNET_VPR tags.",
+    title: "6. Data & Storage Schema",
+    text: "6.1 Local Schema (IndexedDB)\nStore: 'IdentityVault'\nKeyPath: 'anchor'\nFields: { anchor, identity, publicKey, mnemonic (encrypted), timestamp, type }\n\n6.2 Global Schema (Firestore)\nCollection: 'identities'\nDocumentID: {anchor}\nFields: { identity, publicKey, ownerUid, provider, timestamp }\n\n6.3 Security Rule Enforcements\n- Write: Only allowed if auth.uid matches ownerUid.\n- Read: Public access allowed for verification.\n- Admin: Hardcoded privileges for 'shengliang.song.ai@gmail.com'.",
     content: (
       <div className="space-y-8 animate-in fade-in duration-500">
-        <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">4. Delivery Strategies</h2>
-        <p className="opacity-80 leading-loose">
-          Compliance with C2PA 2.3 requires support for two primary transport modes:
-        </p>
-        <div className="space-y-4">
-          <h4 className="font-bold text-[var(--text-header)]">4.1 Sidecar Mode (.json)</h4>
-          <p className="opacity-80 leading-loose">Standalone JSON-LD objects for cloud-native pipelines.</p>
-          <h4 className="font-bold text-[var(--text-header)]">4.2 Embedded Mode (JUMBF)</h4>
-          <p className="opacity-80 leading-loose">Tail-end binary injection via <code>SIGNET_VPR</code> tags.</p>
+        <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">6. Data Schema Audit</h2>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+           <div className="space-y-4">
+              <h4 className="font-mono text-[10px] uppercase font-bold text-[var(--trust-blue)]">6.1 Local (IndexedDB)</h4>
+              <ul className="text-xs font-mono space-y-2 opacity-80 border-l-2 border-[var(--border-light)] pl-4">
+                 <li>Store: <strong>IdentityVault</strong></li>
+                 <li>Key: <strong>anchor</strong></li>
+                 <li>Sensitive: <strong>mnemonic</strong> (Never Synced)</li>
+              </ul>
+           </div>
+           
+           <div className="space-y-4">
+              <h4 className="font-mono text-[10px] uppercase font-bold text-[var(--trust-blue)]">6.2 Global (Firestore)</h4>
+              <ul className="text-xs font-mono space-y-2 opacity-80 border-l-2 border-[var(--border-light)] pl-4">
+                 <li>Coll: <strong>identities</strong></li>
+                 <li>Key: <strong>anchor</strong></li>
+                 <li>Public: <strong>publicKey</strong> (Synced)</li>
+              </ul>
+           </div>
+        </div>
+
+        <div className="mt-8 p-6 bg-red-500/5 border border-red-500/20 rounded">
+           <h4 className="font-bold text-red-600 text-sm uppercase mb-2">6.3 Access Control (Rules)</h4>
+           <pre className="text-[10px] font-mono opacity-70 whitespace-pre-wrap">
+             allow update: if request.auth.uid == resource.data.ownerUid;
+           </pre>
+           <p className="mt-2 text-xs italic opacity-60">Prevents key overwrites by unauthorized accounts.</p>
         </div>
       </div>
     )
   },
   {
-    title: "VPR Header & Signing",
-    text: "All protocol nodes MUST emit an X-Signet-VPR header containing the deterministic reasoning chain hash.\n\nThis specification is authorized for public release under ISO/TC 290 guidelines.\n\nOfficial Signatory:\nsignetai.io:ssl\n\nProvenance Root: SHA256:7B8C...44A2",
+    title: "7. Compliance & Standards",
+    text: "7.1 C2PA 2.3 Alignment\nSignet operates as a 'Cognitive Assertion Provider' under ISO/TC 290.\n- Assertion Type: `org.signetai.vpr`\n- Binding: Soft-Binding via pHash\n\n7.2 GDPR/CCPA Compliance\n- Right to Erasure: Users can delete their 'Local Vault' at any time. The global public key remains as an immutable historical record of past signatures (Accountability).\n- Data Minimization: No biometrics or PII are stored beyond the email anchor used for Sybil resistance.",
     content: (
       <div className="space-y-8 animate-in fade-in duration-500">
-        <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">5. The X-Signet-VPR Header</h2>
-        <p className="opacity-80 leading-loose">
-          All protocol nodes MUST emit an <code>X-Signet-VPR</code> header containing the deterministic reasoning chain hash.
-        </p>
-        <div className="p-10 border border-dashed border-[var(--border-light)] text-center space-y-4">
-           <p className="font-serif italic opacity-50">This document is formally attested and sealed.</p>
-           <p className="font-mono text-xs font-bold text-[var(--trust-blue)] uppercase tracking-widest">
-             Signed by Master Curator:<br/>signetai.io:ssl
-           </p>
+        <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">7. Compliance</h2>
+        <div className="space-y-6">
+           <div>
+              <h4 className="font-bold text-[var(--text-header)] text-lg">7.1 C2PA 2.3 Mapping</h4>
+              <p className="opacity-80 text-sm mt-2">
+                Signet injects specific JUMBF assertions compatible with Adobe Content Authenticity.
+              </p>
+              <code className="block mt-3 p-3 bg-[var(--code-bg)] rounded font-mono text-[10px]">
+                Type: org.signetai.vpr<br/>
+                Format: JSON-LD
+              </code>
+           </div>
+           
+           <div>
+              <h4 className="font-bold text-[var(--text-header)] text-lg">7.2 Privacy (GDPR)</h4>
+              <p className="opacity-80 text-sm mt-2">
+                <strong>Right to Erasure:</strong> Deleting the local vault removes the ability to sign. The public registry entry persists to verify <em>past</em> actions, balancing privacy with non-repudiation.
+              </p>
+           </div>
         </div>
       </div>
     )
   }
 ];
 
-const PDF_FILENAME = "Signet-Protocol-v031-Official.pdf";
+const PDF_FILENAME = "Signet-Protocol-Technical-Audit-v0.3.1.pdf";
 
 export const SpecView: React.FC = () => {
   const [page, setPage] = useState(0);
@@ -293,36 +243,37 @@ export const SpecView: React.FC = () => {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(8);
         doc.setTextColor(180, 180, 180);
-        doc.text("TECHNICAL SPECIFICATION: DRAFT-SONG-SIGNET-03.1", margin + 5, 15);
-        doc.text(`RELEASE: v0.3.1-RELEASE`, pageWidth - margin - 40, 15);
+        doc.text("SIGNET PROTOCOL: TECHNICAL AUDIT REPORT", margin + 5, 15);
+        doc.text(`VERSION: v0.3.1_UTW`, pageWidth - margin - 40, 15);
         
         // Page Number
         doc.text(`PAGE ${index + 1} OF ${SPEC_PAGES.length}`, pageWidth - margin - 20, pageHeight - 10);
 
         // Section Title
         doc.setFont("times", "bolditalic");
-        doc.setFontSize(28);
+        doc.setFontSize(24); // Slightly smaller for long titles
         doc.setTextColor(0, 0, 0);
-        doc.text(p.title, margin + 5, 35);
+        const titleLines = doc.splitTextToSize(p.title, contentWidth - 10);
+        doc.text(titleLines, margin + 5, 35);
 
         // Horizontal Rule
         doc.setDrawColor(230, 230, 230);
-        doc.line(margin + 5, 40, pageWidth - margin, 40);
+        doc.line(margin + 5, 50, pageWidth - margin, 50);
 
         // Content Body
-        doc.setFont("times", "normal");
-        doc.setFontSize(12);
+        doc.setFont("courier", "normal"); // Monospace for technical feel
+        doc.setFontSize(10);
         doc.setTextColor(60, 60, 60);
         const splitText = doc.splitTextToSize(p.text, contentWidth - 10);
-        doc.text(splitText, margin + 8, 55, { lineHeightFactor: 1.5 });
+        doc.text(splitText, margin + 8, 65, { lineHeightFactor: 1.4, maxWidth: contentWidth - 10 });
 
-        // Signature / Seal Box
+        // Footer / Seal Box
         const sealY = pageHeight - 45;
         doc.setDrawColor(0, 85, 255);
         doc.setLineWidth(0.2);
         doc.rect(margin + 5, sealY, contentWidth - 5, 25);
         
-        doc.setFont("courier", "bold");
+        doc.setFont("helvetica", "bold");
         doc.setFontSize(7);
         doc.setTextColor(0, 85, 255);
         doc.text("MASTER SIGNATORY ATTESTATION", margin + 10, sealY + 7);
@@ -369,7 +320,7 @@ export const SpecView: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'spec_v031_official_manifest.json';
+    a.download = 'spec_v031_audit_manifest.json';
     a.click();
   };
 
@@ -381,7 +332,7 @@ export const SpecView: React.FC = () => {
         <div className="flex flex-col md:flex-row justify-between mb-12 border-b border-[var(--border-light)] pb-6 text-[11px] font-mono uppercase tracking-[0.3em] opacity-40 font-bold">
           <div className="space-y-1">
             <p>Protocol Working Group | Page {page + 1}/{SPEC_PAGES.length}</p>
-            <p>Draft Song-03.1 (C2PA 2.3 Aligned)</p>
+            <p>Tech Audit: v0.3.1 (UTW Architecture)</p>
           </div>
           <div className="flex gap-4 mt-4 md:mt-0">
             <button 
@@ -390,19 +341,19 @@ export const SpecView: React.FC = () => {
               className="text-[var(--trust-blue)] hover:underline flex items-center gap-2 group"
             >
               <span className="text-sm group-hover:-translate-y-0.5 transition-transform">⭳</span> 
-              {isGenerating ? 'Engraving...' : 'Official PDF'}
+              {isGenerating ? 'Engraving...' : 'Download Technical Audit'}
             </button>
             <button 
               onClick={handleDownloadManifest}
               className="text-emerald-600 hover:underline flex items-center gap-2 border-l border-[var(--border-light)] pl-4 group"
             >
-              <span className="text-sm group-hover:scale-110 transition-transform">📜</span> VPR Manifest
+              <span className="text-sm group-hover:scale-110 transition-transform">📜</span> Audit Manifest
             </button>
           </div>
         </div>
 
         <div className="mb-12 text-center space-y-4">
-          <h1 className="font-serif text-3xl md:text-5xl text-[var(--text-header)] font-bold tracking-tighter leading-tight italic">
+          <h1 className="font-serif text-3xl md:text-4xl text-[var(--text-header)] font-bold tracking-tighter leading-tight italic">
             {SPEC_PAGES[page].title}
           </h1>
           <div className="w-12 h-px bg-[var(--trust-blue)] mx-auto"></div>
