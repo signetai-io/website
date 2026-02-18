@@ -25,12 +25,13 @@ export const MissionView: React.FC = () => {
           </div>
           <div className="md:col-span-8 space-y-6 text-lg leading-loose font-serif opacity-80 text-[var(--text-body)]">
              <p>
-               By 2027, it is estimated that 99% of the internet's content will be synthetically generated. The marginal cost of creating text, image, and video has dropped to zero.
+               By 2027, Signet Risk Models—extrapolating from <a href="https://www.europol.europa.eu/media-press/newsroom/news/facing-reality-law-enforcement-and-challenge-of-deepfakes" target="_blank" className="underline decoration-dotted hover:text-[var(--trust-blue)]">Europol Innovation Lab projections</a> (90% by 2026)—estimate that <strong>97% of the internet's content will be synthetically generated</strong>.
              </p>
              <p>
-               In this environment, "Truth" is no longer the default state of information. It is a luxury. Without a cryptographic chain of custody, logic drift becomes indistinguishable from fact, and hallucinations mask themselves as reality.
+               In this environment, "Truth" is no longer the default state of information. It is a luxury resource. Without a cryptographic chain of custody, logic drift becomes indistinguishable from fact, and hallucinations mask themselves as reality.
              </p>
-             <div className="p-6 bg-red-500/5 border-l-2 border-red-500 text-red-600 text-sm font-sans italic">
+             <div className="p-6 bg-red-500/5 border-l-2 border-red-500 text-red-600 text-sm font-sans">
+               <span className="block font-bold mb-1 uppercase text-[10px] tracking-widest">Thesis Statement</span>
                "The internet cannot survive as a trusted medium if the signal-to-noise ratio drops below 1%."
              </div>
           </div>

@@ -5,12 +5,12 @@ const SPEC_PAGES = [
   {
     category: "NARRATIVE STRATEGY",
     title: "1. The Crisis of Trust (Manifesto)",
-    text: "By 2027, it is estimated that 99% of the internet's content will be synthetically generated. In this environment of 'Infinite Content', Truth is no longer the default—it is a luxury resource.\n\nSignet Protocol proposes a new axiom: Verifiable Proof of Reasoning (VPR).\n\nIn alignment with ISO/TC 290 (Online Reputation), VPR serves as a critical defense against 'Reputation Poisoning'. By binding the 'Logic DAG'—the chain of thought—to the final asset, we create a permanent link between the prompt and the result. This prevents the weaponization of synthetic content by proving Human Intent via the L4 Human Seal.",
+    text: "By 2027, extrapolating from Europol Innovation Lab projections (90% by 2026), it is estimated that 97% of the internet's content will be synthetically generated. In this environment of 'Infinite Content', Truth is no longer the default—it is a luxury resource.\n\nSignet Protocol proposes a new axiom: Verifiable Proof of Reasoning (VPR).\n\nIn alignment with ISO/TC 290 (Online Reputation), VPR serves as a critical defense against 'Reputation Poisoning'. By binding the 'Logic DAG'—the chain of thought—to the final asset, we create a permanent link between the prompt and the result. This prevents the weaponization of synthetic content by proving Human Intent via the L4 Human Seal.",
     content: (
       <div className="space-y-8 animate-in fade-in duration-500">
         <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">1. The Crisis of Trust</h2>
         <p className="opacity-80 leading-loose text-justify">
-          By 2027, 99% of the internet's content will be synthetically generated. In this environment of <strong>"Infinite Content"</strong>, Truth is no longer the default—it is a luxury resource.
+          By 2027, extrapolating from <strong>Europol Innovation Lab</strong> projections (90% by 2026), it is estimated that <strong>97%</strong> of the internet's content will be synthetically generated.
         </p>
         <div className="p-6 bg-[var(--admonition-bg)] border-l-4 border-[var(--trust-blue)] space-y-4">
            <p className="font-serif italic text-lg text-[var(--text-header)]">
