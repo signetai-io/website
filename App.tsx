@@ -22,6 +22,8 @@ import { SvgSigner } from './components/SvgSigner';
 import { PdfSigner } from './components/PdfSigner';
 import { UniversalSigner } from './components/UniversalSigner';
 import { ProjectStatusView } from './components/ProjectStatusView';
+import { BatchVerifier } from './components/BatchVerifier';
+import { CliDownload } from './components/CliDownload';
 
 export type Theme = 'standard' | 'midnight';
 
@@ -65,6 +67,8 @@ const Sidebar: React.FC<{ currentView: string; isOpen: boolean }> = ({ currentVi
         <p className="px-4 pt-8 text-[10px] uppercase tracking-widest font-bold text-[var(--text-body)] opacity-40 mb-4">Identity & Trust</p>
         <a href="#identity" className={`sidebar-link ${currentView === 'identity' ? 'active' : ''}`}>5. TrustKey Registry (Register)</a>
         <a href="#verify" className={`sidebar-link ${currentView === 'verify' ? 'active' : ''}`}>6. Public Verifier (/verify)</a>
+        <a href="#batch" className={`sidebar-link ml-4 opacity-70 ${currentView === 'batch' ? 'active' : ''}`}>↳ Batch Mode (Local)</a>
+        <a href="#cli" className={`sidebar-link ml-4 opacity-70 ${currentView === 'cli' ? 'active' : ''}`}>↳ CLI Tool (Download)</a>
         <a href="#auditor" className={`sidebar-link ${currentView === 'auditor' ? 'active' : ''}`}>7. Provenance Lab (Sim)</a>
         <a href="#branding" className={`sidebar-link ${currentView === 'branding' ? 'active' : ''}`}>8. Branding Kit</a>
         <a href="#manual" className={`sidebar-link ${currentView === 'manual' ? 'active' : ''}`}>9. Operator's Manual</a>
@@ -155,7 +159,7 @@ const Header: React.FC<{
 );
 
 const App: React.FC = () => {
-  const [view, setView] = useState<'home' | 'spec' | 'standards' | 'schema' | 'branding' | 'manual' | 'auditor' | 'identity' | 'compliance' | 'verify' | 'ecosystem' | 'svg-lab' | 'pdf-lab' | 'universal-lab' | 'status'>('home');
+  const [view, setView] = useState<'home' | 'spec' | 'standards' | 'schema' | 'branding' | 'manual' | 'auditor' | 'identity' | 'compliance' | 'verify' | 'ecosystem' | 'svg-lab' | 'pdf-lab' | 'universal-lab' | 'status' | 'batch' | 'cli'>('home');
   const [theme, setTheme] = useState<Theme>('standard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isPortalOpen, setIsPortalOpen] = useState(false);
@@ -200,6 +204,10 @@ const App: React.FC = () => {
         setView('universal-lab');
       } else if (hash === '#status') {
         setView('status');
+      } else if (hash === '#batch') {
+        setView('batch');
+      } else if (hash === '#cli') {
+        setView('cli');
       } else {
         setView('home');
       }
@@ -280,6 +288,8 @@ const App: React.FC = () => {
           {view === 'pdf-lab' && <PdfSigner />}
           {view === 'universal-lab' && <UniversalSigner />}
           {view === 'status' && <ProjectStatusView />}
+          {view === 'batch' && <BatchVerifier />}
+          {view === 'cli' && <CliDownload />}
 
           <footer className="mt-24 pt-12 border-t border-[var(--border-light)] flex flex-wrap justify-between items-center gap-6 text-[10px] font-mono opacity-50 uppercase tracking-widest text-[var(--text-body)]">
             <div className="flex items-center gap-4">

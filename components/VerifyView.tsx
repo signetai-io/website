@@ -308,8 +308,18 @@ export const VerifyView: React.FC = () => {
   return (
     <div className="py-12 space-y-12 animate-in fade-in duration-700">
       <header className="space-y-4">
-        <span className="font-mono text-[10px] text-[var(--trust-blue)] tracking-[0.4em] uppercase font-bold">Public Verification Tool</span>
-        <h2 className="text-5xl font-bold italic tracking-tighter text-[var(--text-header)]">Audit Content History.</h2>
+        <div className="flex items-center justify-between">
+           <div>
+             <span className="font-mono text-[10px] text-[var(--trust-blue)] tracking-[0.4em] uppercase font-bold">Public Verification Tool</span>
+             <h2 className="text-5xl font-bold italic tracking-tighter text-[var(--text-header)]">Audit Content History.</h2>
+           </div>
+           <button 
+             onClick={() => window.location.hash = '#batch'}
+             className="px-6 py-3 border border-[var(--trust-blue)] text-[var(--trust-blue)] font-mono text-[10px] uppercase font-bold rounded hover:bg-blue-50 transition-all"
+           >
+             Switch to Batch Mode →
+           </button>
+        </div>
         <p className="text-xl opacity-60 max-w-2xl font-serif italic">
           Drag and drop any asset to inspect its Content Credentials. Verified by the global Signet Registry.
         </p>
