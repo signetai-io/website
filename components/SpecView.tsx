@@ -177,8 +177,8 @@ const SPEC_PAGES = [
   },
   {
     category: "TECHNICAL AUDIT",
-    title: "8. Data & Storage Schema",
-    text: "8.1 Local Schema (IndexedDB)\nStore: 'IdentityVault'\nKeyPath: 'anchor'\nFields: { anchor, identity, publicKey, mnemonic (encrypted), timestamp, type }\n\n8.2 Global Schema (Firestore)\nCollection: 'identities'\nDocumentID: {anchor}\nFields: { identity, publicKey, ownerUid, provider, timestamp }\n\n8.3 Security Rule Enforcements\n- Write: Only allowed if auth.uid matches ownerUid.\n- Read: Public access allowed for verification.\n- Admin: Hardcoded privileges for 'shengliang.song.ai@gmail.com'.",
+    title: "8. Data & Storage Schema (Resilient PKI)",
+    text: "8.1 Local Schema (IndexedDB)\nStore: 'IdentityVault'\nKeyPath: 'anchor'\nFields: { anchor, identity, publicKey, mnemonic (encrypted), timestamp, type }\n\n8.2 Global Schema (Firestore)\nCollection: 'identities'\nDocumentID: {anchor}\nFields: { identity, publicKey, ownerUid, provider, timestamp }\n\n8.3 Registry Reconstruction Strategy\nSignetAI acts as an aggregator, not a gatekeeper. Users SHOULD publish their public keys to external profiles (GitHub/LinkedIn/X). In the event of a database loss, the Global Registry can be rebuilt by crawling these verified social proofs.",
     content: (
       <div className="space-y-8 animate-in fade-in duration-500">
         <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">8. Data Schema Audit</h2>
@@ -201,6 +201,30 @@ const SPEC_PAGES = [
                  <li>Public: <strong>publicKey</strong> (Synced)</li>
               </ul>
            </div>
+        </div>
+
+        <div className="mt-8 space-y-6">
+            <div className="p-4 border-l-4 border-amber-500 bg-amber-500/5">
+                <h4 className="font-bold text-amber-600 text-sm mb-2">8.3 Privileged Access Clarification</h4>
+                <p className="text-xs opacity-80 leading-relaxed">
+                    The hardcoded admin email <code>shengliang.song.ai@gmail.com</code> retains <strong>Root Registry Privileges</strong>. This allows the admin to revoke identity anchors.
+                </p>
+                <p className="text-xs opacity-80 leading-relaxed mt-2">
+                    <strong>Security Boundary:</strong> The admin <em>cannot</em> forge signatures because the <strong>Private Keys</strong> are generated client-side and never leave the user's device. Admin access affects <em>availability</em>, not <em>authenticity</em>.
+                </p>
+            </div>
+
+            <div className="p-4 border-l-4 border-emerald-500 bg-emerald-500/5">
+                <h4 className="font-bold text-emerald-600 text-sm mb-2">8.4 Distributed Reconstruction Protocol</h4>
+                <p className="text-xs opacity-80 leading-relaxed">
+                    SignetAI acts as a <strong>Public Key Aggregator</strong>. To ensure resilience against database loss or censorship:
+                </p>
+                <ul className="list-disc pl-5 mt-2 space-y-1 text-xs opacity-80">
+                    <li>Users SHOULD push their generated Public Key to external profiles (GitHub, LinkedIn, X, Meta).</li>
+                    <li>If the <code>signetai.io</code> database is lost, the registry can be rebuilt by crawling these external "Web of Trust" anchors.</li>
+                    <li>This ensures the Identity Layer is not dependent on a single provider's uptime.</li>
+                </ul>
+            </div>
         </div>
       </div>
     )
