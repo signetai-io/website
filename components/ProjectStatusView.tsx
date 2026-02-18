@@ -29,7 +29,8 @@ const TODO_CONTENT = `# Signet AI Project Status & Roadmap
     - [x] Universal Tail-Wrap (UTW) Protocol
     - [x] **Zero-Copy Streaming Engine** (Unlimited File Size)
     - [x] Block-Chained Hashing (SHA-256)
-    - [x] **Auto-Detection of Signed Binaries** (Blob Scanning)
+    - [x] **Deep Hash Verification** (Content Slicing)
+    - [x] **Batch Telemetry** (Throughput/Velocity Metrics)
 
 - [x] **Formal Specification**
     - [x] Dynamic PDF Generation of Spec
@@ -57,8 +58,13 @@ const TODO_CONTENT = `# Signet AI Project Status & Roadmap
     - [x] Drag-and-drop external URL support
     - [x] CORS Policy update for cross-origin fetching
 
+- [x] **Batch Processor (GUI)**
+    - [x] Recursive Directory Scanning (Discovery)
+    - [x] Sidecar (.json) Generation & Verification
+    - [x] Embedded (UTW) Verification with Slicing
+
 - [ ] **CLI Tool Release**
-    - [ ] Node.js implementation of UTW for server-side pipelines
+    - [x] Node.js implementation of UTW for server-side pipelines
     - [ ] CI/CD Github Action for code provenance
 
 - [ ] **Hardware Security**
@@ -70,7 +76,7 @@ const TODO_CONTENT = `# Signet AI Project Status & Roadmap
 - **PDF Incremental Updates**: Post-EOF injection is valid, but multiple signs need a formal xref table update to be "Adobe Compliant" (currently "Signet Compliant").
 
 ---
-*Last Updated: Feb 20, 2026 (Phase III Auto-Detection Complete)*`;
+*Last Updated: Feb 20, 2026 (CLI Tool Source Available)*`;
 
 const LOG_CONTENT = `# Signet AI Evolution Log
 

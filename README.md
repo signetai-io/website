@@ -14,22 +14,20 @@ As AI moves from "Chat" to "Reasoning," current watermarking standards (C2PA) ar
 - **2.3. Universal Tail-Wrap (UTW)**: A Zero-Copy injection method for arbitrary binary formats (Video/Audio/PDF).
 
 ## 3. CLI & Developer Tools (New in v0.3.1)
-The protocol now includes standalone Node.js tools for headless operations and CI/CD integration.
+The protocol now includes standalone Node.js tools and a Web Batch Processor.
 
-### 3.1 Batch Signer (UTW)
+### 3.1 Batch Processor (Web)
+A high-performance audit engine available at `/#batch`.
+- **Deep Audit**: Slices binary streams to verify original content integrity against appended signatures.
+- **Telemetry**: Real-time reporting of **Throughput (MB/s)** and **Velocity (Files/s)**.
+- **Dual Strategy**: Supports both **Embedded (UTW)** and **Sidecar (.json)** verification.
+
+### 3.2 Batch Signer (CLI)
 Zero-dependency script for recursively signing directory trees.
 ```bash
 # Download from /#cli
 node signet-cli.js --dir ./assets --identity "your.name"
 ```
-
-### 3.2 Benchmark Suite
-Performance testing tool for Sidecar generation and verification throughput.
-```bash
-# Download from /#cli
-node signet-benchmark.js --dir ./images
-```
-*Metrics: Generates throughput reports (Files/Sec) and latency analysis.*
 
 ## 4. Security Standards
 - **Public Keys**: Professional-grade **256-bit** Ed25519.

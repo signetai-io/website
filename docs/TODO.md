@@ -1,7 +1,7 @@
 # Signet AI Project Status & Roadmap
 
-**Current Version:** 0.3.4_AUTO  
-**Protocol Spec:** draft-song-02.7
+**Current Version:** 0.3.1_UTW  
+**Protocol Spec:** draft-song-03.1
 
 ## Phase 1: Core Architecture (Foundation)
 *Focus: Identity, Cryptography, and Basic Asset Signing*
@@ -26,7 +26,8 @@
     - [x] Universal Tail-Wrap (UTW) Protocol
     - [x] **Zero-Copy Streaming Engine** (Unlimited File Size)
     - [x] Block-Chained Hashing (SHA-256)
-    - [x] **Auto-Detection of Signed Binaries** (Blob Scanning)
+    - [x] **Deep Hash Verification** (Content Slicing)
+    - [x] **Batch Telemetry** (Throughput/Velocity Metrics)
 
 - [x] **Formal Specification**
     - [x] Dynamic PDF Generation of Spec
@@ -54,8 +55,13 @@
     - [x] Drag-and-drop external URL support
     - [x] CORS Policy update for cross-origin fetching
 
+- [x] **Batch Processor (GUI)**
+    - [x] Recursive Directory Scanning (Discovery)
+    - [x] Sidecar (.json) Generation & Verification
+    - [x] Embedded (UTW) Verification with Slicing
+
 - [ ] **CLI Tool Release**
-    - [ ] Node.js implementation of UTW for server-side pipelines
+    - [x] Node.js implementation of UTW for server-side pipelines
     - [ ] CI/CD Github Action for code provenance
 
 - [ ] **Hardware Security**
@@ -67,4 +73,4 @@
 - **PDF Incremental Updates**: Post-EOF injection is valid, but multiple signs need a formal xref table update to be "Adobe Compliant" (currently "Signet Compliant").
 
 ---
-*Last Updated: Feb 20, 2026 (Phase III Auto-Detection Complete)*
+*Last Updated: Feb 20, 2026 (CLI Tool Source Available)*

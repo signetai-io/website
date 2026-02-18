@@ -1,5 +1,5 @@
-# Signet Protocol Specification (v0.2.7)
-**Draft-Song-Signet-Neural-Lens-02.7**
+# Signet Protocol Specification (v0.3.1)
+**Draft-Song-Signet-Neural-Lens-03.1**
 
 ## 1. Introduction
 This document defines the Signet Protocol, a standard for attaching cryptographic proof of reasoning (VPR) to AI-generated content, aligned with **C2PA 2.3**.
@@ -25,7 +25,7 @@ Compliance with C2PA 2.3 requires support for two primary transport modes.
 
 ### 3.1 Sidecar Mode (.json)
 - Manifests are delivered as standalone JSON-LD objects.
-- Repository: [signetai-io/tools](https://github.com/signetai-io/tools)
+- **Audit Logic**: The verifier calculates the hash of the *current file on disk* and compares it to the `content_hash` in the sidecar. If the file has been modified (e.g., signed via UTW) after the sidecar was generated, the audit MUST fail with a **TAMPERED** status.
 
 ### 3.2 Embedded Mode (Binary Substrate Injection)
 - **Technique**: Manifests MUST be injected into the asset binary. 
@@ -33,7 +33,15 @@ Compliance with C2PA 2.3 requires support for two primary transport modes.
 - **Discovery Logic**: To verify a file without reading the entire binary into memory, parsers MUST implement a **Tail-End Scan**.
   - Read the last 10KB of the file.
   - Search for the delimiter `%SIGNET_VPR_START`.
-  - If found, extract the JSON payload and use the `byte_length` property to isolate the original content stream for hashing.
+  - If found, extract the JSON payload.
+
+### 3.3 Deep Verification Logic (UTW)
+When verifying an Embedded (UTW) asset, the file size has changed due to the appended signature. The verifier MUST NOT hash the entire file blindly.
+1. Extract `byte_length` from the embedded manifest (representing the original asset size).
+2. Create a virtual slice of the file from byte `0` to `byte_length`.
+3. Calculate the SHA-256 hash of this slice.
+4. Compare it against `manifest.asset.content_hash`.
+This ensures the original binary substrate is cryptographically intact, even though the file on disk has been modified.
 
 ## 4. Cryptographic Requirements
 - **Algorithm**: MUST use Ed25519-256 for all signatures. 
@@ -43,7 +51,7 @@ Compliance with C2PA 2.3 requires support for two primary transport modes.
 All Signet-compliant API responses MUST include the `X-Signet-VPR` header.
 
 ---
-**Official Master Signatory (v0.2.7):**
+**Official Master Signatory (v0.3.1):**
 **Anchor:** `signetai.io:ssl`
 **Organization:** [signetai-io](https://github.com/signetai-io)
 **Public Key:** `ed25519:signet_v2.7_sovereign_5b9878a8583b7b38d719c7c8498f8981adc17bec0c311d76269e1275e4a8bdf9`
