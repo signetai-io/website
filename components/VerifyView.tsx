@@ -262,7 +262,7 @@ export const VerifyView: React.FC = () => {
 
     if (verificationStatus === 'UNSIGNED') {
         return (
-            <div className="h-[400px] border border-[var(--border-light)] rounded-xl bg-red-50/10 flex flex-col items-center justify-center text-center p-8 space-y-4 animate-in zoom-in-95">
+            <div className="h-[400px] border border-[var(--border-light)] rounded-xl bg-red-500/10 flex flex-col items-center justify-center text-center p-8 space-y-4 animate-in zoom-in-95">
                <div className="text-5xl opacity-80 grayscale">⚠️</div>
                <div>
                  <h4 className="font-serif text-2xl font-bold text-red-500 mb-2">No Signature Found</h4>
@@ -270,7 +270,7 @@ export const VerifyView: React.FC = () => {
                     This asset does not contain a recognizable Signet VPR manifest or C2PA JUMBF container.
                  </p>
                </div>
-               <div className="px-3 py-1 bg-red-100/10 text-red-500 border border-red-500/20 rounded font-mono text-[9px] uppercase tracking-widest font-bold">
+               <div className="px-3 py-1 bg-red-500/20 text-red-500 border border-red-500/20 rounded font-mono text-[9px] uppercase tracking-widest font-bold">
                  Audit Status: Unverified
                </div>
             </div>
@@ -279,7 +279,7 @@ export const VerifyView: React.FC = () => {
 
     if (verificationStatus === 'TAMPERED') {
          return (
-            <div className="h-[400px] border border-[var(--border-light)] rounded-xl bg-red-50/10 flex flex-col items-center justify-center text-center p-8 space-y-4">
+            <div className="h-[400px] border border-[var(--border-light)] rounded-xl bg-red-500/10 flex flex-col items-center justify-center text-center p-8 space-y-4">
                <span className="text-5xl">🚫</span>
                <p className="font-bold text-red-600">Verification Error</p>
                <p className="text-sm opacity-60">File structure may be corrupted.</p>
@@ -313,7 +313,7 @@ export const VerifyView: React.FC = () => {
            </div>
            <button 
              onClick={() => window.location.hash = '#batch'}
-             className="px-6 py-3 border border-[var(--trust-blue)] text-[var(--trust-blue)] font-mono text-[10px] uppercase font-bold rounded hover:bg-blue-50 transition-all"
+             className="px-6 py-3 border border-[var(--trust-blue)] text-[var(--trust-blue)] font-mono text-[10px] uppercase font-bold rounded hover:bg-blue-500/10 transition-all"
            >
              Switch to Batch Mode →
            </button>
@@ -332,7 +332,7 @@ export const VerifyView: React.FC = () => {
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
             className={`h-96 border-2 border-dashed rounded-2xl bg-[var(--bg-standard)] flex flex-col items-center justify-center cursor-pointer transition-all group relative overflow-hidden ${
-              dragActive ? 'border-[var(--trust-blue)] bg-blue-50/10' : 'border-[var(--border-light)] hover:border-[var(--trust-blue)]'
+              dragActive ? 'border-[var(--trust-blue)] bg-blue-500/10' : 'border-[var(--border-light)] hover:border-[var(--trust-blue)]'
             }`}
           >
             <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
@@ -391,7 +391,7 @@ export const VerifyView: React.FC = () => {
                     onChange={(e) => setUrlInput(e.target.value)}
                     placeholder="https://... (Remote Audit)"
                     onKeyDown={(e) => e.key === 'Enter' && handleUrlFetch(urlInput)}
-                    className="w-full pl-9 pr-4 py-3 bg-[var(--bg-standard)] border border-[var(--border-light)] rounded font-mono text-[11px] outline-none focus:border-[var(--trust-blue)] transition-colors"
+                    className="w-full pl-9 pr-4 py-3 bg-[var(--bg-standard)] border border-[var(--border-light)] rounded font-mono text-[11px] outline-none focus:border-[var(--trust-blue)] transition-colors text-[var(--text-body)]"
                   />
                   {urlInput && (
                     <button 
@@ -404,7 +404,7 @@ export const VerifyView: React.FC = () => {
                 </div>
                 <button 
                   onClick={() => { setFile(null); setManifest(null); setShowL2(false); setUrlInput(''); setFetchError(null); setVerificationStatus('IDLE'); }}
-                  className="px-6 border border-[var(--border-light)] rounded hover:bg-neutral-50 transition-colors font-mono text-[10px] uppercase font-bold"
+                  className="px-6 border border-[var(--border-light)] rounded hover:bg-[var(--bg-sidebar)] transition-colors font-mono text-[10px] uppercase font-bold text-[var(--text-body)]"
                 >
                   Clear
                 </button>
@@ -420,7 +420,7 @@ export const VerifyView: React.FC = () => {
                   >
                     <span>⚡</span> signed_signetai-solar-system.svg
                   </button>
-                  <span className="text-[9px] font-bold text-emerald-500 bg-emerald-50 px-1.5 rounded border border-emerald-100">VALID</span>
+                  <span className="text-[9px] font-bold text-emerald-500 bg-emerald-500/10 px-1.5 rounded border border-emerald-500/20">VALID</span>
                 </div>
 
                 <div className="flex items-center justify-between hover:bg-white/5 p-1 rounded transition-colors">
@@ -430,7 +430,7 @@ export const VerifyView: React.FC = () => {
                   >
                     <span>⚡</span> signet_512.png (Signed Image)
                   </button>
-                  <span className="text-[9px] font-bold text-emerald-500 bg-emerald-50 px-1.5 rounded border border-emerald-100">VALID</span>
+                  <span className="text-[9px] font-bold text-emerald-500 bg-emerald-500/10 px-1.5 rounded border border-emerald-500/20">VALID</span>
                 </div>
 
                 <div className="flex items-center justify-between hover:bg-white/5 p-1 rounded transition-colors">
@@ -440,7 +440,7 @@ export const VerifyView: React.FC = () => {
                   >
                     <span>⚡</span> 512.png (Unsigned Image)
                   </button>
-                  <span className="text-[9px] font-bold text-red-500 bg-red-50 px-1.5 rounded border border-red-100">UNSIGNED</span>
+                  <span className="text-[9px] font-bold text-red-500 bg-red-500/10 px-1.5 rounded border border-red-500/20">UNSIGNED</span>
                 </div>
 
                 <div className="flex items-center justify-between hover:bg-white/5 p-1 rounded transition-colors">
@@ -450,12 +450,12 @@ export const VerifyView: React.FC = () => {
                   >
                     <span>⚡</span> signetai-solar-system.svg
                   </button>
-                  <span className="text-[9px] font-bold text-red-500 bg-red-50 px-1.5 rounded border border-red-100">UNSIGNED</span>
+                  <span className="text-[9px] font-bold text-red-500 bg-red-500/10 px-1.5 rounded border border-red-500/20">UNSIGNED</span>
                 </div>
              </div>
 
              {fetchError && (
-               <div className="p-3 bg-red-50 text-red-600 border border-red-100 rounded text-xs font-serif italic flex gap-2 items-center">
+               <div className="p-3 bg-red-500/10 text-red-600 border border-red-500/20 rounded text-xs font-serif italic flex gap-2 items-center">
                  <span>⚠️</span> {fetchError}
                </div>
              )}

@@ -122,15 +122,15 @@ export const StandardsView: React.FC = () => {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-           <div className="p-6 border border-neutral-200 bg-neutral-50 rounded">
-              <h4 className="font-bold text-sm uppercase mb-2 text-neutral-600">Why C2PA does it their way</h4>
-              <p className="text-xs leading-relaxed opacity-70">
+           <div className="p-6 border border-[var(--border-light)] bg-[var(--code-bg)] rounded">
+              <h4 className="font-bold text-sm uppercase mb-2 text-[var(--text-header)]">Why C2PA does it their way</h4>
+              <p className="text-xs leading-relaxed opacity-70 text-[var(--text-body)]">
                 Standard C2PA is designed for <strong>Hardware integration</strong> (Cameras, DSPs). Rewriting file structures ensures the metadata survives specialized editing software that might strip trailing bytes. It is robust but computationally expensive to parse.
               </p>
            </div>
-           <div className="p-6 border border-blue-200 bg-blue-50 rounded">
-              <h4 className="font-bold text-sm uppercase mb-2 text-blue-600">Why Signet does it our way</h4>
-              <p className="text-xs leading-relaxed opacity-70 text-blue-900">
+           <div className="p-6 border border-blue-500/20 bg-blue-500/5 rounded">
+              <h4 className="font-bold text-sm uppercase mb-2 text-blue-500">Why Signet does it our way</h4>
+              <p className="text-xs leading-relaxed opacity-70 text-[var(--text-body)]">
                 Signet is designed for the <strong>Web & Human Layer</strong>. By appending signatures after the EOF, we allow any file to be signed instantly in the browser without 5MB+ WASM libraries. It ensures the "Source of Truth" is readable by anyone with a text editor.
               </p>
            </div>
@@ -203,17 +203,17 @@ export const StandardsView: React.FC = () => {
             
             <div className="space-y-4">
               <div>
-                <p className="font-mono text-[9px] uppercase font-bold text-green-600 mb-2">Pros</p>
+                <p className="font-mono text-[9px] uppercase font-bold text-green-500 mb-2">Pros</p>
                 <ul className="space-y-2">
-                  <li className="flex gap-2 text-sm opacity-80">
+                  <li className="flex gap-2 text-sm opacity-80 text-[var(--text-body)]">
                     <span className="text-green-500 font-bold">✓</span>
                     <span>Broad enterprise trust (Adobe/Microsoft roots).</span>
                   </li>
-                  <li className="flex gap-2 text-sm opacity-80">
+                  <li className="flex gap-2 text-sm opacity-80 text-[var(--text-body)]">
                     <span className="text-green-500 font-bold">✓</span>
                     <span>Standardized revocation (OCSP/CRL).</span>
                   </li>
-                  <li className="flex gap-2 text-sm opacity-80">
+                  <li className="flex gap-2 text-sm opacity-80 text-[var(--text-body)]">
                     <span className="text-green-500 font-bold">✓</span>
                     <span>Legal recognition in regulated industries.</span>
                   </li>
@@ -221,17 +221,17 @@ export const StandardsView: React.FC = () => {
               </div>
               
               <div>
-                <p className="font-mono text-[9px] uppercase font-bold text-red-600 mb-2">Cons</p>
+                <p className="font-mono text-[9px] uppercase font-bold text-red-500 mb-2">Cons</p>
                 <ul className="space-y-2">
-                  <li className="flex gap-2 text-sm opacity-80">
+                  <li className="flex gap-2 text-sm opacity-80 text-[var(--text-body)]">
                     <span className="text-red-500 font-bold">✕</span>
                     <span>High cost ($$$/yr per seat).</span>
                   </li>
-                  <li className="flex gap-2 text-sm opacity-80">
+                  <li className="flex gap-2 text-sm opacity-80 text-[var(--text-body)]">
                     <span className="text-red-500 font-bold">✕</span>
                     <span>Gatekept by centralized CAs (DigiCert).</span>
                   </li>
-                  <li className="flex gap-2 text-sm opacity-80">
+                  <li className="flex gap-2 text-sm opacity-80 text-[var(--text-body)]">
                     <span className="text-red-500 font-bold">✕</span>
                     <span>Complex certificate chain management.</span>
                   </li>
@@ -249,9 +249,9 @@ export const StandardsView: React.FC = () => {
             
             <div className="space-y-4">
               <div>
-                <p className="font-mono text-[9px] uppercase font-bold text-green-600 mb-2">Pros</p>
+                <p className="font-mono text-[9px] uppercase font-bold text-green-500 mb-2">Pros</p>
                 <ul className="space-y-4">
-                  <li className="flex gap-2 text-sm opacity-80">
+                  <li className="flex gap-2 text-sm opacity-80 text-[var(--text-body)]">
                     <span className="text-green-500 font-bold mt-1">✓</span>
                     <div className="space-y-2">
                       <span className="font-bold text-[var(--trust-blue)]">Amortized Trust Economy (Near Zero Cost)</span>
@@ -267,11 +267,11 @@ export const StandardsView: React.FC = () => {
                       </div>
                     </div>
                   </li>
-                  <li className="flex gap-2 text-sm opacity-80">
+                  <li className="flex gap-2 text-sm opacity-80 text-[var(--text-body)]">
                     <span className="text-green-500 font-bold">✓</span>
                     <span>Non-custodial (You own your keys).</span>
                   </li>
-                  <li className="flex gap-2 text-sm opacity-80">
+                  <li className="flex gap-2 text-sm opacity-80 text-[var(--text-body)]">
                     <span className="text-green-500 font-bold">✓</span>
                     <span>Quantum-resistant key sizes (Small/Fast).</span>
                   </li>
@@ -279,17 +279,17 @@ export const StandardsView: React.FC = () => {
               </div>
               
               <div>
-                <p className="font-mono text-[9px] uppercase font-bold text-red-600 mb-2">Cons</p>
+                <p className="font-mono text-[9px] uppercase font-bold text-red-500 mb-2">Cons</p>
                 <ul className="space-y-2">
-                  <li className="flex gap-2 text-sm opacity-80">
+                  <li className="flex gap-2 text-sm opacity-80 text-[var(--text-body)]">
                     <span className="text-red-500 font-bold">✕</span>
                     <span>Trust is reputation-based (Web of Trust).</span>
                   </li>
-                  <li className="flex gap-2 text-sm opacity-80">
+                  <li className="flex gap-2 text-sm opacity-80 text-[var(--text-body)]">
                     <span className="text-red-500 font-bold">✕</span>
                     <span>Responsibility: Lost keys = Lost Identity.</span>
                   </li>
-                  <li className="flex gap-2 text-sm opacity-80">
+                  <li className="flex gap-2 text-sm opacity-80 text-[var(--text-body)]">
                     <span className="text-red-500 font-bold">✕</span>
                     <span>Newer standard (ISO/TC 290 adoption pending).</span>
                   </li>

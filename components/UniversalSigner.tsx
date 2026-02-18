@@ -289,7 +289,7 @@ export const UniversalSigner: React.FC = () => {
         {/* Left: Input */}
         <div className="flex flex-col border border-[var(--border-light)] rounded-xl bg-[var(--bg-standard)] overflow-hidden shadow-sm">
            <div className="p-4 bg-[var(--table-header)] border-b border-[var(--border-light)] flex justify-between items-center">
-             <h3 className="font-mono text-[10px] uppercase font-bold tracking-widest">Source Artifact</h3>
+             <h3 className="font-mono text-[10px] uppercase font-bold tracking-widest text-[var(--text-header)]">Source Artifact</h3>
              <div className="flex gap-4">
                 <input 
                   type="file" 
@@ -308,7 +308,7 @@ export const UniversalSigner: React.FC = () => {
            
            <div className="flex-1 bg-[var(--code-bg)] relative flex flex-col items-center justify-center overflow-hidden">
              {file ? (
-               <div className="text-center space-y-4 p-8">
+               <div className="text-center space-y-4 p-8 text-[var(--text-body)]">
                  <span className="text-6xl">{getIcon(file.type)}</span>
                  <div>
                     <p className="font-bold text-lg">{file.name}</p>
@@ -316,18 +316,18 @@ export const UniversalSigner: React.FC = () => {
                         {file.type || 'UNKNOWN/BINARY'} • {(file.size / (1024 * 1024)).toFixed(2)} MB
                     </p>
                  </div>
-                 <div className="px-3 py-1 bg-blue-50 text-blue-600 rounded border border-blue-100 font-mono text-[9px] inline-block">
+                 <div className="px-3 py-1 bg-blue-500/10 text-blue-500 rounded border border-blue-500/20 font-mono text-[9px] inline-block">
                     Strategy: {getStrategy(file.type)}
                  </div>
                  {isProcessing && (
-                    <div className="w-64 h-1 bg-neutral-200 rounded-full mt-4 overflow-hidden">
+                    <div className="w-64 h-1 bg-[var(--border-light)] rounded-full mt-4 overflow-hidden">
                         <div className="h-full bg-[var(--trust-blue)] transition-all duration-100" style={{ width: `${progress}%` }}></div>
                         <p className="text-[9px] font-mono mt-2 opacity-50">PROCESSING BLOCK CHAIN...</p>
                     </div>
                  )}
                </div>
              ) : (
-                <div className="text-center opacity-30">
+                <div className="text-center opacity-30 text-[var(--text-body)]">
                     <span className="text-4xl">media_input</span>
                     <p className="font-mono text-[10px] mt-2">Drag & Drop Large Files (1GB+ Supported)...</p>
                 </div>
@@ -349,26 +349,26 @@ export const UniversalSigner: React.FC = () => {
         <div className="flex flex-col border border-[var(--border-light)] rounded-xl bg-[var(--bg-standard)] overflow-hidden shadow-sm">
             <div className="p-4 bg-[var(--table-header)] border-b border-[var(--border-light)] flex justify-between items-center">
                 <div className="flex gap-4">
-                    <button onClick={() => setActiveTab('VISUAL')} className={`font-mono text-[10px] uppercase font-bold ${activeTab === 'VISUAL' ? 'text-[var(--trust-blue)]' : 'opacity-40'}`}>Visual</button>
-                    <button onClick={() => setActiveTab('HEX')} className={`font-mono text-[10px] uppercase font-bold ${activeTab === 'HEX' ? 'text-[var(--trust-blue)]' : 'opacity-40'}`}>Tail Stream</button>
+                    <button onClick={() => setActiveTab('VISUAL')} className={`font-mono text-[10px] uppercase font-bold ${activeTab === 'VISUAL' ? 'text-[var(--trust-blue)]' : 'opacity-40 text-[var(--text-body)]'}`}>Visual</button>
+                    <button onClick={() => setActiveTab('HEX')} className={`font-mono text-[10px] uppercase font-bold ${activeTab === 'HEX' ? 'text-[var(--trust-blue)]' : 'opacity-40 text-[var(--text-body)]'}`}>Tail Stream</button>
                 </div>
                 {signedBlob && <span className="font-mono text-[9px] text-emerald-500 font-bold">SIGNED</span>}
             </div>
 
             <div className="flex-1 bg-[var(--code-bg)] relative overflow-auto">
                {!signedBlob ? (
-                 <div className="flex items-center justify-center h-full opacity-30 italic font-serif">
+                 <div className="flex items-center justify-center h-full opacity-30 italic font-serif text-[var(--text-body)]">
                     Awaiting generation...
                  </div>
                ) : (
                  <>
                    {activeTab === 'VISUAL' && (
                      <div className="p-6 h-full flex flex-col items-center justify-center text-center space-y-6">
-                        <div className="w-20 h-20 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center text-3xl">
+                        <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-3xl">
                             🛡️
                         </div>
-                        <div className="space-y-2">
-                            <h3 className="font-serif text-2xl font-bold italic">Provenance Attached</h3>
+                        <div className="space-y-2 text-[var(--text-body)]">
+                            <h3 className="font-serif text-2xl font-bold italic text-[var(--text-header)]">Provenance Attached</h3>
                             <p className="text-xs opacity-60 max-w-xs mx-auto">
                                 The file structure is preserved. A Signet VPR manifest has been appended to the container tail using O(1) memory composition.
                             </p>
@@ -376,12 +376,12 @@ export const UniversalSigner: React.FC = () => {
                      </div>
                    )}
                    {activeTab === 'HEX' && (
-                     <div className="p-4 font-mono text-[10px] h-full overflow-auto break-all leading-relaxed">
-                        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded text-blue-800">
+                     <div className="p-4 font-mono text-[10px] h-full overflow-auto break-all leading-relaxed text-[var(--text-body)]">
+                        <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded text-blue-500">
                            <strong>Tail Injection View:</strong> Reading last 500 bytes of the virtual blob stream.
                         </div>
                         <div className="opacity-50 font-bold mt-8">FILE END (VIRTUAL COMPOSITION):</div>
-                        <div className="mt-2 text-emerald-700">
+                        <div className="mt-2 text-emerald-600">
                             {/* We can't synchronously read blob in render, just showing placeholder */}
                             [Stream Reader Active]
                             <br/>
@@ -403,7 +403,7 @@ export const UniversalSigner: React.FC = () => {
                 <button 
                   onClick={() => verifyBlob(signedBlob!, signedSvgString)}
                   disabled={!signedBlob || isProcessing}
-                  className="flex-1 py-3 border border-[var(--border-light)] hover:bg-white transition-all font-mono text-[10px] uppercase font-bold rounded"
+                  className="flex-1 py-3 border border-[var(--border-light)] hover:bg-[var(--bg-sidebar)] text-[var(--text-body)] transition-all font-mono text-[10px] uppercase font-bold rounded"
                 >
                   {isProcessing && progress > 0 ? `VERIFYING (${progress}%)...` : 'Verify Again'}
                 </button>
@@ -419,42 +419,42 @@ export const UniversalSigner: React.FC = () => {
       </div>
 
       {verificationResult && (
-        <div className={`p-8 rounded-lg border flex items-start gap-6 animate-in slide-in-from-bottom-4 ${verificationResult.success ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+        <div className={`p-8 rounded-lg border flex items-start gap-6 animate-in slide-in-from-bottom-4 ${verificationResult.success ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
             <div className={`text-4xl ${verificationResult.success ? 'grayscale-0' : 'grayscale'}`}>
                 {verificationResult.success ? '🛡️' : '⚠️'}
             </div>
             <div className="space-y-2 w-full">
-                <h4 className={`font-serif text-2xl font-bold italic ${verificationResult.success ? 'text-emerald-800' : 'text-red-800'}`}>
+                <h4 className={`font-serif text-2xl font-bold italic ${verificationResult.success ? 'text-emerald-500' : 'text-red-500'}`}>
                     {verificationResult.success ? 'Universal Integrity Verified' : 'Verification Failed'}
                 </h4>
-                <p className="text-sm opacity-70 font-serif leading-relaxed">
+                <p className="text-sm opacity-70 font-serif leading-relaxed text-[var(--text-body)]">
                     {verificationResult.msg}
                 </p>
                 {verificationResult.success && verificationResult.identity && (
                     <div className="pt-4 grid grid-cols-2 gap-4">
-                        <div className="bg-white/50 p-3 rounded">
-                            <p className="font-mono text-[9px] uppercase font-bold opacity-40">Signed By</p>
-                            <p className="font-mono text-[10px] font-bold break-all">{verificationResult.identity}</p>
+                        <div className="bg-[var(--bg-standard)] p-3 rounded border border-[var(--border-light)]">
+                            <p className="font-mono text-[9px] uppercase font-bold opacity-40 text-[var(--text-body)]">Signed By</p>
+                            <p className="font-mono text-[10px] font-bold break-all text-[var(--text-body)]">{verificationResult.identity}</p>
                         </div>
-                        <div className="bg-white/50 p-3 rounded">
-                            <p className="font-mono text-[9px] uppercase font-bold opacity-40">Method</p>
-                            <p className="font-mono text-[10px] font-bold truncate">{verificationResult.strategy}</p>
+                        <div className="bg-[var(--bg-standard)] p-3 rounded border border-[var(--border-light)]">
+                            <p className="font-mono text-[9px] uppercase font-bold opacity-40 text-[var(--text-body)]">Method</p>
+                            <p className="font-mono text-[10px] font-bold truncate text-[var(--text-body)]">{verificationResult.strategy}</p>
                         </div>
                         {verificationResult.timestamp && (
-                            <div className="bg-white/50 p-3 rounded">
-                                <p className="font-mono text-[9px] uppercase font-bold opacity-40">Timestamp</p>
-                                <p className="font-mono text-[10px] font-bold">{new Date(verificationResult.timestamp).toLocaleString()}</p>
+                            <div className="bg-[var(--bg-standard)] p-3 rounded border border-[var(--border-light)]">
+                                <p className="font-mono text-[9px] uppercase font-bold opacity-40 text-[var(--text-body)]">Timestamp</p>
+                                <p className="font-mono text-[10px] font-bold text-[var(--text-body)]">{new Date(verificationResult.timestamp).toLocaleString()}</p>
                             </div>
                         )}
                         {verificationResult.fileName && (
-                            <div className="bg-white/50 p-3 rounded">
-                                <p className="font-mono text-[9px] uppercase font-bold opacity-40">Original Filename</p>
-                                <p className="font-mono text-[10px] font-bold truncate">{verificationResult.fileName}</p>
+                            <div className="bg-[var(--bg-standard)] p-3 rounded border border-[var(--border-light)]">
+                                <p className="font-mono text-[9px] uppercase font-bold opacity-40 text-[var(--text-body)]">Original Filename</p>
+                                <p className="font-mono text-[10px] font-bold truncate text-[var(--text-body)]">{verificationResult.fileName}</p>
                             </div>
                         )}
-                        <div className="bg-white/50 p-3 rounded col-span-2">
-                            <p className="font-mono text-[9px] uppercase font-bold opacity-40">Verified Hash (Streamed)</p>
-                            <p className="font-mono text-[10px] font-bold break-all">{verificationResult.hash}</p>
+                        <div className="bg-[var(--bg-standard)] p-3 rounded border border-[var(--border-light)] col-span-2">
+                            <p className="font-mono text-[9px] uppercase font-bold opacity-40 text-[var(--text-body)]">Verified Hash (Streamed)</p>
+                            <p className="font-mono text-[10px] font-bold break-all text-[var(--text-body)]">{verificationResult.hash}</p>
                         </div>
                     </div>
                 )}

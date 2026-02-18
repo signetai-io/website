@@ -259,16 +259,16 @@ ${JSON.stringify(manifest, null, 2)}
       </header>
 
       {showADR && (
-        <div className="p-6 bg-amber-50 border border-amber-200 rounded-lg animate-in slide-in-from-top-2 relative">
-            <button onClick={() => setShowADR(false)} className="absolute top-2 right-2 opacity-30 hover:opacity-100">✕</button>
-            <h4 className="font-mono text-[11px] uppercase font-bold text-amber-800 mb-2">Architectural Decision Record (ADR): Signet vs C2PA Standard</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm opacity-80 leading-relaxed font-serif">
+        <div className="p-6 bg-amber-500/10 border border-amber-500/20 rounded-lg animate-in slide-in-from-top-2 relative">
+            <button onClick={() => setShowADR(false)} className="absolute top-2 right-2 opacity-30 hover:opacity-100 text-[var(--text-body)]">✕</button>
+            <h4 className="font-mono text-[11px] uppercase font-bold text-amber-600 mb-2">Architectural Decision Record (ADR): Signet vs C2PA Standard</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm opacity-80 leading-relaxed font-serif text-[var(--text-body)]">
                 <div>
-                    <strong className="block text-amber-900 mb-1">Why C2PA uses Binary JUMBF:</strong>
+                    <strong className="block text-amber-600 mb-1">Why C2PA uses Binary JUMBF:</strong>
                     The C2PA specification prioritizes <em>Universal Parsing</em>. Since most media formats (JPEG, MP4, PDF) are binary, they force SVG to use the same binary container (base64 encoded JUMBF) so a single library (`c2pa-rs`) can parse everything without needing specialized XML logic.
                 </div>
                 <div>
-                    <strong className="block text-amber-900 mb-1">Why Signet uses XML-Native:</strong>
+                    <strong className="block text-amber-600 mb-1">Why Signet uses XML-Native:</strong>
                     We treat SVG as <em>Source Code</em>. Wrapping code in a binary blob destroys its transparency and git-diffability. Signet's XML-DSig approach allows the provenance to be read via `View Source` and tracked in version control, honoring the open nature of the vector web.
                 </div>
             </div>
@@ -279,7 +279,7 @@ ${JSON.stringify(manifest, null, 2)}
         {/* Left Column: Input / Visual */}
         <div className="flex flex-col border border-[var(--border-light)] rounded-xl bg-[var(--bg-standard)] overflow-hidden shadow-sm">
            <div className="p-4 bg-[var(--table-header)] border-b border-[var(--border-light)] flex justify-between items-center">
-             <h3 className="font-mono text-[10px] uppercase font-bold tracking-widest">Original Asset</h3>
+             <h3 className="font-mono text-[10px] uppercase font-bold tracking-widest text-[var(--text-header)]">Original Asset</h3>
              <div className="flex gap-4">
                 <input 
                   type="file" 
@@ -295,7 +295,7 @@ ${JSON.stringify(manifest, null, 2)}
                     + Upload SVG
                 </button>
                 {!originalSvg && (
-                    <button onClick={handleLoadDemo} disabled={isLoadingDemo} className="text-[10px] opacity-40 hover:opacity-100 font-bold uppercase">
+                    <button onClick={handleLoadDemo} disabled={isLoadingDemo} className="text-[10px] opacity-40 hover:opacity-100 font-bold uppercase text-[var(--text-body)]">
                         {isLoadingDemo ? 'Fetching...' : 'Load Demo'}
                     </button>
                 )}
@@ -310,12 +310,12 @@ ${JSON.stringify(manifest, null, 2)}
                     className="max-w-full max-h-full shadow-lg"
                     alt="Original SVG"
                  />
-                 <div className="absolute bottom-4 left-4 bg-black/80 text-white px-3 py-1 rounded font-mono text-[9px] backdrop-blur-sm">
+                 <div className="absolute bottom-4 left-4 bg-black/80 text-white px-3 py-1 rounded font-mono text-[9px] backdrop-blur-sm border border-white/10">
                     {fileName} ({originalSvg.length} bytes)
                  </div>
                </div>
              ) : (
-                <div className="text-center opacity-30">
+                <div className="text-center opacity-30 text-[var(--text-body)]">
                     <span className="text-4xl">vector_input</span>
                     <p className="font-mono text-[10px] mt-2">Waiting for SVG...</p>
                 </div>
@@ -337,16 +337,16 @@ ${JSON.stringify(manifest, null, 2)}
         <div className="flex flex-col border border-[var(--border-light)] rounded-xl bg-[var(--bg-standard)] overflow-hidden shadow-sm">
             <div className="p-4 bg-[var(--table-header)] border-b border-[var(--border-light)] flex justify-between items-center">
                 <div className="flex gap-4">
-                    <button onClick={() => setActiveTab('PREVIEW')} className={`font-mono text-[10px] uppercase font-bold ${activeTab === 'PREVIEW' ? 'text-[var(--trust-blue)]' : 'opacity-40'}`}>Visual</button>
-                    <button onClick={() => setActiveTab('CODE')} className={`font-mono text-[10px] uppercase font-bold ${activeTab === 'CODE' ? 'text-[var(--trust-blue)]' : 'opacity-40'}`}>Code</button>
-                    <button onClick={() => setActiveTab('DIFF')} className={`font-mono text-[10px] uppercase font-bold ${activeTab === 'DIFF' ? 'text-[var(--trust-blue)]' : 'opacity-40'}`}>Diff</button>
+                    <button onClick={() => setActiveTab('PREVIEW')} className={`font-mono text-[10px] uppercase font-bold ${activeTab === 'PREVIEW' ? 'text-[var(--trust-blue)]' : 'opacity-40 text-[var(--text-body)]'}`}>Visual</button>
+                    <button onClick={() => setActiveTab('CODE')} className={`font-mono text-[10px] uppercase font-bold ${activeTab === 'CODE' ? 'text-[var(--trust-blue)]' : 'opacity-40 text-[var(--text-body)]'}`}>Code</button>
+                    <button onClick={() => setActiveTab('DIFF')} className={`font-mono text-[10px] uppercase font-bold ${activeTab === 'DIFF' ? 'text-[var(--trust-blue)]' : 'opacity-40 text-[var(--text-body)]'}`}>Diff</button>
                 </div>
                 {signedSvg && <span className="font-mono text-[9px] text-emerald-500 font-bold">SIGNED</span>}
             </div>
 
             <div className="flex-1 bg-[var(--code-bg)] relative overflow-auto">
                {!signedSvg ? (
-                 <div className="flex items-center justify-center h-full opacity-30 italic font-serif">
+                 <div className="flex items-center justify-center h-full opacity-30 italic font-serif text-[var(--text-body)]">
                     Awaiting signature injection...
                  </div>
                ) : (
@@ -367,13 +367,13 @@ ${JSON.stringify(manifest, null, 2)}
                    )}
                    {activeTab === 'DIFF' && (
                      <div className="p-4 font-mono text-[10px] h-full overflow-auto">
-                        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded text-blue-800">
+                        <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded text-blue-500">
                            <strong>Info:</strong> The SVG content remains identical. Signet injected a <code>&lt;metadata&gt;</code> block at the tail.
                         </div>
                         {signedSvg.split('\n').map((line, i) => {
                            const isMetadata = line.includes('signet') || line.includes('metadata') || line.includes('"hash"');
                            return (
-                             <div key={i} className={`${isMetadata ? 'bg-emerald-100/50 text-emerald-800 font-bold border-l-2 border-emerald-500 pl-2' : 'opacity-50 pl-2.5'}`}>
+                             <div key={i} className={`${isMetadata ? 'bg-emerald-500/10 text-emerald-500 font-bold border-l-2 border-emerald-500 pl-2' : 'opacity-50 pl-2.5 text-[var(--text-body)]'}`}>
                                <span className="opacity-30 mr-3 select-none">{i + 1}</span>
                                {line}
                              </div>
@@ -389,7 +389,7 @@ ${JSON.stringify(manifest, null, 2)}
                 <button 
                   onClick={handleVerify}
                   disabled={!signedSvg}
-                  className="flex-1 py-3 border border-[var(--border-light)] hover:bg-white transition-all font-mono text-[10px] uppercase font-bold rounded"
+                  className="flex-1 py-3 border border-[var(--border-light)] hover:bg-[var(--bg-sidebar)] text-[var(--text-body)] transition-all font-mono text-[10px] uppercase font-bold rounded"
                 >
                   Verify Signature
                 </button>
@@ -405,31 +405,31 @@ ${JSON.stringify(manifest, null, 2)}
       </div>
 
       {verificationResult && (
-        <div className={`p-8 rounded-lg border flex items-start gap-6 animate-in slide-in-from-bottom-4 ${verificationResult.success ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+        <div className={`p-8 rounded-lg border flex items-start gap-6 animate-in slide-in-from-bottom-4 ${verificationResult.success ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
             <div className={`text-4xl ${verificationResult.success ? 'grayscale-0' : 'grayscale'}`}>
                 {verificationResult.success ? '🛡️' : '⚠️'}
             </div>
             <div className="space-y-2">
-                <h4 className={`font-serif text-2xl font-bold italic ${verificationResult.success ? 'text-emerald-800' : 'text-red-800'}`}>
+                <h4 className={`font-serif text-2xl font-bold italic ${verificationResult.success ? 'text-emerald-500' : 'text-red-500'}`}>
                     {verificationResult.success ? 'Vector Integrity Verified' : 'Verification Failed'}
                 </h4>
-                <p className="text-sm opacity-70 font-serif leading-relaxed">
+                <p className="text-sm opacity-70 font-serif leading-relaxed text-[var(--text-body)]">
                     {verificationResult.msg}
                 </p>
                 {verificationResult.success && verificationResult.identity && (
                     <div className="pt-4 grid grid-cols-2 gap-4">
-                        <div className="bg-white/50 p-2 rounded">
-                            <p className="font-mono text-[9px] uppercase font-bold opacity-40">Signed By</p>
-                            <p className="font-mono text-[10px] font-bold">{verificationResult.identity}</p>
+                        <div className="bg-[var(--bg-standard)] p-2 rounded border border-[var(--border-light)]">
+                            <p className="font-mono text-[9px] uppercase font-bold opacity-40 text-[var(--text-body)]">Signed By</p>
+                            <p className="font-mono text-[10px] font-bold text-[var(--text-body)]">{verificationResult.identity}</p>
                         </div>
-                        <div className="bg-white/50 p-2 rounded">
-                            <p className="font-mono text-[9px] uppercase font-bold opacity-40">Content Hash (SHA-256)</p>
-                            <p className="font-mono text-[10px] font-bold truncate">{verificationResult.hash}</p>
+                        <div className="bg-[var(--bg-standard)] p-2 rounded border border-[var(--border-light)]">
+                            <p className="font-mono text-[9px] uppercase font-bold opacity-40 text-[var(--text-body)]">Content Hash (SHA-256)</p>
+                            <p className="font-mono text-[10px] font-bold truncate text-[var(--text-body)]">{verificationResult.hash}</p>
                         </div>
                         {verificationResult.chainDepth > 1 && (
-                            <div className="col-span-2 bg-blue-50/50 p-2 rounded border border-blue-100">
-                                <p className="font-mono text-[9px] uppercase font-bold opacity-40 text-blue-700">Chain Depth</p>
-                                <p className="font-mono text-[10px] font-bold text-blue-800">Layer {verificationResult.chainDepth} (Chain Signed)</p>
+                            <div className="col-span-2 bg-blue-500/10 p-2 rounded border border-blue-500/20">
+                                <p className="font-mono text-[9px] uppercase font-bold opacity-40 text-blue-500">Chain Depth</p>
+                                <p className="font-mono text-[10px] font-bold text-blue-500">Layer {verificationResult.chainDepth} (Chain Signed)</p>
                             </div>
                         )}
                     </div>

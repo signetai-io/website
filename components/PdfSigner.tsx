@@ -212,7 +212,7 @@ ${JSON.stringify(manifest, null, 2)}
         {/* Left Column: Input */}
         <div className="flex flex-col border border-[var(--border-light)] rounded-xl bg-[var(--bg-standard)] overflow-hidden shadow-sm">
            <div className="p-4 bg-[var(--table-header)] border-b border-[var(--border-light)] flex justify-between items-center">
-             <h3 className="font-mono text-[10px] uppercase font-bold tracking-widest">Document Source</h3>
+             <h3 className="font-mono text-[10px] uppercase font-bold tracking-widest text-[var(--text-header)]">Document Source</h3>
              <div className="flex gap-4">
                 <input 
                   type="file" 
@@ -232,20 +232,20 @@ ${JSON.stringify(manifest, null, 2)}
            
            <div className="flex-1 bg-[var(--code-bg)] relative flex flex-col items-center justify-center overflow-hidden">
              {originalFile ? (
-               <div className="text-center space-y-4">
+               <div className="text-center space-y-4 text-[var(--text-body)]">
                  <span className="text-6xl">📄</span>
                  <div>
                     <p className="font-bold text-lg">{originalFile.name}</p>
                     <p className="font-mono text-[10px] opacity-50">{(originalFile.size / 1024).toFixed(2)} KB</p>
                  </div>
                  {eofPosition > 0 && (
-                    <div className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded border border-emerald-100 font-mono text-[9px] inline-block">
+                    <div className="px-3 py-1 bg-emerald-500/10 text-emerald-500 rounded border border-emerald-500/20 font-mono text-[9px] inline-block">
                         Valid PDF Structure Detected (EOF at {eofPosition})
                     </div>
                  )}
                </div>
              ) : (
-                <div className="text-center opacity-30">
+                <div className="text-center opacity-30 text-[var(--text-body)]">
                     <span className="text-4xl">pdf_input</span>
                     <p className="font-mono text-[10px] mt-2">Waiting for PDF...</p>
                 </div>
@@ -267,23 +267,23 @@ ${JSON.stringify(manifest, null, 2)}
         <div className="flex flex-col border border-[var(--border-light)] rounded-xl bg-[var(--bg-standard)] overflow-hidden shadow-sm">
             <div className="p-4 bg-[var(--table-header)] border-b border-[var(--border-light)] flex justify-between items-center">
                 <div className="flex gap-4">
-                    <button onClick={() => setActiveTab('VISUAL')} className={`font-mono text-[10px] uppercase font-bold ${activeTab === 'VISUAL' ? 'text-[var(--trust-blue)]' : 'opacity-40'}`}>Manifest</button>
-                    <button onClick={() => setActiveTab('HEX')} className={`font-mono text-[10px] uppercase font-bold ${activeTab === 'HEX' ? 'text-[var(--trust-blue)]' : 'opacity-40'}`}>Binary Structure</button>
+                    <button onClick={() => setActiveTab('VISUAL')} className={`font-mono text-[10px] uppercase font-bold ${activeTab === 'VISUAL' ? 'text-[var(--trust-blue)]' : 'opacity-40 text-[var(--text-body)]'}`}>Manifest</button>
+                    <button onClick={() => setActiveTab('HEX')} className={`font-mono text-[10px] uppercase font-bold ${activeTab === 'HEX' ? 'text-[var(--trust-blue)]' : 'opacity-40 text-[var(--text-body)]'}`}>Binary Structure</button>
                 </div>
                 {signedBuffer && <span className="font-mono text-[9px] text-emerald-500 font-bold">SIGNED</span>}
             </div>
 
             <div className="flex-1 bg-[var(--code-bg)] relative overflow-auto">
                {!signedBuffer ? (
-                 <div className="flex items-center justify-center h-full opacity-30 italic font-serif">
+                 <div className="flex items-center justify-center h-full opacity-30 italic font-serif text-[var(--text-body)]">
                     Awaiting signature injection...
                  </div>
                ) : (
                  <>
                    {activeTab === 'VISUAL' && (
                      <div className="p-6">
-                        <h4 className="font-mono text-[10px] uppercase font-bold mb-4">Injected Payload (Tail)</h4>
-                        <div className="p-4 bg-white border border-[var(--border-light)] rounded font-mono text-[10px] whitespace-pre-wrap shadow-sm">
+                        <h4 className="font-mono text-[10px] uppercase font-bold mb-4 text-[var(--text-header)]">Injected Payload (Tail)</h4>
+                        <div className="p-4 bg-[var(--bg-standard)] border border-[var(--border-light)] rounded font-mono text-[10px] whitespace-pre-wrap shadow-sm text-[var(--text-body)]">
                             {new TextDecoder().decode(signedBuffer).split('%SIGNET_VPR_START')[1] ? 
                              `%SIGNET_VPR_START${new TextDecoder().decode(signedBuffer).split('%SIGNET_VPR_START')[1]}` : 
                              'Error parsing tail block.'}
@@ -291,8 +291,8 @@ ${JSON.stringify(manifest, null, 2)}
                      </div>
                    )}
                    {activeTab === 'HEX' && (
-                     <div className="p-4 font-mono text-[10px] h-full overflow-auto break-all leading-relaxed">
-                        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded text-blue-800">
+                     <div className="p-4 font-mono text-[10px] h-full overflow-auto break-all leading-relaxed text-[var(--text-body)]">
+                        <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded text-blue-500">
                            <strong>Injection Strategy:</strong> The data below shows the end of the original file (EOF) followed immediately by the Signet Manifest.
                         </div>
                         {/* Show last 1000 bytes for performance */}
@@ -310,7 +310,7 @@ ${JSON.stringify(manifest, null, 2)}
                 <button 
                   onClick={handleVerify}
                   disabled={!signedBuffer}
-                  className="flex-1 py-3 border border-[var(--border-light)] hover:bg-white transition-all font-mono text-[10px] uppercase font-bold rounded"
+                  className="flex-1 py-3 border border-[var(--border-light)] hover:bg-[var(--bg-sidebar)] text-[var(--text-body)] transition-all font-mono text-[10px] uppercase font-bold rounded"
                 >
                   Verify Signature
                 </button>
@@ -326,26 +326,26 @@ ${JSON.stringify(manifest, null, 2)}
       </div>
 
       {verificationResult && (
-        <div className={`p-8 rounded-lg border flex items-start gap-6 animate-in slide-in-from-bottom-4 ${verificationResult.success ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+        <div className={`p-8 rounded-lg border flex items-start gap-6 animate-in slide-in-from-bottom-4 ${verificationResult.success ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
             <div className={`text-4xl ${verificationResult.success ? 'grayscale-0' : 'grayscale'}`}>
                 {verificationResult.success ? '🛡️' : '⚠️'}
             </div>
             <div className="space-y-2">
-                <h4 className={`font-serif text-2xl font-bold italic ${verificationResult.success ? 'text-emerald-800' : 'text-red-800'}`}>
+                <h4 className={`font-serif text-2xl font-bold italic ${verificationResult.success ? 'text-emerald-500' : 'text-red-500'}`}>
                     {verificationResult.success ? 'Document Integrity Verified' : 'Verification Failed'}
                 </h4>
-                <p className="text-sm opacity-70 font-serif leading-relaxed">
+                <p className="text-sm opacity-70 font-serif leading-relaxed text-[var(--text-body)]">
                     {verificationResult.msg}
                 </p>
                 {verificationResult.success && verificationResult.identity && (
                     <div className="pt-4 grid grid-cols-2 gap-4">
-                        <div className="bg-white/50 p-2 rounded">
-                            <p className="font-mono text-[9px] uppercase font-bold opacity-40">Signed By</p>
-                            <p className="font-mono text-[10px] font-bold">{verificationResult.identity}</p>
+                        <div className="bg-[var(--bg-standard)] p-2 rounded border border-[var(--border-light)]">
+                            <p className="font-mono text-[9px] uppercase font-bold opacity-40 text-[var(--text-body)]">Signed By</p>
+                            <p className="font-mono text-[10px] font-bold text-[var(--text-body)]">{verificationResult.identity}</p>
                         </div>
-                        <div className="bg-white/50 p-2 rounded">
-                            <p className="font-mono text-[9px] uppercase font-bold opacity-40">Valid Content Body Hash</p>
-                            <p className="font-mono text-[10px] font-bold truncate">{verificationResult.hash}</p>
+                        <div className="bg-[var(--bg-standard)] p-2 rounded border border-[var(--border-light)]">
+                            <p className="font-mono text-[9px] uppercase font-bold opacity-40 text-[var(--text-body)]">Valid Content Body Hash</p>
+                            <p className="font-mono text-[10px] font-bold truncate text-[var(--text-body)]">{verificationResult.hash}</p>
                         </div>
                     </div>
                 )}

@@ -63,7 +63,7 @@ export const ComplianceDashboard: React.FC = () => {
             <p className="text-xs opacity-50 font-serif leading-relaxed italic">{p.desc}</p>
             <ul className="space-y-2 mt-auto">
               {p.tasks.map(t => (
-                <li key={t} className="flex gap-3 text-[11px] font-serif italic opacity-70">
+                <li key={t} className="flex gap-3 text-[11px] font-serif italic opacity-70 text-[var(--text-body)]">
                   <span className={p.color}>■</span> {t}
                 </li>
               ))}
@@ -86,7 +86,7 @@ export const ComplianceDashboard: React.FC = () => {
                 key={i}
                 onClick={() => setSelectedPhase(i)}
                 className={`p-6 border rounded-lg transition-all cursor-pointer flex gap-6 items-center ${
-                  selectedPhase === i ? 'border-[var(--trust-blue)] bg-[var(--admonition-bg)] scale-[1.02]' : 'border-[var(--border-light)] opacity-50 hover:opacity-100'
+                  selectedPhase === i ? 'border-[var(--trust-blue)] bg-[var(--admonition-bg)] scale-[1.02]' : 'border-[var(--border-light)] opacity-50 hover:opacity-100 bg-[var(--bg-standard)]'
                 }`}
               >
                 <div className="w-16 text-center border-r border-[var(--border-light)] pr-6">
@@ -98,7 +98,7 @@ export const ComplianceDashboard: React.FC = () => {
                       <h4 className="font-serif text-lg font-bold text-[var(--text-header)]">{item.goal}</h4>
                       <span className="font-mono text-[9px] opacity-40">DAYS {item.days}</span>
                    </div>
-                   <p className="text-xs font-serif italic opacity-70 leading-relaxed">{item.desc}</p>
+                   <p className="text-xs font-serif italic opacity-70 leading-relaxed text-[var(--text-body)]">{item.desc}</p>
                 </div>
                 <div className="flex flex-col items-center gap-1">
                   {item.status === 'CURRENT' && (
@@ -119,12 +119,12 @@ export const ComplianceDashboard: React.FC = () => {
            <div className="p-8 border border-[var(--border-light)] rounded-xl bg-[var(--code-bg)] space-y-8">
               <div className="space-y-4">
                 <p className="font-mono text-[10px] font-bold uppercase text-[var(--trust-blue)]">Current Velocity</p>
-                <p className="text-sm font-serif italic leading-relaxed opacity-70">
+                <p className="text-sm font-serif italic leading-relaxed opacity-70 text-[var(--text-body)]">
                   "Phase III (Universal Tail-Wrap) is effectively complete. The streaming engine now handles 4K video signatures. Focus shifting to Phase IV (Public Verification)."
                 </p>
               </div>
               <div className="pt-4 border-t border-[var(--border-light)] space-y-2">
-                 <div className="flex justify-between text-[10px] font-mono font-bold">
+                 <div className="flex justify-between text-[10px] font-mono font-bold text-[var(--text-body)]">
                     <span>Sprint Completion</span>
                     <span className="text-emerald-500">75%</span>
                  </div>
