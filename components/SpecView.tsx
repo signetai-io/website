@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { jsPDF } from 'jspdf';
 
@@ -6,7 +5,7 @@ const SPEC_PAGES = [
   {
     category: "NARRATIVE STRATEGY",
     title: "1. The Crisis of Trust (Manifesto)",
-    text: "Building on warnings from organizations such as the Europol Innovation Lab, many analysts expect synthetic and AI-assisted media to constitute a dominant share of newly created online content by the mid-to-late 2020s. While precise global percentages are uncertain, the overall trajectory suggests that a substantial majority of future internet content will involve generative systems.\n\nSignet Protocol proposes a new axiom: Verifiable Proof of Reasoning (VPR).\n\nIn alignment with ISO/TC 290 (Online Reputation), VPR serves as a critical defense against 'Reputation Poisoning'. By binding the 'Public Reasoning Graph (PRG)'—a post-hoc, declarative representation of the logic flow—to the final asset, we create a permanent link between the prompt and the result. This graph is distinct from the model's private chain-of-thought, serving strictly as an audit artifact.",
+    text: "Building on warnings from organizations such as the Europol Innovation Lab, many analysts expect synthetic and AI-assisted media to constitute a dominant share of newly created online content by the mid-to-late 2020s. While precise global percentages are uncertain, the overall trajectory suggests that a substantial majority of future internet content will involve generative systems.\n\nSignet Protocol proposes a new axiom: Verifiable Proof of Reasoning (VPR).\n\nIn alignment with ISO/TC 290 (Online Reputation), VPR serves as a critical defense against 'Reputation Poisoning'. By binding the 'Public Reasoning Graph (PRG)'—a post-hoc, declarative representation of the logic flow—to the final asset, we create a permanent link between the prompt and the result. This graph is distinct from the model's private chain-of-thought, serving strictly as an audit artifact.\n\nDefinition: Public Reasoning Graph (PRG)\nThe PRG is a structured, declarative representation of the rationale asserted for an output. It is NOT a raw model chain-of-thought or latent internal state. Instead, the PRG IS a post-hoc, auditable justification graph cryptographically bound to the VPR manifest.",
     content: (
       <div className="space-y-8 animate-in fade-in duration-500">
         <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">1. The Crisis of Trust</h2>
@@ -44,7 +43,7 @@ const SPEC_PAGES = [
   {
     category: "NARRATIVE STRATEGY",
     title: "2. Protocol Architecture (4 Layers)",
-    text: "The Signet Pipeline consists of four distinct verification layers:\n\nL1: Vision Substrate (The DNA)\nCryptographic binding of the initial prompt and intent ingredients.\n\nL2: Neural Lens (The PRG)\nJUMBF encapsulation of the Public Reasoning Graph. This is the claimed logic path.\n\nL3: Reality Check (Drift Audit & Threat Model)\nDeterministic probing of the output against the PRG. \n- Detects: Hallucinations, logic breaks.\n- Does Not Detect: Malicious but internally consistent reasoning.\n\nL4: Human Seal (Accountability)\nFinal Ed25519 signature. The Curator must select an attestation mode:\n1. Intent Seal: 'I intended this result.'\n2. Review Seal: 'I reviewed this result.'\n3. Authority Seal: 'I take liability for this.'",
+    text: "The Signet Pipeline consists of four distinct verification layers:\n\nL1: Vision Substrate (The DNA)\nCryptographic binding of the initial prompt and intent ingredients.\n\nL2: Neural Lens (The PRG)\nJUMBF encapsulation of the Public Reasoning Graph. This is the claimed logic path.\n\nL3: Reality Check (Drift Audit & Threat Model)\nDeterministic probing of the output against the PRG. \n- Detects: Hallucinations, logic breaks.\n- Does Not Detect: Malicious but internally consistent reasoning.\n\nL4: Human Seal (Accountability)\nFinal Ed25519 signature. The Curator must select an attestation mode:\n1. Intent Seal: 'I intended this result.'\n2. Review Seal: 'I reviewed this result.'\n3. Authority Seal: 'I take liability for this.'\n\nISO/NIST Threat Model (v0.3.1):\n- T1 Provenance Stripping: Mitigated by Universal Tail-Wrap + Signature Binding (Risk: Low)\n- T2 Manifest Tampering: Mitigated by Ed25519 Signature Sealing (Risk: Low)\n- T4 Hallucinated Reasoning: Mitigated by L3 Drift Audit + L4 Human Seal (Risk: Medium)\n- T6 Clean-Slate Attack: Mitigated by Soft-Binding (pHash) + Registry Match (Risk: Medium)\n- T8 Authority Impersonation: Mitigated by Ed25519 Identity Anchoring (Risk: Low)",
     content: (
       <div className="space-y-8 animate-in fade-in duration-500">
         <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">2. Protocol Architecture</h2>
@@ -120,7 +119,7 @@ const SPEC_PAGES = [
   {
     category: "NORMATIVE STANDARD",
     title: "3. Seal Mode Schemas",
-    text: "Defines the JSON schema for L4 Human Seals. \n\nSemantics:\n1. Intent Seal: 'I intended this result.'\n2. Review Seal: 'I watched this and it is consistent.'\n3. Authority Seal: 'I take liability for this.'\n\nValidation Rule: A Seal MUST NOT be interpreted beyond its declared mode.",
+    text: "Defines the JSON schema for L4 Human Seals. \n\nSemantics:\n1. Intent Seal: 'I intended this result.' Establishes origin of intent. No claim of correctness. Used by Prompt Authors.\n\n2. Review Seal: 'I reviewed this result.' Confirms human inspection. Asserts reasonable diligence. Used by Editors/Moderators.\n\n3. Authority Seal: 'I take liability for this.' Strongest accountability. Highest trust-weight. Used by Publishers/Institutions.\n\nValidation Rule: A Seal MUST NOT be interpreted beyond its declared mode.",
     content: (
       <div className="space-y-8 animate-in fade-in duration-500">
         <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">3. Seal Mode Schemas</h2>
@@ -404,7 +403,7 @@ const SPEC_PAGES = [
   {
     category: "TECHNICAL AUDIT",
     title: "11. Traceability & Asset Retrieval",
-    text: "10.1 The Persistence Paradox\nWhen a destructive 'in-place' edit occurs, the Vision Substrate (L1) is physically altered. To maintain the integrity of the Reasoning Chain, the protocol provides a mechanism to bridge the gap between the current modified state and the original source pixels.\n\n10.2 URI Pointer Architecture\nEvery Signet Manifest for a derived asset MUST contain an origin_reference block if the parent asset is not embedded. This includes the content hash (Hard-Binding), a URI locator (IPFS/HTTPS), and VPR continuity data.",
+    text: "10.1 The Persistence Paradox\nWhen a destructive 'in-place' edit occurs, the Vision Substrate (L1) is physically altered. To maintain the integrity of the Reasoning Chain, the protocol provides a mechanism to bridge the gap between the current modified state and the original source pixels.\n\n10.2 URI Pointer Architecture\nEvery Signet Manifest for a derived asset MUST contain an origin_reference block if the parent asset is not embedded. This includes the content hash (Hard-Binding), a URI locator (IPFS/HTTPS), and VPR continuity data.\n\n10.3 The 'Digital Negative' Recovery Flow\n1. Extract Manifest: Identify the origin_reference in the current UTW.\n2. Verify Integrity: Resolve the URI to locate the parent asset.\n3. Validate Hash: Perform a local hash of the retrieved parent asset and compare it against the parent_hash recorded in the manifest.\n4. Repeat: Continue this process recursively until a manifest is reached with origin_type: 'root' (the initial capture).",
     content: (
       <div className="space-y-8 animate-in fade-in duration-500">
         <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">11. Traceability & Retrieval</h2>
@@ -459,7 +458,7 @@ const SPEC_PAGES = [
   {
     category: "TECHNICAL AUDIT",
     title: "12. Soft-Binding & Resilience",
-    text: "11.1 Perceptual Fingerprint Layer\nTo protect the Trust Economy from 'Clean Slate' attacks, Signet implements a Soft-Binding layer. Unlike cryptographic hashes (SHA-256) which break if a single pixel changes, a Perceptual Hash (pHash) or Neural Fingerprint remains stable across resizing, compression, and metadata stripping.\n\n11.2 Conflict Resolution\nIf a stripped asset is resigned, the Registry uses visual matching (Hamming Distance) to identify the original Root Claim. The timestamped original (A1) takes precedence over the derived claim (B1), triggering a 'Stolen Heritage' flag.",
+    text: "11.1 Perceptual Fingerprint Layer\nTo protect the Trust Economy from 'Clean Slate' attacks, Signet implements a Soft-Binding layer. Unlike cryptographic hashes (SHA-256) which break if a single pixel changes, a Perceptual Hash (pHash) or Neural Fingerprint remains stable across resizing, compression, and metadata stripping.\n\n11.2 Conflict Resolution\nIf a stripped asset is resigned, the Registry uses visual matching (Hamming Distance) to identify the original Root Claim. The timestamped original (A1) takes precedence over the derived claim (B1), triggering a 'Stolen Heritage' flag.\n\nProtocol:\n- Priority of Claim: The Registry's timestamped record of A1 takes legal and technical precedence.\n- Flagging: The UI MUST display a 'Stolen Heritage' or 'Unverified Derivation' warning linking to A1.",
     content: (
       <div className="space-y-8 animate-in fade-in duration-500">
         <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">12. Soft-Binding Resilience</h2>
@@ -612,7 +611,7 @@ const SPEC_PAGES = [
   {
     category: "SECURITY AUDIT",
     title: "17. Adversarial Analysis (Red Team)",
-    text: "Adversarial review of protocol resilience against realistic attack vectors.\n\nGoal #1: 'Make Fake Content Look Legit'\nAttack: Generate synthetic content + fabricate a plausible PRG + self-sign.\nOutcome: Attack technically succeeds, but Trust Impact is limited due to L4 Human Seal accountability.\n\nGoal #2: 'Strip Provenance Without Detection'\nAttack: Remove UTW tail-wrap and redistribute asset.\nOutcome: Fails cryptographically. Verification tools report 'Unsigned'.\n\nGoal #3: 'Rewrite History (Clean-Slate Attack)'\nAttack: Modify asset slightly, re-sign as original.\nOutcome: Partial success possible, but detectable via soft-binding (pHash) registry matching.",
+    text: "Adversarial review of protocol resilience against realistic attack vectors.\n\nGoal #1: 'Make Fake Content Look Legit'\nAttack: Generate synthetic content + fabricate a plausible PRG + self-sign.\nOutcome: Attack technically succeeds, but Trust Impact is limited due to L4 Human Seal accountability. (Defense: Good)\n\nGoal #2: 'Strip Provenance Without Detection'\nAttack: Remove UTW tail-wrap and redistribute asset.\nOutcome: Fails cryptographically. Verification tools report 'Unsigned'. (Defense: Strong)\n\nGoal #3: 'Rewrite History (Clean-Slate Attack)'\nAttack: Modify asset slightly, re-sign as original.\nOutcome: Partial success possible, but detectable via soft-binding (pHash) registry matching. (Defense: Medium)",
     content: (
       <div className="space-y-8 animate-in fade-in duration-500">
         <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">17. Adversarial Analysis (Red Team)</h2>
@@ -653,7 +652,7 @@ const SPEC_PAGES = [
   {
     category: "SECURITY AUDIT",
     title: "18. Formal Security Considerations",
-    text: "ISO/RFC style security assessment. Defines Integrity, Non-Repudiation, Tamper Evidence, and Key Sovereignty. Lists Out-of-Scope threats such as social engineering and coercion.",
+    text: "ISO/RFC style security assessment. Defines Integrity, Non-Repudiation, Tamper Evidence, and Key Sovereignty. Lists Out-of-Scope threats such as social engineering and coercion.\n\nKey Security Properties:\n- Integrity: Cryptographic signatures bind assets, reasoning, and seals. Any modification invalidates the signature.\n- Non-Repudiation: Ed25519 signatures provide strong proof of key possession at signing time.\n- Tamper Evidence: Universal Tail-Wrap ensures provenance removal is detectable by standard auditors.\n- Key Sovereignty: Private keys never leave the client environment. No custodial key escrow exists.\n\nOut-of-Scope Threats:\n- Collusion between malicious humans and AI systems.\n- Social engineering attacks on end-users.\n- Coercion or false legal claims by signatories.",
     content: (
       <div className="space-y-8 animate-in fade-in duration-500">
         <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">18. Formal Security Considerations</h2>
@@ -700,7 +699,7 @@ const SPEC_PAGES = [
   {
     category: "STRATEGIC AUDIT",
     title: "19. ISO Reviewer Q&A",
-    text: "Simulated dialogue with ISO/TC 290 reviewers. Addresses Chain-of-Thought leakage, legal liability of seals, and protocol centralization risks.",
+    text: "Simulated dialogue with ISO/TC 290 reviewers. Addresses Chain-of-Thought leakage, legal liability of seals, and protocol centralization risks.\n\nQ1: Are you claiming to expose or store AI chain-of-thought?\nAnswer: No. Signet records a Public Reasoning Graph (PRG), which is a declarative justification artifact. It is explicitly not a model’s internal reasoning state.\n\nQ2: Does a Human Seal imply legal liability?\nAnswer: No. Seal modes distinguish intent, review, and authority. Each conveys a different level of accountability and must not be interpreted beyond its declared scope.\n\nQ4: What prevents malicious users from signing false content?\nAnswer: Nothing—and this is intentional. Signet does not attempt to prevent deception; it ensures deception is attributable and auditable.\n\nQ6: What happens if your registry disappears?\nAnswer: The registry is reconstructible via public key anchors published externally (Github/X).",
     content: (
       <div className="space-y-8 animate-in fade-in duration-500">
         <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">19. ISO Reviewer Q&A</h2>
@@ -748,7 +747,7 @@ const SPEC_PAGES = [
   {
     category: "NORMATIVE STANDARD",
     title: "20. Formal Definitions",
-    text: "Normative definitions to eliminate ambiguity and constrain interpretation. Defines 'Vision Substrate', 'PRG', 'VPR', 'Drift Audit', 'Human Seal', 'Virtual Node', 'Trust Score', 'Hard-Binding', 'Soft-Binding', and 'Seal Mode' within the context of the protocol.",
+    text: "Normative definitions to eliminate ambiguity and constrain interpretation.\n\n- Asset: A digital artifact subject to provenance attestation.\n- Public Reasoning Graph (PRG): A declarative, post-hoc representation of the asserted rationale linking inputs, constraints, intermediate claims, and outputs.\n- Verifiable Proof of Reasoning (VPR): A cryptographically bound package consisting of the Vision Substrate (L1), Public Reasoning Graph (L2), Drift Audit metadata (L3), and Human Seal(s) (L4).\n- Vision Substrate (L1): The structured representation of human intent, constraints, and objectives provided prior to or during asset generation.\n- Neural Lens (L2): The protocol layer responsible for constructing, serializing, and binding the Public Reasoning Graph to the asset.\n- Drift Audit (L3): A deterministic or probabilistic validation process that probes consistency between the PRG and the generated asset.\n- Human Seal (L4): A cryptographic signature applied by a verified human identity, asserting intent, review, or authority.\n- Universal Tail-Wrap (UTW): A zero-dependency method for appending provenance metadata to an asset without modifying its internal structure.\n- Virtual Node: A compressed provenance representation that aggregates multiple historical nodes into a single cryptographic commitment.\n- Trust Score: A dynamic reputation metric derived from historical behavior, seal usage, and conflict resolution outcomes.\n- Hard-Binding: Cryptographic binding of provenance to the exact byte representation of an asset (e.g., SHA-256 hash).\n- Soft-Binding (pHash): A perceptual fingerprint (using DCT or Wavelet transforms) that remains stable across resizing, compression, and format shifting. Similarity is measured via Hamming Distance thresholds (< 5).\n- Seal Mode: A normative classification defining the semantic meaning of a Human Seal (intent, review, authority).",
     content: (
       <div className="space-y-8 animate-in fade-in duration-500">
         <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">20. Formal Definitions</h2>
@@ -859,7 +858,7 @@ const SPEC_PAGES = [
   {
     category: "AUDIT FRAMEWORK",
     title: "21. Conformance Checklist",
-    text: "Auditor-friendly verification matrix. Lists mandatory Core Conformance, Security, Governance, and Interoperability requirements for implementers.",
+    text: "Auditor-friendly verification matrix.\n\nCore Conformance (Mandatory):\n[ ] C-01 Assets MUST be hard-bound via cryptographic hash\n[ ] C-02 PRG MUST be serialized as a DAG\n[ ] C-03 PRG MUST be cryptographically bound to asset\n[ ] C-04 Human Seal MUST include seal_mode\n[ ] C-05 Private keys MUST remain client-side\n[ ] C-06 Signature MUST cover full UTW payload\n[ ] C-07 Verification MUST be possible offline\n\nSecurity & Resilience (Mandatory):\n[ ] S-01 Tampering invalidates signature\n[ ] S-02 Replay attacks are prevented by hard-binding\n[ ] S-03 Algorithm agility is supported\n[ ] S-04 Registry loss does not invalidate proofs\n\nGovernance & Trust (Recommended):\n[ ] G-01 Trust score decay implemented\n[ ] G-02 Clean-slate detection supported\n[ ] G-03 Seal modes enforced semantically\n[ ] G-04 Appeal or remediation path documented\n\nInteroperability (Optional):\n[ ] I-01 C2PA compatible hard-binding\n[ ] I-02 External identity anchors supported\n[ ] I-03 PQC readiness declared",
     content: (
       <div className="space-y-8 animate-in fade-in duration-500">
         <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">21. Conformance Checklist</h2>
@@ -1043,7 +1042,7 @@ const SPEC_PAGES = [
   {
     category: "STRATEGIC COMM",
     title: "Appendix B: ISO Submission",
-    text: "Draft submission letter for ISO/TC 290. Formally requests consideration of Signet Protocol v0.3.2 as a candidate contribution for digital trust and reputation systems.",
+    text: "Draft submission letter for ISO/TC 290. Formally requests consideration of Signet Protocol v0.3.2 as a candidate contribution for digital trust and reputation systems.\n\nDear Members of ISO/TC 290,\n\nWe respectfully submit the Signet Protocol (v0.3.2) for consideration as a candidate contribution to ongoing work in online reputation, digital trust, and content authenticity.\n\nThe Signet Protocol addresses a growing gap in existing provenance standards: while current systems effectively attribute origin, they do not capture asserted reasoning, human intent, or accountable authorization behind AI-assisted content.\n\nKey characteristics of the proposal include:\n- A four-layer verification model separating intent, reasoning representation, drift analysis, and human accountability.\n- A local-first cryptographic architecture that preserves user sovereignty and privacy.\n- A scalable provenance compression mechanism enabling long-lived reputation without asset bloat.\n- Explicit differentiation between generation, review, and authority through sealed attestations.\n\nThe protocol is designed to complement, not replace, existing standards such as C2PA, and intentionally avoids claims about factual correctness or internal AI cognition.\n\nWe believe this work aligns with ISO/TC 290’s mission to support trustworthy digital reputation systems in an era of large-scale synthetic media, and we welcome technical review, critique, and collaborative refinement.\n\nThank you for your consideration.\n\nRespectfully submitted,\nSignet Protocol Project\nWorking Group: Neural Prism Implementation",
     content: (
       <div className="space-y-8 animate-in fade-in duration-500">
         <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">Appendix B: ISO/TC Submission Draft</h2>
@@ -1112,20 +1111,31 @@ export const SpecView: React.FC = () => {
     
     let y = 40;
     SPEC_PAGES.forEach((page, i) => {
-      if (y > 250) {
+      // Force page break for each new section to match the "Old PDF" aesthetic and readability
+      if (i > 0) {
         doc.addPage();
         y = 20;
       }
+      
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(12);
+      doc.setFontSize(14); // Slightly larger header
       doc.text(`${page.title}`, 20, y);
-      y += 10;
+      y += 15;
       
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
+      
+      // Use splitTextToSize to handle multi-line text blocks
       const splitText = doc.splitTextToSize(page.text, 170);
       doc.text(splitText, 20, y);
-      y += (splitText.length * 5) + 10;
+      
+      // Add footer to mimic the official document style
+      const pageHeight = doc.internal.pageSize.height;
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text("MASTER SIGNATORY ATTESTATION | Authorized by: signetai.io:ssl | PROVENANCE_ROOT: SHA256:7B8C...44A2", 20, pageHeight - 10);
+      doc.text(`Page ${i + 1} of ${SPEC_PAGES.length}`, 170, pageHeight - 10);
+      doc.setTextColor(0); // Reset color
     });
     
     doc.save("signet_spec_v0.3.1.pdf");
