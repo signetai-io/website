@@ -15,20 +15,16 @@
     <link rel="manifest" href="/manifest.json">
     
     <!-- Favicon Strategy: Multi-Layer Fallback -->
-    <!-- 1. Legacy ICO (Simulated via Data URI) -->
     <link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAAAeElEQVRYhe3WMQqDQBSE4f986S186S186S1SuAiKiIVrs00hF0h8bAJZ16TMrElW984cAAAAAElFTkSuQmCC" sizes="any">
-    
-    <!-- 2. Modern PNG (Absolute Path - Served from Public) -->
     <link rel="icon" type="image/png" href="/192.png">
-    
-    <!-- 3. Apple Touch (Absolute Path - Served from Public) -->
     <link rel="apple-touch-icon" href="/192.png">
     
     <title>Signet AI | Technical Specification & VPR Standard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
     <style>
       :root {
         /* C2PA Industrial Palette (Standard Light) */
@@ -142,19 +138,22 @@
       .prose-signet code { font-family: 'JetBrains Mono', monospace; font-size: 12px; background: rgba(0,0,0,0.05); padding: 2px 4px; border-radius: 3px; }
       [data-theme='midnight'] .prose-signet code { background: rgba(255,255,255,0.1); }
     </style>
-    <script type="importmap">
+  <script type="importmap">
 {
   "imports": {
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "react": "https://esm.sh/react@^19.2.4",
+    "firebase/": "https://esm.sh/firebase@^12.9.0/",
     "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
     "@google/genai": "https://esm.sh/@google/genai@^1.41.0",
-    "react-markdown": "https://esm.sh/react-markdown@^9.0.1",
-    "jspdf": "https://esm.sh/jspdf@^2.5.1"
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.4",
+    "vite": "https://esm.sh/vite@^7.3.1",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
+    "react-markdown": "https://esm.sh/react-markdown@^10.1.0",
+    "jspdf": "https://esm.sh/jspdf@^4.1.0"
   }
 }
 </script>
-  </head>
+</head>
   <body>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>

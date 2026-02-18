@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { initializeApp, getApps, getApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-import { getFirestore, doc, getDoc, setDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
-import { getAuth, signInWithPopup, GoogleAuthProvider, TwitterAuthProvider, FacebookAuthProvider, OAuthProvider, onAuthStateChanged, signOut, User } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getFirestore, doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
+import { getAuth, signInWithPopup, GoogleAuthProvider, TwitterAuthProvider, FacebookAuthProvider, OAuthProvider, onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { firebaseConfig } from '../private_keys';
 import { PersistenceService, VaultRecord } from '../services/PersistenceService';
 import { BIP39_WORDS } from '../constants/Bip39Words';
@@ -14,7 +14,7 @@ const initSignetFirebase = () => {
 };
 
 const app = initSignetFirebase();
-const db = app ? getFirestore(app, 'signetai') : null;
+const db = app ? getFirestore(app) : null;
 const auth = app ? getAuth(app) : null;
 
 const PROTOCOL_AUTHORITY = "signetai.io";
