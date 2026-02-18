@@ -748,7 +748,7 @@ const SPEC_PAGES = [
   {
     category: "NORMATIVE STANDARD",
     title: "20. Formal Definitions",
-    text: "Normative definitions to eliminate ambiguity and constrain interpretation. Defines 'Vision Substrate', 'PRG', 'VPR', 'Drift Audit', 'Human Seal', 'Virtual Node', and 'Trust Score' within the context of the protocol.",
+    text: "Normative definitions to eliminate ambiguity and constrain interpretation. Defines 'Vision Substrate', 'PRG', 'VPR', 'Drift Audit', 'Human Seal', 'Virtual Node', 'Trust Score', 'Hard-Binding', 'Soft-Binding', and 'Seal Mode' within the context of the protocol.",
     content: (
       <div className="space-y-8 animate-in fade-in duration-500">
         <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">20. Formal Definitions</h2>
@@ -820,6 +820,27 @@ const SPEC_PAGES = [
               <h4 className="font-mono text-[10px] uppercase font-bold text-[var(--text-header)] mb-2">Trust Score</h4>
               <p className="text-xs opacity-80 leading-relaxed">
                 A dynamic reputation metric derived from historical behavior, seal usage, and conflict resolution outcomes.
+              </p>
+           </div>
+
+           <div className="p-4 border-l-2 border-[var(--border-light)] bg-[var(--bg-standard)]">
+              <h4 className="font-mono text-[10px] uppercase font-bold text-[var(--text-header)] mb-2">Hard-Binding</h4>
+              <p className="text-xs opacity-80 leading-relaxed">
+                Cryptographic binding of provenance to the exact byte representation of an asset (e.g., SHA-256 hash).
+              </p>
+           </div>
+
+           <div className="p-4 border-l-2 border-[var(--border-light)] bg-[var(--bg-standard)]">
+              <h4 className="font-mono text-[10px] uppercase font-bold text-[var(--text-header)] mb-2">Soft-Binding</h4>
+              <p className="text-xs opacity-80 leading-relaxed">
+                A perceptual or semantic fingerprint enabling similarity matching across transformations that break cryptographic hashes.
+              </p>
+           </div>
+
+           <div className="p-4 border-l-2 border-[var(--border-light)] bg-[var(--bg-standard)]">
+              <h4 className="font-mono text-[10px] uppercase font-bold text-[var(--text-header)] mb-2">Seal Mode</h4>
+              <p className="text-xs opacity-80 leading-relaxed">
+                A normative classification defining the semantic meaning of a Human Seal. Valid values: intent, review, authority.
               </p>
            </div>
         </div>
@@ -1030,7 +1051,7 @@ const SPEC_PAGES = [
         <div className="p-8 md:p-12 bg-white border border-[var(--border-light)] shadow-sm font-serif text-sm leading-relaxed text-black max-w-3xl mx-auto">
            <div className="mb-8 font-mono text-xs opacity-60">
              <p>To: Members of ISO/TC 290</p>
-             <p>Subject: Submission for Consideration — Signet Protocol v0.3.2: Verifiable Proof of Reasoning for Synthetic Media</p>
+             <p>Subject: Submission for Consideration — Signet Protocol v0.3.2</p>
              <p>Date: {new Date().toLocaleDateString()}</p>
            </div>
 
