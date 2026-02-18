@@ -60,7 +60,13 @@
     - [x] Sidecar (.json) Generation & Verification
     - [x] Embedded (UTW) Verification with Slicing
 
-- [ ] **CLI Tool Release**
+- [ ] **Resilience Layer (Soft-Binding)**
+    - [ ] **Client-side pHash** calculation (WASM/JS) for Images
+    - [ ] Audio Fingerprinting (Chromaprint/AcoustID) for WAV/MP3
+    - [ ] Visual Duplicate Detection in Batch Verifier
+    - [ ] Registry lookup for stripped assets (Recovery)
+
+- [x] **CLI Tool Release**
     - [x] Node.js implementation of UTW for server-side pipelines
     - [ ] CI/CD Github Action for code provenance
 
