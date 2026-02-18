@@ -233,6 +233,61 @@ const SPEC_PAGES = [
         </div>
       </div>
     )
+  },
+  {
+    category: "TECHNICAL AUDIT",
+    title: "10. Traceability & Asset Retrieval",
+    text: "10.1 The Persistence Paradox\nWhen a destructive 'in-place' edit occurs, the Vision Substrate (L1) is physically altered. To maintain the integrity of the Reasoning Chain, the protocol provides a mechanism to bridge the gap between the current modified state and the original source pixels.\n\n10.2 URI Pointer Architecture\nEvery Signet Manifest for a derived asset MUST contain an origin_reference block if the parent asset is not embedded. This includes the content hash (Hard-Binding), a URI locator (IPFS/HTTPS), and VPR continuity data.",
+    content: (
+      <div className="space-y-8 animate-in fade-in duration-500">
+        <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">10. Traceability & Retrieval</h2>
+        
+        <div className="space-y-6">
+           <div className="p-6 border-l-4 border-amber-500 bg-amber-500/5">
+              <h4 className="font-bold text-[var(--text-header)] text-lg mb-2">10.1 The Persistence Paradox</h4>
+              <p className="opacity-80 text-sm leading-relaxed">
+                When Person P3 modifies an image A1 (signed by P1, P2) to create A2, the original signatures from P1 and P2 become mathematically invalid for the new byte stream. Signet resolves this by treating A1 as a <strong>Parent Ingredient</strong>.
+              </p>
+           </div>
+
+           <div>
+              <h4 className="font-bold text-[var(--text-header)] text-lg mb-4">10.3 The "Digital Negative" Recovery Flow</h4>
+              <ol className="list-decimal pl-5 space-y-3 text-sm opacity-80">
+                 <li><strong>Extract Manifest:</strong> Identify the <code>origin_reference</code> in the current UTW (Universal Tail-Wrap).</li>
+                 <li><strong>Verify Integrity:</strong> Resolve the URI to locate the parent asset.</li>
+                 <li><strong>Validate Hash:</strong> Perform a local hash of the retrieved parent asset and compare it against the <code>parent_hash</code> recorded in the manifest.</li>
+                 <li><strong>Repeat:</strong> Continue this process recursively until a manifest is reached with <code>origin_type: "root"</code> (the initial capture).</li>
+              </ol>
+           </div>
+
+           <div className="mt-6">
+              <h4 className="font-mono text-[10px] uppercase font-bold text-[var(--trust-blue)] mb-2">10.4 Schema: origin_reference</h4>
+              <div className="p-4 bg-[var(--code-bg)] border border-[var(--border-light)] rounded overflow-x-auto">
+                <pre className="font-mono text-[10px] leading-relaxed">
+{`{
+  "parent_identity": "sig_abc123...",
+  "derivation_action": "c2pa.cropped",
+  "storage_pointers": [
+    {
+      "provider": "IPFS",
+      "uri": "ipfs://QmXoyp..."
+    },
+    {
+      "provider": "SignetVault",
+      "uri": "https://vault.signetai.io/assets/uuid-789"
+    }
+  ],
+  "integrity_check": {
+    "alg": "sha256",
+    "hash": "e3b0c44298fc1c149afbf4c8996fb..."
+  }
+}`}
+                </pre>
+              </div>
+           </div>
+        </div>
+      </div>
+    )
   }
 ];
 
