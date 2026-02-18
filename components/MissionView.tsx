@@ -3,48 +3,92 @@ import React from 'react';
 export const MissionView: React.FC = () => {
   return (
     <article className="py-24 max-w-4xl mx-auto animate-in fade-in duration-700">
-      <header className="mb-20 space-y-6">
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-[10px] text-[var(--trust-blue)] tracking-[0.4em] uppercase font-bold">Manifesto</span>
-          <div className="px-2 py-0.5 bg-black text-white text-[8px] font-bold rounded font-mono">HUMAN_FIRST</div>
+      <header className="mb-24 space-y-8 text-center">
+        <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full border border-[var(--border-light)] bg-[var(--bg-sidebar)] mx-auto">
+          <span className="font-mono text-[10px] text-[var(--trust-blue)] tracking-[0.4em] uppercase font-bold">The Manifesto</span>
         </div>
-        <h1 className="text-6xl font-bold tracking-tighter italic text-[var(--text-header)]">
-          The Trust Layer for <br/>the AI Age.
+        <h1 className="text-6xl md:text-7xl font-bold tracking-tighter italic text-[var(--text-header)] leading-tight">
+          The Great Filtering.
         </h1>
-        <p className="text-xl text-[var(--text-body)] opacity-70 font-serif leading-relaxed italic max-w-2xl">
-          We believe that in an era of infinite synthetic content, the most valuable commodity is <strong className="text-[var(--text-header)]">human intent</strong>. Signet is not just a tool; it is a declaration of reality.
+        <p className="text-xl text-[var(--text-body)] opacity-70 font-serif leading-relaxed italic max-w-2xl mx-auto">
+          "We are not building a tool. We are building the infrastructure for the preservation of objective reality."
         </p>
       </header>
 
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-24">
-        <div className="space-y-6">
-          <h3 className="font-mono text-[11px] uppercase tracking-widest font-bold border-b border-[var(--border-light)] pb-2">The Problem</h3>
-          <p className="text-lg leading-relaxed font-serif opacity-80">
-            AI models are non-deterministic. They hallucinate. Without a cryptographic chain of custody, logic drift becomes indistinguishable from fact. The current internet cannot survive the flood of unverifiable tokens.
-          </p>
-        </div>
-        <div className="space-y-6">
-          <h3 className="font-mono text-[11px] uppercase tracking-widest font-bold border-b border-[var(--border-light)] pb-2 text-[var(--trust-blue)]">The Solution</h3>
-          <p className="text-lg leading-relaxed font-serif opacity-80">
-            <strong>Verifiable Proof of Reasoning (VPR).</strong> We don't just sign the pixels; we sign the process. By binding the "Reasoning DAG" to the final asset via C2PA standards, we create a permanent, auditable link between the prompt, the logic, and the result.
-          </p>
-        </div>
-      </section>
+      <div className="space-y-32">
+        {/* Chapter 1 */}
+        <section className="grid grid-cols-1 md:grid-cols-12 gap-12 items-start">
+          <div className="md:col-span-4 sticky top-24">
+             <span className="font-mono text-[14px] font-bold text-[var(--trust-blue)] opacity-50 block mb-2">01</span>
+             <h3 className="text-3xl font-bold italic text-[var(--text-header)] mb-4">The Flood.</h3>
+             <p className="font-mono text-[10px] uppercase tracking-widest opacity-40">Current Status: Critical</p>
+          </div>
+          <div className="md:col-span-8 space-y-6 text-lg leading-loose font-serif opacity-80 text-[var(--text-body)]">
+             <p>
+               By 2027, it is estimated that 99% of the internet's content will be synthetically generated. The marginal cost of creating text, image, and video has dropped to zero.
+             </p>
+             <p>
+               In this environment, "Truth" is no longer the default state of information. It is a luxury. Without a cryptographic chain of custody, logic drift becomes indistinguishable from fact, and hallucinations mask themselves as reality.
+             </p>
+             <div className="p-6 bg-red-500/5 border-l-2 border-red-500 text-red-600 text-sm font-sans italic">
+               "The internet cannot survive as a trusted medium if the signal-to-noise ratio drops below 1%."
+             </div>
+          </div>
+        </section>
 
-      <section className="mb-24 p-10 bg-[var(--bg-sidebar)] border border-[var(--border-light)] rounded-xl">
-        <h3 className="font-serif text-3xl font-bold italic mb-8 text-[var(--text-header)]">The "Human-in-the-Loop" Guarantee</h3>
-        <div className="space-y-6 text-[var(--text-body)] opacity-80 leading-relaxed">
-          <p>
-            Signet Protocol is built on a non-negotiable axiom: <strong>Accountability cannot be automated.</strong>
-          </p>
-          <p>
-            While AI agents generates the logic, a Human Curator must hold the cryptographic keys (Ed25519) to seal the manifest. This prevents "Runaway AI" scenarios by ensuring every chain of reasoning has a human anchor responsible for its output.
-          </p>
-        </div>
-      </section>
+        {/* Chapter 2 */}
+        <section className="grid grid-cols-1 md:grid-cols-12 gap-12 items-start">
+          <div className="md:col-span-4 sticky top-24">
+             <span className="font-mono text-[14px] font-bold text-[var(--trust-blue)] opacity-50 block mb-2">02</span>
+             <h3 className="text-3xl font-bold italic text-[var(--text-header)] mb-4">The Ark.</h3>
+             <p className="font-mono text-[10px] uppercase tracking-widest opacity-40">Protocol: VPR</p>
+          </div>
+          <div className="md:col-span-8 space-y-6 text-lg leading-loose font-serif opacity-80 text-[var(--text-body)]">
+             <p>
+               Signet Protocol proposes a new axiom: <strong>Verifiable Proof of Reasoning (VPR)</strong>.
+             </p>
+             <p>
+               We do not just attest to the final pixels (Attribution); we attest to the <em>process</em> (Reasoning). By binding the "Logic DAG"—the chain of thought used to reach a conclusion—to the final asset, we create a permanent, auditable link between the prompt and the result.
+             </p>
+             <ul className="space-y-4 mt-4">
+                <li className="flex items-center gap-4 text-sm font-sans">
+                   <div className="w-8 h-px bg-[var(--trust-blue)]"></div>
+                   <span>If the reasoning is flawed, the Signet breaks.</span>
+                </li>
+                <li className="flex items-center gap-4 text-sm font-sans">
+                   <div className="w-8 h-px bg-[var(--trust-blue)]"></div>
+                   <span>If the origin is masked, the Signet refuses to seal.</span>
+                </li>
+             </ul>
+          </div>
+        </section>
 
-      <section>
-        <h3 className="font-mono text-[11px] uppercase tracking-widest font-bold mb-10 opacity-40">Core Contributors</h3>
+        {/* Chapter 3 */}
+        <section className="grid grid-cols-1 md:grid-cols-12 gap-12 items-start">
+          <div className="md:col-span-4 sticky top-24">
+             <span className="font-mono text-[14px] font-bold text-[var(--trust-blue)] opacity-50 block mb-2">03</span>
+             <h3 className="text-3xl font-bold italic text-[var(--text-header)] mb-4">The Pact.</h3>
+             <p className="font-mono text-[10px] uppercase tracking-widest opacity-40">Role: Human-in-the-Loop</p>
+          </div>
+          <div className="md:col-span-8 space-y-6 text-lg leading-loose font-serif opacity-80 text-[var(--text-body)]">
+             <p>
+               Technology alone cannot solve a crisis of trust. Signet is built on a non-negotiable principle: <strong>Accountability cannot be automated.</strong>
+             </p>
+             <p>
+               While AI agents generate the logic, a Human Curator must hold the cryptographic keys (Ed25519) to seal the manifest. This prevents "Runaway AI" scenarios by ensuring every chain of reasoning has a human anchor responsible for its output.
+             </p>
+             <div className="mt-8 p-8 bg-[var(--bg-sidebar)] border border-[var(--border-light)] rounded-xl">
+               <h4 className="font-bold text-[var(--text-header)] mb-4 font-sans text-sm uppercase tracking-widest">The Curator's Oath</h4>
+               <p className="italic text-[var(--text-header)]">
+                 "I verify not just the output, but the thought that produced it. My key is my bond."
+               </p>
+             </div>
+          </div>
+        </section>
+      </div>
+
+      <section className="mt-32 border-t border-[var(--border-light)] pt-16">
+        <h3 className="font-mono text-[11px] uppercase tracking-widest font-bold mb-10 opacity-40 text-center">Stewards of the Protocol</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {[
             { name: "Song Sheng-Liang", role: "Product Architect", id: "ssl" },
