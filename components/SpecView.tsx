@@ -3,6 +3,7 @@ import { jsPDF } from 'jspdf';
 
 const SPEC_PAGES = [
   {
+    category: "NARRATIVE STRATEGY",
     title: "1. The Crisis of Trust (Manifesto)",
     text: "By 2027, it is estimated that 99% of the internet's content will be synthetically generated. In this environment of 'Infinite Content', Truth is no longer the default—it is a luxury resource.\n\nSignet Protocol proposes a new axiom: Verifiable Proof of Reasoning (VPR).\n\nWe do not just attest to the final pixels (Attribution); we attest to the *process* (Reasoning). By binding the 'Logic DAG'—the chain of thought used to reach a conclusion—to the final asset, we create a permanent, auditable link between the prompt and the result.",
     content: (
@@ -20,6 +21,7 @@ const SPEC_PAGES = [
     )
   },
   {
+    category: "NARRATIVE STRATEGY",
     title: "2. Protocol Architecture (4 Layers)",
     text: "The Signet Pipeline consists of four distinct verification layers to ensure end-to-end integrity:\n\nL1: Vision Substrate (The DNA)\nCryptographic binding of the initial prompt and intent ingredients.\n\nL2: Neural Lens (The Logic Map)\nJUMBF encapsulation of the reasoning DAG (Directed Acyclic Graph).\n\nL3: Reality Check (Drift Audit)\nDeterministic probing of the output against the claimed logic to detect hallucinations.\n\nL4: Human Seal (The Pact)\nFinal Ed25519 signature by a verified human curator (The 'Signet').",
     content: (
@@ -37,6 +39,7 @@ const SPEC_PAGES = [
     )
   },
   {
+    category: "TECHNICAL AUDIT",
     title: "3. Executive Summary & Abstract",
     text: "The Signet Protocol (v0.3.1) defines a decentralized framework for the cryptographic attestation of AI-generated reasoning paths (VPR). \n\nUnlike traditional watermarking which focuses on asset attribution, Signet verifies the 'Reasoning DAG'—the logical chain of thought used to generate the output. \n\nThis document serves as a Technical Audit of the reference implementation hosted at signetai.io. It details the Client-Side PWA architecture, Zero-Copy memory management, Universal Tail-Wrap (UTW) injection strategy, and the Sovereign Identity capabilities utilizing Ed25519-256.",
     content: (
@@ -50,6 +53,7 @@ const SPEC_PAGES = [
     )
   },
   {
+    category: "TECHNICAL AUDIT",
     title: "4. System Topology (Local-First)",
     text: "The Signet architecture strictly adheres to a 'Local-First' privacy model. \n\n4.1 Client-Side Execution\nAll cryptographic operations—Hashing (SHA-256), Key Generation (Ed25519), and Signing—occur exclusively within the user's browser (V8 Sandbox). \n\n4.2 Data Isolation\nPrivate Keys and Mnemonics are stored in the browser's IndexedDB ('IdentityVault') and are never transmitted over the network. \n\n4.3 Registry Sync\nOnly Public Keys and Identity Anchors are synchronized to the global Firestore registry. This ensures verifiable identity without custodial risk.",
     content: (
@@ -71,6 +75,7 @@ const SPEC_PAGES = [
     )
   },
   {
+    category: "TECHNICAL AUDIT",
     title: "5. Cryptographic Implementation",
     text: "5.1 Algorithms\n- Signatures: Ed25519 (Edwards-curve Digital Signature Algorithm).\n- Hashing: SHA-256 (WebCrypto API).\n- Key Derivation: BIP-39 Mnemonic standard.\n\n5.2 Entropy Standards\nSignet enforces 'Sovereign Grade' entropy for Master Curators.\n- Dictionary: 2,048 words (2^11).\n- Mnemonic Length: 24 words.\n- Total Entropy: 24 * 11 = 264 bits.\n\nThis exceeds the 256-bit security floor of modern elliptic curves, rendering brute-force attacks computationally infeasible.",
     content: (
@@ -100,6 +105,7 @@ const SPEC_PAGES = [
     )
   },
   {
+    category: "TECHNICAL AUDIT",
     title: "6. Universal Tail-Wrap (UTW)",
     text: "6.1 Definition\nUTW is a zero-dependency injection strategy for appending provenance data to binary files (PDF, MP4, WAV) without rewriting the internal file structure.\n\n6.2 Byte Layout\n[ORIGINAL_BINARY_DATA]\n[EOF_MARKER]\n[0x0A, 0x25] (%)\n[SIGNET_VPR_START]\n[0x0A] (Newline)\n[JSON_MANIFEST_PAYLOAD]\n[0x0A] (Newline)\n[0x25] (%)\n[SIGNET_VPR_END]\n\n6.3 Verification Logic\nParsers MUST scan the last 10KB of a file for the %SIGNET_VPR_START token to extract the manifest without reading the full file.",
     content: (
@@ -131,6 +137,7 @@ const SPEC_PAGES = [
     )
   },
   {
+    category: "TECHNICAL AUDIT",
     title: "7. Zero-Copy Streaming Engine",
     text: "7.1 The Problem\nLoading large assets (e.g., 2GB Video) into browser RAM (ArrayBuffer) causes crash loops on mobile devices.\n\n7.2 The Solution: Block-Chained Hashing\nSignet implements a stream reader that processes files in 5MB chunks. \nFormula: H(n) = SHA256( H(n-1) + Chunk(n) )\n\n7.3 Zero-Copy Composition\nThe final signed file is constructed using a Blob composition of pointers:\nconst final = new Blob([originalFileRef, signatureString]);\nThis requires O(1) memory overhead regardless of file size.",
     content: (
@@ -156,6 +163,7 @@ const SPEC_PAGES = [
     )
   },
   {
+    category: "TECHNICAL AUDIT",
     title: "8. Data & Storage Schema",
     text: "8.1 Local Schema (IndexedDB)\nStore: 'IdentityVault'\nKeyPath: 'anchor'\nFields: { anchor, identity, publicKey, mnemonic (encrypted), timestamp, type }\n\n8.2 Global Schema (Firestore)\nCollection: 'identities'\nDocumentID: {anchor}\nFields: { identity, publicKey, ownerUid, provider, timestamp }\n\n8.3 Security Rule Enforcements\n- Write: Only allowed if auth.uid matches ownerUid.\n- Read: Public access allowed for verification.\n- Admin: Hardcoded privileges for 'shengliang.song.ai@gmail.com'.",
     content: (
@@ -185,6 +193,7 @@ const SPEC_PAGES = [
     )
   },
   {
+    category: "TECHNICAL AUDIT",
     title: "9. Compliance & Standards",
     text: "9.1 C2PA 2.3 Alignment\nSignet operates as a 'Cognitive Assertion Provider' under ISO/TC 290.\n- Assertion Type: `org.signetai.vpr`\n- Binding: Soft-Binding via pHash\n\n9.2 GDPR/CCPA Compliance\n- Right to Erasure: Users can delete their 'Local Vault' at any time. The global public key remains as an immutable historical record of past signatures (Accountability).\n- Data Minimization: No biometrics or PII are stored beyond the email anchor used for Sybil resistance.",
     content: (
@@ -242,12 +251,17 @@ export const SpecView: React.FC = () => {
         doc.text("SIGNET PROTOCOL: OFFICIAL SPECIFICATION", margin + 5, 15);
         doc.text(`VERSION: v0.3.1_OFFICIAL`, pageWidth - margin - 40, 15);
         
+        // Category Stamp
+        doc.setTextColor(0, 85, 255);
+        doc.text(`[ ${p.category} ]`, margin + 5, 25);
+        
         // Page Number
+        doc.setTextColor(180, 180, 180);
         doc.text(`PAGE ${index + 1} OF ${SPEC_PAGES.length}`, pageWidth - margin - 20, pageHeight - 10);
 
         // Section Title
         doc.setFont("times", "bolditalic");
-        doc.setFontSize(24); // Slightly smaller for long titles
+        doc.setFontSize(24);
         doc.setTextColor(0, 0, 0);
         const titleLines = doc.splitTextToSize(p.title, contentWidth - 10);
         doc.text(titleLines, margin + 5, 35);
@@ -257,7 +271,7 @@ export const SpecView: React.FC = () => {
         doc.line(margin + 5, 50, pageWidth - margin, 50);
 
         // Content Body
-        doc.setFont("courier", "normal"); // Monospace for technical feel
+        doc.setFont("courier", "normal");
         doc.setFontSize(10);
         doc.setTextColor(60, 60, 60);
         const splitText = doc.splitTextToSize(p.text, contentWidth - 10);
@@ -349,6 +363,11 @@ export const SpecView: React.FC = () => {
         </div>
 
         <div className="mb-12 text-center space-y-4">
+          <div className="inline-block mb-4">
+             <span className={`px-3 py-1 rounded-full text-[9px] font-mono font-bold uppercase tracking-widest ${SPEC_PAGES[page].category.includes('TECHNICAL') ? 'bg-[var(--code-bg)] text-[var(--trust-blue)]' : 'bg-emerald-500/10 text-emerald-600'}`}>
+                {SPEC_PAGES[page].category}
+             </span>
+          </div>
           <h1 className="font-serif text-3xl md:text-4xl text-[var(--text-header)] font-bold tracking-tighter leading-tight italic">
             {SPEC_PAGES[page].title}
           </h1>
