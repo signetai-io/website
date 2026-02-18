@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Hero } from './components/Hero';
 import { Architecture } from './components/Architecture';
@@ -54,7 +55,7 @@ const Sidebar: React.FC<{ currentView: string; isOpen: boolean }> = ({ currentVi
     <div className="p-8 h-full flex flex-col">
       <div className="flex items-center gap-3 mb-12 cursor-pointer" onClick={() => window.location.hash = ''}>
         <SignetLogo className="w-8 h-8 rounded-lg shadow-sm" />
-        <span className="font-bold tracking-tight text-xl text-[var(--text-header)]">Signet v0.3.1</span>
+        <span className="font-bold tracking-tight text-xl text-[var(--text-header)]">Signet v0.3.2</span>
       </div>
 
       <nav className="space-y-1 flex-1 overflow-y-auto">
@@ -66,7 +67,7 @@ const Sidebar: React.FC<{ currentView: string; isOpen: boolean }> = ({ currentVi
         <a href="#developers" className="sidebar-link">2. Neural Prism Pipeline</a>
         <a href="#schema" className={`sidebar-link ${currentView === 'schema' ? 'active' : ''}`}>3. VPR JSON Manifest</a>
         <a href="#spec" className={`sidebar-link ${currentView === 'spec' ? 'active' : ''}`}>4. Technical Draft</a>
-        <p className="px-4 py-2 text-[9px] text-[var(--text-body)] opacity-40 font-mono">Draft Song-03.1 (C2PA 2.3)</p>
+        <p className="px-4 py-2 text-[9px] text-[var(--text-body)] opacity-40 font-mono">Draft Song-03.2 (C2PA 2.3)</p>
         
         <p className="px-4 pt-8 text-[10px] uppercase tracking-widest font-bold text-[var(--text-body)] opacity-40 mb-4">Identity & Trust</p>
         <a href="#identity" className={`sidebar-link ${currentView === 'identity' ? 'active' : ''}`}>5. TrustKey Registry (Register)</a>
@@ -317,7 +318,7 @@ const App: React.FC = () => {
               <a href="#mission" className="hover:text-[var(--trust-blue)]">About</a>
               <a href="#privacy" className="hover:text-[var(--trust-blue)]">Privacy</a>
               <a href="#donate" className="hover:text-[var(--trust-blue)]">Grants</a>
-              <span>VERSION: 0.3.1_UTW</span>
+              <span>VERSION: 0.3.2_UTW</span>
             </div>
           </footer>
         </div>

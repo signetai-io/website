@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Admonition } from './Admonition';
 
@@ -5,7 +6,7 @@ import { Admonition } from './Admonition';
 const CLI_HEADER = `#!/usr/bin/env node
 
 /**
- * SIGNET BATCH SIGNER CLI (v0.3.1)
+ * SIGNET BATCH SIGNER CLI (v0.3.2)
  * --------------------------------
  * A zero-dependency, C2PA-native injection tool for Node.js.
  * Implements Universal Tail-Wrap (UTW) for arbitrary binary formats.
@@ -19,7 +20,7 @@ const crypto = require('crypto');
 const { Worker, isMainThread, parentPort, workerData } = require('worker_threads');
 
 // --- CONFIG ---
-const VERSION = "0.3.1";
+const VERSION = "0.3.2";
 const CONCURRENCY = 4; // Parallel workers`;
 
 const CLI_CORE = `
@@ -133,7 +134,7 @@ const CLI_SOURCE_CODE = CLI_HEADER + CLI_CORE;
 const BENCHMARK_SOURCE_CODE = `#!/usr/bin/env node
 
 /**
- * SIGNET BENCHMARK SUITE (v0.3.1)
+ * SIGNET BENCHMARK SUITE (v0.3.2)
  * -------------------------------
  * Comparative Performance Test: Sidecar vs Embedded (UTW).
  * 
@@ -145,7 +146,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { performance } = require('perf_hooks');
 
-const VERSION = "0.3.1";
+const VERSION = "0.3.2";
 
 // --- UTILS ---
 function getFiles(dir, ext) {
@@ -186,7 +187,7 @@ function runSidecarBench(files) {
   return { timeMs: performance.now() - start, bytes: bytesProcessed, count: files.length };
 }
 
-// --- MODE 2: EMBEDDED UTW (Heavyweight) ---
+// --- MODE 2: EMBEDDED (UTW) ---
 function runEmbeddedBench(files) {
   console.log("\\n[TEST 2] Embedded UTW Generation (Rewrite)...");
   const start = performance.now();

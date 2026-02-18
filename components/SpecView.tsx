@@ -29,7 +29,7 @@ export const SpecView: React.FC = () => {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(10);
         doc.setTextColor(100);
-        doc.text("SIGNET PROTOCOL v0.3.1_OFFICIAL", margin, 15);
+        doc.text("SIGNET PROTOCOL v0.3.2_OFFICIAL", margin, 15);
         doc.setLineWidth(0.5);
         doc.setDrawColor(200);
         doc.line(margin, 18, pageWidth - margin, 18);
@@ -99,7 +99,7 @@ export const SpecView: React.FC = () => {
     // Metadata
     doc.setFontSize(10);
     doc.setTextColor(80, 80, 80); // Dark Grey
-    doc.text("VERSION 0.3.1 (DRAFT-SONG-03.1)", width/2, 230, { align: 'center' });
+    doc.text("VERSION 0.3.2 (DRAFT-SONG-03.2)", width/2, 230, { align: 'center' });
     doc.text("ISO/TC 290 Alignment", width/2, 236, { align: 'center' });
     
     // Bottom Bar
@@ -125,7 +125,7 @@ export const SpecView: React.FC = () => {
     
     const metaData = [
         ["Document ID:", "SPC-VPR-2026-003"],
-        ["Version:", "0.3.1"],
+        ["Version:", "0.3.2"],
         ["Status:", "Active Draft / Implementation Ready"],
         ["Date:", new Date().toLocaleDateString()],
         ["Author:", "Signet Protocol Group"],
@@ -216,15 +216,38 @@ export const SpecView: React.FC = () => {
     doc.setFillColor(255, 255, 255); 
     doc.rect(0, 0, width, height, 'F');
     
-    // Barcode Simulation (Height 15mm)
+    // Improved Barcode Simulation (Code 128 / High Density)
     doc.setFillColor(0, 0, 0); 
+    const barcodeW = 140; 
     const barcodeH = 15; 
     const barcodeY = height / 2 - (barcodeH / 2);
-    const barcodeX = width / 2 - 60;
-    for(let i=0; i<60; i++) {
-        const w = Math.random() * 3 + 1;
-        doc.rect(barcodeX + (i * 2.5), barcodeY, w, barcodeH, 'F');
+    const barcodeX = (width - barcodeW) / 2;
+    
+    let currX = barcodeX;
+    const endX = barcodeX + barcodeW;
+    let seed = 42; // Deterministic seed for consistent barcode look
+    const random = () => {
+        const x = Math.sin(seed++) * 10000;
+        return x - Math.floor(x);
+    };
+
+    while (currX < endX) {
+        // Randomly determine bar width (thin to thick)
+        const barWidth = (random() * 1.5) + 0.4; 
+        // Randomly determine if it's a black bar or white space
+        const isBar = random() > 0.4; 
+        
+        if (currX + barWidth > endX) break;
+
+        if (isBar) {
+            doc.rect(currX, barcodeY, barWidth, barcodeH, 'F');
+        }
+        currX += barWidth;
     }
+    
+    // Ensure boundary bars for clean look
+    doc.rect(barcodeX, barcodeY, 2, barcodeH, 'F');
+    doc.rect(endX - 2, barcodeY, 2, barcodeH, 'F');
     
     doc.setTextColor(0, 0, 0);
     doc.setFont("courier", "bold");
@@ -254,12 +277,12 @@ export const SpecView: React.FC = () => {
     const manifest = {
       "@context": "https://signetai.io/contexts/vpr-v1.jsonld",
       "type": "org.signetai.document_provenance",
-      "version": "0.3.1",
+      "version": "0.3.2",
       "strategy": "POST_EOF_INJECTION",
       "asset": {
         "type": "application/pdf",
         "hash_algorithm": "SHA-256",
-        "filename": "signet_spec_v0.3.1.pdf",
+        "filename": "signet_spec_v0.3.2.pdf",
         "generated_by": "signetai.io"
       },
       "signature": {
@@ -286,7 +309,7 @@ ${JSON.stringify(manifest, null, 2)}
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = "signet_spec_v0.3.1.pdf";
+    a.download = "signet_spec_v0.3.2.pdf";
     a.click();
     URL.revokeObjectURL(url);
   };

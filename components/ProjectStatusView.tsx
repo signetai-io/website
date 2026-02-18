@@ -1,10 +1,11 @@
+
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 
 const TODO_CONTENT = `# Signet AI Project Status & Roadmap
 
-**Current Version:** 0.3.1_UTW  
-**Protocol Spec:** draft-song-03.1
+**Current Version:** 0.3.2_UTW  
+**Protocol Spec:** draft-song-03.2
 
 ## Phase 1: Core Architecture (Foundation)
 *Focus: Identity, Cryptography, and Basic Asset Signing*
