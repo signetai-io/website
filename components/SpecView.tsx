@@ -833,7 +833,7 @@ const SPEC_PAGES = [
            <div className="p-4 border-l-2 border-[var(--border-light)] bg-[var(--bg-standard)]">
               <h4 className="font-mono text-[10px] uppercase font-bold text-[var(--text-header)] mb-2">Soft-Binding (pHash)</h4>
               <p className="text-xs opacity-80 leading-relaxed">
-                A perceptual fingerprint (using DCT or Wavelet transforms) that remains stable across resizing, compression, and format shifting. Similarity is measured via Hamming Distance thresholds (&lt; 5).
+                A perceptual fingerprint (using DCT or Wavelet transforms) that remains stable across resizing, compression, and format shifting. Similarity is measured via Hamming Distance thresholds (< 5).
               </p>
            </div>
 
@@ -1097,10 +1097,20 @@ const SPEC_PAGES = [
   }
 ];
 
+const loadImage = (src: string): Promise<HTMLImageElement> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "Anonymous";
+    img.src = src;
+    img.onload = () => resolve(img);
+    img.onerror = (e) => reject(e);
+  });
+};
+
 export const SpecView: React.FC = () => {
   const [activePage, setActivePage] = useState(0);
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     const doc = new jsPDF();
     const width = doc.internal.pageSize.getWidth();
     const height = doc.internal.pageSize.getHeight();
@@ -1112,7 +1122,7 @@ export const SpecView: React.FC = () => {
     const addFooter = (pageNo: number, total: number) => {
         doc.setFont("times", "normal");
         doc.setFontSize(8);
-        doc.setTextColor(150);
+        doc.setTextColor(100);
         doc.text("MASTER SIGNATORY ATTESTATION | Authorized by: signetai.io:ssl | PROVENANCE_ROOT: SHA256:7B8C...44A2", margin, pageHeight - 10);
         doc.text(`Page ${pageNo} of ${total}`, pageWidth - margin - 20, pageHeight - 10);
         doc.setTextColor(0);
@@ -1122,7 +1132,7 @@ export const SpecView: React.FC = () => {
     const addHeader = (title: string) => {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(10);
-        doc.setTextColor(100);
+        doc.setTextColor(80);
         doc.text("SIGNET PROTOCOL v0.3.1_OFFICIAL", margin, 15);
         doc.setLineWidth(0.5);
         doc.setDrawColor(200);
@@ -1135,46 +1145,56 @@ export const SpecView: React.FC = () => {
     };
 
     // --- PAGE 1: COVER PAGE ---
-    // Background
-    doc.setFillColor(10, 10, 10); // Nearly black
+    // Background - Clean White
+    doc.setFillColor(255, 255, 255);
     doc.rect(0, 0, width, height, 'F');
     
-    // Logo (Vector Construction)
-    doc.setDrawColor(255, 255, 255);
-    doc.setLineWidth(2);
-    doc.roundedRect(width/2 - 40, 60, 80, 80, 10, 10, 'S'); // Outline square
-    
-    // "SA" Text
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(80);
-    doc.text("SA", width/2, 110, { align: 'center' });
-    
-    // Blue Dot
-    doc.setFillColor(0, 85, 255); // Trust Blue
-    doc.circle(width/2 + 25, 75, 8, 'F');
+    // Attempt to load Banner Image
+    try {
+        const banner = await loadImage('/public/signetai_banner.png');
+        // Calculate aspect ratio fit
+        const imgProps = doc.getImageProperties(banner);
+        const imgHeight = (width * imgProps.height) / imgProps.width;
+        doc.addImage(banner, 'PNG', 0, 0, width, imgHeight); // Top banner
+    } catch (e) {
+        console.warn("Banner image failed to load, falling back to text header");
+        // Fallback Logo Block
+        doc.setFillColor(10, 10, 10);
+        doc.rect(0, 0, width, 80, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(60);
+        doc.text("SA", margin, 60);
+    }
 
-    // Title
+    // Title Block
+    doc.setTextColor(0, 0, 0);
     doc.setFont("times", "bold");
-    doc.setFontSize(28);
-    doc.text("SIGNET PROTOCOL", width/2, 180, { align: 'center' });
+    doc.setFontSize(42);
+    doc.text("SIGNET PROTOCOL", margin, 120);
     
-    doc.setFontSize(16);
+    doc.setFontSize(24);
     doc.setFont("helvetica", "normal");
-    doc.text("Verifiable Proof of Reasoning (VPR)", width/2, 195, { align: 'center' });
+    doc.setTextColor(80); // Dark Gray
+    doc.text("Verifiable Proof of Reasoning (VPR)", margin, 135);
     
-    // Metadata
-    doc.setFontSize(10);
-    doc.setTextColor(180, 180, 180);
-    doc.text("VERSION 0.3.1 (DRAFT-SONG-03.1)", width/2, 230, { align: 'center' });
-    doc.text("ISO/TC 290 Alignment", width/2, 236, { align: 'center' });
-    
+    // Spec Details
+    const coverMetaY = 200;
+    doc.setFontSize(12);
+    doc.setTextColor(0);
+    doc.setFont("helvetica", "bold");
+    doc.text("VERSION 0.3.1", margin, coverMetaY);
+    doc.setFont("helvetica", "normal");
+    doc.text("ISO/TC 290 Alignment Draft", margin, coverMetaY + 7);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, margin, coverMetaY + 14);
+    doc.text("Classification: PUBLIC SPECIFICATION", margin, coverMetaY + 21);
+
     // Bottom Bar
     doc.setFillColor(0, 85, 255);
-    doc.rect(0, height - 20, width, 20, 'F');
+    doc.rect(0, height - 15, width, 15, 'F');
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(8);
-    doc.text("CONFIDENTIAL - NEURAL PRISM WORKING GROUP", width/2, height - 8, { align: 'center' });
+    doc.setFontSize(9);
+    doc.text("NEURAL PRISM IMPLEMENTATION GROUP - CONFIDENTIAL DRAFT", width/2, height - 6, { align: 'center' });
 
     // --- PAGE 2: PROLOG / DOCUMENT CONTROL ---
     doc.addPage();
@@ -1197,7 +1217,7 @@ export const SpecView: React.FC = () => {
         ["Date:", new Date().toLocaleDateString()],
         ["Author:", "Signet Protocol Group"],
         ["Master Signatory:", "signetai.io:ssl"],
-        ["Classification:", "Public Specification"]
+        ["Format:", "PDF/A-3 (Archival)"]
     ];
 
     metaData.forEach((item, i) => {
@@ -1212,11 +1232,11 @@ export const SpecView: React.FC = () => {
 
     doc.setFont("times", "italic");
     doc.setFontSize(11);
-    const abstract = "This document specifies the technical requirements for the Signet Protocol, a framework for ensuring the cryptographic provenance of AI-generated reasoning paths. It defines the schemas for JSON-LD manifests, Ed25519 identity binding, and Universal Tail-Wrap (UTW) injection strategies for binary assets.";
+    const abstract = "ABSTRACT: This document specifies the technical requirements for the Signet Protocol, a framework for ensuring the cryptographic provenance of AI-generated reasoning paths. It defines the schemas for JSON-LD manifests, Ed25519 identity binding, and Universal Tail-Wrap (UTW) injection strategies for binary assets.";
     const splitAbstract = doc.splitTextToSize(abstract, pageWidth - (margin * 2));
     doc.text(splitAbstract, margin, 155);
 
-    addFooter(1, SPEC_PAGES.length + 4); // approx page count adjustment
+    addFooter(1, SPEC_PAGES.length + 4); 
 
     // --- PAGE 3: TABLE OF CONTENTS ---
     doc.addPage();
@@ -1232,20 +1252,20 @@ export const SpecView: React.FC = () => {
             addHeader("Table of Contents (Cont.)");
             tocY = 40;
         }
-        // Simple dot leader simulation
+        
         const title = page.title;
-        const pageNum = (i + 4).toString(); // Start content on page 4
+        const pageNum = (i + 4).toString(); 
         doc.text(title, margin, tocY);
         doc.text(pageNum, pageWidth - margin - 10, tocY, { align: 'right' });
         
-        // Draw dots
+        // Dot Leaders
         const titleWidth = doc.getTextWidth(title);
         const dotsStart = margin + titleWidth + 2;
         const dotsEnd = pageWidth - margin - 15;
-        doc.setFontSize(8);
-        doc.setTextColor(150);
-        for (let d = dotsStart; d < dotsEnd; d += 2) {
-            doc.text(".", d, tocY);
+        doc.setFontSize(10);
+        doc.setTextColor(180);
+        if (dotsEnd > dotsStart) {
+            doc.text(".".repeat(Math.floor((dotsEnd - dotsStart) / 2)), dotsStart, tocY);
         }
         doc.setFontSize(11);
         doc.setTextColor(0);
@@ -1256,7 +1276,7 @@ export const SpecView: React.FC = () => {
     addFooter(2, SPEC_PAGES.length + 4);
 
     // --- CONTENT PAGES ---
-    let currentPageNum = 3; // Starts after Cover (0), Prolog (1), TOC (2) -> 3
+    let currentPageNum = 3; 
     
     SPEC_PAGES.forEach((page, i) => {
         currentPageNum++;
@@ -1277,10 +1297,6 @@ export const SpecView: React.FC = () => {
         doc.setLineHeightFactor(1.5);
         
         const splitBody = doc.splitTextToSize(page.text, pageWidth - (margin * 2));
-        
-        // Handle pagination within a section if text is too long (basic implementation)
-        // For simplicity in this demo, we assume sections fit or flow naturally.
-        // Complex flow requires a dedicated engine, but we'll print what fits.
         doc.text(splitBody, margin, cursorY);
         
         addFooter(currentPageNum, SPEC_PAGES.length + 4);
@@ -1288,29 +1304,29 @@ export const SpecView: React.FC = () => {
 
     // --- BACK COVER ---
     doc.addPage();
-    doc.setFillColor(10, 10, 10);
+    // Light Gray Background for Back Cover
+    doc.setFillColor(245, 245, 245);
     doc.rect(0, 0, width, height, 'F');
     
-    // Barcode Simulation
-    doc.setFillColor(255, 255, 255);
+    // Barcode Simulation (Clean Black on Light)
+    doc.setFillColor(0, 0, 0);
     const barcodeY = height / 2 - 20;
     const barcodeX = width / 2 - 60;
     for(let i=0; i<60; i++) {
         const w = Math.random() * 3 + 1;
-        const gap = Math.random() * 3 + 1;
         doc.rect(barcodeX + (i * 2.5), barcodeY, w, 40, 'F');
     }
     
-    doc.setTextColor(255, 255, 255);
+    doc.setTextColor(50, 50, 50);
     doc.setFont("courier", "bold");
     doc.setFontSize(10);
     doc.text("GENERATED BY: www.signetai.io", width/2, barcodeY + 55, { align: 'center' });
     doc.text(new Date().toISOString(), width/2, barcodeY + 65, { align: 'center' });
     
     doc.setFontSize(8);
-    doc.setTextColor(150);
+    doc.setTextColor(100);
     doc.text("SIGNED BY PUBLIC KEY:", width/2, barcodeY + 85, { align: 'center' });
-    doc.setTextColor(0, 255, 255); // Cyan
+    doc.setTextColor(0, 85, 255); // Trust Blue
     doc.text("ed25519:signet_v3.1_sovereign_5b98...8bdf9", width/2, barcodeY + 95, { align: 'center' });
     
     // --- SIGNATURE INJECTION (UTW) ---
