@@ -28,6 +28,7 @@ import { CliDownload } from './components/CliDownload';
 import { MissionView } from './components/MissionView';
 import { PrivacyView } from './components/PrivacyView';
 import { DonationView } from './components/DonationView';
+import { PodcastDemo } from './components/PodcastDemo';
 
 export type Theme = 'standard' | 'midnight';
 
@@ -283,6 +284,8 @@ const App: React.FC = () => {
                 Signet Protocol acts as a specialized subdirectory of C2PA, mapping neural logic states into standard JUMBF manifest boxes.
               </Admonition>
               <Architecture />
+              <hr className="hr-chapter" />
+              <PodcastDemo />
               <hr className="hr-chapter" />
               <SchemaDefinition />
               <hr className="hr-chapter" />

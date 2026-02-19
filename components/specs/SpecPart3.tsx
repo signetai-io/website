@@ -305,7 +305,7 @@ export const PART_3 = [
            <div className="p-4 border-l-2 border-[var(--border-light)] bg-[var(--bg-standard)]">
               <h4 className="font-mono text-[10px] uppercase font-bold text-[var(--text-header)] mb-2">Soft-Binding (pHash)</h4>
               <p className="text-xs opacity-80 leading-relaxed">
-                A perceptual fingerprint (using DCT or Wavelet transforms) that remains stable across resizing, compression, and format shifting. Similarity is measured via Hamming Distance thresholds (&lt; 5).
+                A perceptual fingerprint (using DCT or Wavelet transforms) that remains stable across resizing, compression, and format shifting. Similarity is measured via Hamming Distance thresholds (< 5).
               </p>
            </div>
 
@@ -503,6 +503,51 @@ export const PART_3 = [
                 </div>
               ))}
            </div>
+        </div>
+
+        <div className="space-y-4">
+            <h4 className="font-mono text-[10px] uppercase font-bold text-[var(--text-header)] tracking-widest border-b border-[var(--border-light)] pb-2">
+                Generated Evidence (Step 05)
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                    <div className="aspect-video rounded-lg overflow-hidden border border-[var(--border-light)] shadow-sm bg-black">
+                        <iframe 
+                            width="100%" 
+                            height="100%" 
+                            src="https://www.youtube.com/embed/UatpGRr-wA0" 
+                            title="Signet Protocol v0.3.2 Deep Dive (English)" 
+                            frameBorder="0" 
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                            allowFullScreen
+                        ></iframe>
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] font-mono">
+                        <span className="font-bold uppercase text-[var(--trust-blue)]">English Deep Dive</span>
+                        <span className="opacity-40">NotebookLM</span>
+                    </div>
+                </div>
+                <div className="space-y-2">
+                    <div className="aspect-video rounded-lg overflow-hidden border border-[var(--border-light)] shadow-sm bg-black">
+                        <iframe 
+                            width="100%" 
+                            height="100%" 
+                            src="https://www.youtube.com/embed/5F_6YDhA2A0" 
+                            title="Signet Protocol v0.3.2 Deep Dive (Chinese)" 
+                            frameBorder="0" 
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                            allowFullScreen
+                        ></iframe>
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] font-mono">
+                        <span className="font-bold uppercase text-[var(--trust-blue)]">Chinese Deep Dive (中文)</span>
+                        <span className="opacity-40">NotebookLM</span>
+                    </div>
+                </div>
+            </div>
+            <p className="text-[9px] font-mono text-center opacity-40 uppercase tracking-widest pt-2">
+                Video Assets Signed by Master Signatory: signetai.io:ssl
+            </p>
         </div>
 
         <div className="p-4 border-l-4 border-[var(--trust-blue)] bg-[var(--admonition-bg)]">
