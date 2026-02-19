@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Admonition } from './Admonition';
 import { NutritionLabel } from './NutritionLabel';
-import { firebaseConfig, GOOGLE_GEMINI_KEY } from '../private_keys';
+import { GOOGLE_GEMINI_KEY } from '../private_keys';
 
 export const VerifyView: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -70,33 +70,21 @@ export const VerifyView: React.FC = () => {
   };
 
   const getApiKey = () => {
-      const envKey = process.env.API_KEY;
-      
-      // 1. Priority: Environment Variable (if valid and not placeholder)
-      if (envKey && envKey.startsWith("AIza") && !envKey.includes("UNUSED")) {
-          return envKey;
-      }
-
-      if (envKey) {
-          addLog(`WARNING: Environment API Key '${envKey.substring(0, 5)}...' is invalid/placeholder.`);
-      } else {
-          addLog("WARNING: Environment API Key is undefined.");
-      }
-
-      // 2. Priority: Dedicated Gemini Key (private_keys.ts)
+      // 1. Primary: Dedicated Gemini/Drive Key (private_keys.ts)
       if (GOOGLE_GEMINI_KEY && GOOGLE_GEMINI_KEY.startsWith("AIza")) {
-          addLog("Using fallback GOOGLE_GEMINI_KEY from private_keys.");
+          // addLog("Using Primary GOOGLE_GEMINI_KEY.");
           return GOOGLE_GEMINI_KEY;
       }
 
-      // 3. Fallback: Firebase Config (private_keys.ts)
-      if (firebaseConfig && firebaseConfig.apiKey && firebaseConfig.apiKey.startsWith("AIza")) {
-          addLog("Using fallback API Key from firebaseConfig.");
-          return firebaseConfig.apiKey;
+      // 2. Secondary: Environment Variable (CI/CD override)
+      const envKey = process.env.API_KEY;
+      if (envKey && envKey.startsWith("AIza") && !envKey.includes("UNUSED")) {
+          addLog("Using process.env.API_KEY override.");
+          return envKey;
       }
 
-      addLog("CRITICAL: No valid API Key found in environment or fallback config.");
-      throw new Error("Client Configuration Error: API_KEY is missing/invalid.");
+      addLog("CRITICAL: No valid GOOGLE_GEMINI_KEY found.");
+      throw new Error("Client Configuration Error: GOOGLE_GEMINI_KEY is missing/invalid.");
   };
 
   // Define handleVerify early to be used in auto-trigger

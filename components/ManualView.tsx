@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 const ManualSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
@@ -146,6 +147,47 @@ export const ManualView: React.FC = () => {
         </div>
         <div className="mt-6 p-4 bg-[var(--code-bg)] border border-[var(--border-light)] rounded font-mono text-xs">
            <code className="text-[var(--trust-blue)]">node signet-benchmark.js --dir ./test-corpus</code>
+        </div>
+      </ManualSection>
+
+      <ManualSection title="08. API Credential Resolution">
+        <p className="text-lg leading-loose text-[var(--text-body)] opacity-80 font-serif mb-8">
+          To maintain separation of concerns, the client now enforces strict API Key isolation. The internal `firebaseConfig` key is restricted to Firestore/Auth and is <strong>never</strong> used for Drive or Gemini calls.
+        </p>
+        
+        <div className="overflow-hidden border border-[var(--border-light)] rounded-lg">
+           <table className="w-full text-xs text-left">
+              <thead className="bg-[var(--table-header)] border-b border-[var(--border-light)]">
+                 <tr>
+                    <th className="p-4 font-bold text-[var(--text-header)]">Source</th>
+                    <th className="p-4 font-bold text-[var(--text-header)]">Priority</th>
+                    <th className="p-4 font-bold text-[var(--trust-blue)]">Behavior</th>
+                 </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border-light)]">
+                 <tr>
+                    <td className="p-4 font-mono text-[var(--text-header)]">GOOGLE_GEMINI_KEY</td>
+                    <td className="p-4 font-bold text-emerald-600">PRIMARY</td>
+                    <td className="p-4 opacity-70">
+                       Defined in <code>private_keys.ts</code>. This is the <strong>default</strong> key for all Generative AI and Drive API operations.
+                    </td>
+                 </tr>
+                 <tr>
+                    <td className="p-4 font-mono text-[var(--text-header)]">process.env.API_KEY</td>
+                    <td className="p-4 font-bold text-blue-600">OVERRIDE</td>
+                    <td className="p-4 opacity-70">
+                       Used only if `GOOGLE_GEMINI_KEY` is missing. Allows temporary overrides via CI/CD environment variables.
+                    </td>
+                 </tr>
+                 <tr>
+                    <td className="p-4 font-mono text-[var(--text-header)]">firebaseConfig.apiKey</td>
+                    <td className="p-4 font-bold text-red-500">DISABLED</td>
+                    <td className="p-4 opacity-70">
+                       Strictly ignored for Drive/Gemini calls to prevent 403 Forbidden errors due to scope mismatch.
+                    </td>
+                 </tr>
+              </tbody>
+           </table>
         </div>
       </ManualSection>
 
