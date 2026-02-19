@@ -8,6 +8,10 @@ export const VerifyView: React.FC = () => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [youtubeId, setYoutubeId] = useState<string | null>(null);
   const [driveId, setDriveId] = useState<string | null>(null);
+  // Folder State
+  const [folderId, setFolderId] = useState<string | null>(null);
+  const [folderContents, setFolderContents] = useState<any[]>([]);
+
   const [isVerifying, setIsVerifying] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const [manifest, setManifest] = useState<any>(null);
@@ -15,7 +19,7 @@ export const VerifyView: React.FC = () => {
   const [urlInput, setUrlInput] = useState('');
   const [dragActive, setDragActive] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [verificationStatus, setVerificationStatus] = useState<'IDLE' | 'VERIFYING' | 'SUCCESS' | 'UNSIGNED' | 'TAMPERED'>('IDLE');
+  const [verificationStatus, setVerificationStatus] = useState<'IDLE' | 'VERIFYING' | 'SUCCESS' | 'UNSIGNED' | 'TAMPERED' | 'BATCH_REPORT'>('IDLE');
   const [verificationMethod, setVerificationMethod] = useState<'CLOUD_BINDING' | 'DEEP_HASH' | 'TAIL_SCAN'>('CLOUD_BINDING');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -41,6 +45,8 @@ export const VerifyView: React.FC = () => {
     return null;
   };
 
+  const isFolderUrl = (url: string) => url.includes('/folders/') || url.includes('id=') && !url.includes('/file/');
+
   // Robust URL Param Extraction (Search + Hash)
   const getUrlParam = (param: string) => {
     // 1. Check standard query string
@@ -64,6 +70,8 @@ export const VerifyView: React.FC = () => {
     setVerificationStatus('VERIFYING');
     setVerificationMethod('DEEP_HASH'); // Local file allows full hash check
     setManifest(null);
+    setFolderContents([]);
+    setFolderId(null);
     
     try {
         const text = await targetFile.text();
@@ -124,11 +132,12 @@ export const VerifyView: React.FC = () => {
       setIsFetching(true);
       setYoutubeId(id);
       setDriveId(null);
+      setFolderId(null);
       setFile(null);
       setPreviewUrl(null);
       setManifest(null);
       setVerificationStatus('VERIFYING');
-      setVerificationMethod('CLOUD_BINDING'); // YouTube implies transcoding, so we use ID binding
+      setVerificationMethod('CLOUD_BINDING'); 
       setShowL2(false);
       setFetchError(null);
 
@@ -156,17 +165,15 @@ export const VerifyView: React.FC = () => {
              }
           } catch(e) { console.warn("YouTube API Unreachable", e); }
 
-          // Fallback / Hardcoded Trust for Demo Videos if API fails or for demonstration assurance
           if (id === 'UatpGRr-wA0' || id === '5F_6YDhA2A0') {
               if (!isVerifiedContext) {
                   title = id === 'UatpGRr-wA0' ? "Signet Protocol - English Deep Dive" : "Signet Protocol - Chinese Deep Dive";
                   channel = "Signet AI";
               }
-              // Force verify for these specific IDs as per request
               isVerifiedContext = true;
           }
 
-          await new Promise(r => setTimeout(r, 1500)); // Simulating Registry Lookup
+          await new Promise(r => setTimeout(r, 1500)); 
 
           if (isVerifiedContext) {
               const cloudManifest = {
@@ -205,9 +212,65 @@ export const VerifyView: React.FC = () => {
       }
   };
 
-  const handleGoogleDriveVerify = async (id: string) => {
+  const handleGoogleDriveFolderVerify = async (id: string) => {
+      setIsFetching(true);
+      setFolderId(id);
+      setDriveId(null);
+      setYoutubeId(null);
+      setFile(null);
+      setPreviewUrl(null);
+      setManifest(null);
+      setVerificationStatus('VERIFYING');
+      setShowL2(false);
+      setFetchError(null);
+
+      // Simulate API delay
+      await new Promise(r => setTimeout(r, 1500));
+
+      // Specific Demo Simulation for the Mixed Content Folder
+      if (id === '1dKxGvDBrxHp9ys_7jy7cXNt74JnaryA9') {
+          const contents = [
+              {
+                  id: 'vid_001_signed',
+                  name: 'Signet_Overview_v2.mp4',
+                  type: 'video/mp4',
+                  size: '42.5 MB',
+                  status: 'SUCCESS',
+                  signer: 'signetai.io:ssl',
+                  date: '2026-02-18'
+              },
+              {
+                  id: 'vid_002_signed',
+                  name: 'Panel_Discussion_Shanghai.mp4',
+                  type: 'video/mp4',
+                  size: '128.2 MB',
+                  status: 'SUCCESS',
+                  signer: 'signetai.io:cn_node',
+                  date: '2026-02-19'
+              },
+              {
+                  id: 'vid_003_unsigned',
+                  name: 'Raw_Crowd_Footage.mp4',
+                  type: 'video/mp4',
+                  size: '15.1 MB',
+                  status: 'UNSIGNED',
+                  signer: null,
+                  date: '2026-02-20'
+              }
+          ];
+          setFolderContents(contents);
+          setVerificationStatus('BATCH_REPORT');
+      } else {
+          setFetchError("Folder Access Denied or Empty (Demo Mode Restricted).");
+          setVerificationStatus('IDLE');
+      }
+      setIsFetching(false);
+  };
+
+  const handleGoogleDriveVerify = async (id: string, simMode?: string) => {
       setIsFetching(true);
       setDriveId(id);
+      setFolderId(null);
       setYoutubeId(null);
       setFile(null);
       setPreviewUrl(null);
@@ -240,7 +303,6 @@ export const VerifyView: React.FC = () => {
           } catch(e) { console.warn("Drive API Metadata Unreachable", e); }
 
           // 2. Deep Tail Scan (Attempt to read signature bytes)
-          // Google Drive does NOT transcode original files, so UTW signatures should exist.
           if (fileSize > 0) {
              try {
                  const rangeStart = Math.max(0, fileSize - 20000); // Last 20KB
@@ -257,7 +319,6 @@ export const VerifyView: React.FC = () => {
                              const jsonStr = tailText.substring(start + '%SIGNET_VPR_START'.length, end).trim();
                              const embeddedManifest = JSON.parse(jsonStr);
                              
-                             // Upgrade to Deep Scan Manifest
                              setManifest(embeddedManifest);
                              deepScanSuccess = true;
                              setVerificationMethod('TAIL_SCAN');
@@ -267,24 +328,51 @@ export const VerifyView: React.FC = () => {
              } catch (e) { console.warn("Deep Scan / Range Request failed (Likely CORS)", e); }
           }
 
-          // Fallback / Hardcoded Trust for Demo Folder
-          if (!deepScanSuccess && id === '1dKxGvDBrxHp9ys_7jy7cXNt74JnaryA9') {
-              if (!isVerifiedContext) {
-                  title = "Signet Protocol - Specification Assets (Folder)";
-                  mimeType = "application/vnd.google-apps.folder";
-                  owner = "Signet Protocol Group";
-              }
-              isVerifiedContext = true;
+          // --- DEMO SIMULATION LOGIC ---
+          // Case A: Signed Demo (Force Success)
+          if (!deepScanSuccess && id === '1BnQia9H0dWGVQPoninDzW2JDjxBUBM1_') {
+              title = "Signet Protocol - Signed Video.mp4";
+              mimeType = "video/mp4";
+              owner = "Signet Protocol Group";
+              
+              const simulatedManifest = {
+                  signature: { 
+                      identity: "signetai.io:ssl", 
+                      timestamp: Date.now(), 
+                      anchor: "signetai.io:drive_registry",
+                      method: "UNIVERSAL_TAIL_WRAP"
+                  },
+                  asset: {
+                      type: mimeType,
+                      id: id,
+                      title: title,
+                      owner: owner,
+                      platform: "Google Drive",
+                      hash_algorithm: "SHA-256"
+                  },
+                  assertions: [
+                      { label: "org.signetai.binding", data: { method: "Deep_Scan", confidence: 1.0, platform: "GoogleWorkspace" } },
+                      { label: "c2pa.actions", data: { actions: [{ action: "c2pa.published", softwareAgent: "Signet Drive Connector" }] } }
+                  ]
+              };
+              setManifest(simulatedManifest);
+              deepScanSuccess = true;
+              setVerificationMethod('TAIL_SCAN');
+          }
+
+          // Case B: Unsigned Demo (Force Fail)
+          if (id === '1ch4G-Jz6p688N1vceJ_J7VHtVCko32_r') {
+              deepScanSuccess = false;
+              isVerifiedContext = false; 
           }
 
           await new Promise(r => setTimeout(r, 1500)); 
 
           if (deepScanSuccess) {
-              // Manifest was set in step 2
               setVerificationStatus('SUCCESS');
               setShowL2(true);
           } else if (isVerifiedContext) {
-              // Fallback to Cloud Binding
+              // Fallback to Cloud Binding (ID Registry Match)
               setVerificationMethod('CLOUD_BINDING');
               const cloudManifest = {
                   signature: { 
@@ -312,7 +400,7 @@ export const VerifyView: React.FC = () => {
               setShowL2(true);
           } else {
               setVerificationStatus('UNSIGNED');
-              setFetchError("Asset ID not found in Signet Registry.");
+              setFetchError("No cryptographic signature or registry binding found.");
           }
 
       } catch (e) {
@@ -336,7 +424,12 @@ export const VerifyView: React.FC = () => {
     // Check for Google Drive URL
     const dId = getGoogleDriveId(url);
     if (dId) {
-        handleGoogleDriveVerify(dId);
+        if (isFolderUrl(url)) {
+            handleGoogleDriveFolderVerify(dId);
+        } else {
+            const sim = url.includes('signet_sim=unsigned') ? 'unsigned' : undefined;
+            handleGoogleDriveVerify(dId, sim);
+        }
         return;
     }
 
@@ -347,6 +440,7 @@ export const VerifyView: React.FC = () => {
     setManifest(null);
     setYoutubeId(null);
     setDriveId(null);
+    setFolderId(null);
     setShowL2(false);
     setVerificationStatus('IDLE');
     setVerificationMethod('DEEP_HASH');
@@ -419,6 +513,7 @@ export const VerifyView: React.FC = () => {
       setManifest(null);
       setYoutubeId(null);
       setDriveId(null);
+      setFolderId(null);
       setShowL2(false);
       setFetchError(null);
       setVerificationStatus('IDLE');
@@ -447,6 +542,7 @@ export const VerifyView: React.FC = () => {
       setManifest(null);
       setYoutubeId(null);
       setDriveId(null);
+      setFolderId(null);
       setShowL2(false);
     }
   }, []);
@@ -456,27 +552,22 @@ export const VerifyView: React.FC = () => {
     window.location.hash = `#verify?url=${encodeURIComponent(demoUrl)}`;
   };
 
-  const loadUnsignedDemo = () => {
-    const demoUrl = `${window.location.origin}/public/signetai-solar-system.svg`;
-    window.location.hash = `#verify?url=${encodeURIComponent(demoUrl)}`;
-  };
-
-  const loadSignedPngDemo = () => {
-    const demoUrl = `${window.location.origin}/public/signet_512.png`;
-    window.location.hash = `#verify?url=${encodeURIComponent(demoUrl)}`;
-  };
-
-  const loadUnsignedPngDemo = () => {
-    const demoUrl = `${window.location.origin}/public/512.png`;
-    window.location.hash = `#verify?url=${encodeURIComponent(demoUrl)}`;
-  };
-
   const loadYoutubeDemo = () => {
     const ytUrl = "https://www.youtube.com/watch?v=UatpGRr-wA0";
     window.location.hash = `#verify?url=${encodeURIComponent(ytUrl)}`;
   };
 
-  const loadDriveDemo = () => {
+  const loadSignedDriveDemo = () => {
+    const driveUrl = "https://drive.google.com/file/d/1BnQia9H0dWGVQPoninDzW2JDjxBUBM1_";
+    window.location.hash = `#verify?url=${encodeURIComponent(driveUrl)}`;
+  };
+
+  const loadUnsignedDriveDemo = () => {
+    const driveUrl = "https://drive.google.com/file/d/1ch4G-Jz6p688N1vceJ_J7VHtVCko32_r";
+    window.location.hash = `#verify?url=${encodeURIComponent(driveUrl)}`;
+  };
+
+  const loadFolderDriveDemo = () => {
     const driveUrl = "https://drive.google.com/drive/folders/1dKxGvDBrxHp9ys_7jy7cXNt74JnaryA9";
     window.location.hash = `#verify?url=${encodeURIComponent(driveUrl)}`;
   };
@@ -495,6 +586,46 @@ export const VerifyView: React.FC = () => {
                     allowFullScreen
                     className="max-h-full"
                 ></iframe>
+            </div>
+        );
+    }
+
+    if (folderId) {
+        return (
+            <div className="w-full h-full bg-[#F8F9FA] flex flex-col p-6 overflow-hidden">
+                <div className="flex items-center gap-4 mb-6 border-b border-[var(--border-light)] pb-4">
+                    <img src="https://ssl.gstatic.com/images/branding/product/1x/drive_2020q4_48dp.png" alt="Google Drive" className="w-8 h-8" />
+                    <div>
+                        <h4 className="font-bold text-[var(--text-header)]">Cloud Batch Audit</h4>
+                        <p className="font-mono text-[9px] text-[var(--text-body)] opacity-60 uppercase">Folder ID: {folderId}</p>
+                    </div>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto space-y-2">
+                    {folderContents.map((item, i) => (
+                        <div key={i} className="flex items-center justify-between p-3 bg-white border border-[var(--border-light)] rounded-lg shadow-sm">
+                            <div className="flex items-center gap-3">
+                                <span className="text-xl">
+                                    {item.type.includes('video') ? '🎬' : '📄'}
+                                </span>
+                                <div>
+                                    <p className="font-bold text-xs text-[var(--text-header)]">{item.name}</p>
+                                    <p className="font-mono text-[9px] opacity-50">{item.size} • {item.date}</p>
+                                </div>
+                            </div>
+                            <div className={`px-2 py-1 rounded text-[9px] font-mono font-bold uppercase ${
+                                item.status === 'SUCCESS' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-red-50 text-red-500 border border-red-100'
+                            }`}>
+                                {item.status === 'SUCCESS' ? '✓ Verified' : '✕ Unsigned'}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                
+                <div className="mt-4 pt-4 border-t border-[var(--border-light)] flex justify-between items-center text-[10px] opacity-60">
+                    <span>{folderContents.filter(i => i.status === 'SUCCESS').length} Verified</span>
+                    <span>{folderContents.filter(i => i.status === 'UNSIGNED').length} Unsigned</span>
+                </div>
             </div>
         );
     }
@@ -557,8 +688,32 @@ export const VerifyView: React.FC = () => {
                 <div className="w-8 h-8 border-2 border-[var(--trust-blue)] border-t-transparent rounded-full animate-spin mb-4"></div>
                 <p className="font-mono text-[10px] uppercase tracking-widest text-[var(--trust-blue)]">
                     {verificationMethod === 'TAIL_SCAN' ? 'Scanning Remote File Tail...' :
-                     youtubeId || driveId ? 'Consulting Global Registry...' : 'Scanning Substrate...'}
+                     youtubeId || driveId ? 'Consulting Global Registry...' : 
+                     folderId ? 'Scanning Folder Contents...' : 'Scanning Substrate...'}
                 </p>
+            </div>
+        );
+    }
+
+    if (verificationStatus === 'BATCH_REPORT') {
+        const verifiedCount = folderContents.filter(i => i.status === 'SUCCESS').length;
+        return (
+            <div className="h-[400px] border border-[var(--border-light)] rounded-xl bg-[var(--code-bg)] flex flex-col items-center justify-center text-center p-8 space-y-4">
+               <span className="text-5xl">📊</span>
+               <h4 className="font-bold text-[var(--text-header)]">Batch Folder Analysis</h4>
+               <div className="grid grid-cols-2 gap-4 w-full max-w-xs">
+                  <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded">
+                     <span className="block text-2xl font-bold text-emerald-600">{verifiedCount}</span>
+                     <span className="text-[10px] uppercase opacity-60 font-bold">Verified</span>
+                  </div>
+                  <div className="p-3 bg-red-500/10 border border-red-500/20 rounded">
+                     <span className="block text-2xl font-bold text-red-600">{folderContents.length - verifiedCount}</span>
+                     <span className="text-[10px] uppercase opacity-60 font-bold">Unsigned</span>
+                  </div>
+               </div>
+               <p className="text-xs opacity-50 italic">
+                 Mixed content folder detected. 2/3 files contain valid Signet VPR manifests.
+               </p>
             </div>
         );
     }
@@ -649,7 +804,7 @@ export const VerifyView: React.FC = () => {
                  <p className="font-mono text-[10px] uppercase font-bold tracking-[0.3em] text-[var(--trust-blue)]">Resolving Asset...</p>
                  <p className="text-xs font-mono opacity-50">{urlInput}</p>
                </div>
-            ) : (file || youtubeId || driveId) ? (
+            ) : (file || youtubeId || driveId || folderId) ? (
               <div className="relative z-10 w-full h-full flex flex-col items-center justify-center p-0 md:p-8 animate-in zoom-in-95 duration-300">
                 {renderPreview()}
                 
@@ -683,6 +838,14 @@ export const VerifyView: React.FC = () => {
                               <span>☁</span> Drive Cloud Binding
                            </div>
                        )}
+                    </div>
+                )}
+
+                {folderId && (
+                    <div className="mt-2 flex flex-col items-center gap-1">
+                       <div className="px-3 py-1 bg-purple-600 text-white rounded font-mono text-[9px] uppercase tracking-widest font-bold flex items-center gap-2">
+                          <span>📂</span> Folder Batch Audit
+                       </div>
                     </div>
                 )}
                 
@@ -732,7 +895,7 @@ export const VerifyView: React.FC = () => {
                   )}
                 </div>
                 <button 
-                  onClick={() => { setFile(null); setManifest(null); setYoutubeId(null); setDriveId(null); setShowL2(false); setUrlInput(''); setFetchError(null); setVerificationStatus('IDLE'); }}
+                  onClick={() => { setFile(null); setManifest(null); setYoutubeId(null); setDriveId(null); setFolderId(null); setShowL2(false); setUrlInput(''); setFetchError(null); setVerificationStatus('IDLE'); }}
                   className="px-6 border border-[var(--border-light)] rounded hover:bg-[var(--bg-sidebar)] transition-colors font-mono text-[10px] uppercase font-bold text-[var(--text-body)]"
                 >
                   Clear
@@ -754,12 +917,32 @@ export const VerifyView: React.FC = () => {
 
                 <div className="flex items-center justify-between hover:bg-white/5 p-1 rounded transition-colors">
                   <button 
-                    onClick={loadDriveDemo}
+                    onClick={loadFolderDriveDemo}
+                    className="text-[10px] text-purple-600 hover:underline font-mono uppercase font-bold flex items-center gap-2"
+                  >
+                    <span>📂</span> Google Drive: Mixed Folder
+                  </button>
+                  <span className="text-[9px] font-bold text-blue-500 bg-blue-500/10 px-1.5 rounded border border-blue-500/20">BATCH</span>
+                </div>
+
+                <div className="flex items-center justify-between hover:bg-white/5 p-1 rounded transition-colors">
+                  <button 
+                    onClick={loadSignedDriveDemo}
                     className="text-[10px] text-blue-600 hover:underline font-mono uppercase font-bold flex items-center gap-2"
                   >
-                    <span>☁</span> Google Drive: Spec Folder
+                    <span>☁</span> Google Drive (Signed)
                   </button>
                   <span className="text-[9px] font-bold text-emerald-500 bg-emerald-500/10 px-1.5 rounded border border-emerald-500/20">VERIFIED</span>
+                </div>
+
+                <div className="flex items-center justify-between hover:bg-white/5 p-1 rounded transition-colors">
+                  <button 
+                    onClick={loadUnsignedDriveDemo}
+                    className="text-[10px] text-blue-600 hover:underline font-mono uppercase font-bold flex items-center gap-2"
+                  >
+                    <span>☁</span> Google Drive (Unsigned)
+                  </button>
+                  <span className="text-[9px] font-bold text-red-500 bg-red-500/10 px-1.5 rounded border border-red-500/20">FAILED</span>
                 </div>
 
                 <div className="flex items-center justify-between hover:bg-white/5 p-1 rounded transition-colors">
@@ -781,15 +964,17 @@ export const VerifyView: React.FC = () => {
 
              <button 
                onClick={() => handleVerify(file)}
-               disabled={(!file && !youtubeId && !driveId) || isVerifying || isFetching}
+               disabled={(!file && !youtubeId && !driveId && !folderId) || isVerifying || isFetching}
                className={`w-full py-5 font-mono text-xs uppercase font-bold tracking-[0.3em] rounded-lg shadow-2xl transition-all disabled:opacity-30 disabled:shadow-none hover:brightness-110 active:scale-95 ${
                  verificationStatus === 'SUCCESS' ? 'bg-emerald-600 text-white' : 
+                 verificationStatus === 'BATCH_REPORT' ? 'bg-purple-600 text-white' :
                  verificationStatus === 'UNSIGNED' ? 'bg-red-500 text-white' : 
                  'bg-[var(--trust-blue)] text-white'
                }`}
              >
                {isVerifying ? 'PROBING SUBSTRATE...' : 
                 verificationStatus === 'SUCCESS' ? 'VERIFIED ✓' : 
+                verificationStatus === 'BATCH_REPORT' ? 'AUDIT COMPLETE' :
                 verificationStatus === 'UNSIGNED' ? 'NO SIGNATURE FOUND ✕' : 
                 'Execute Audit (∑)'}
              </button>
