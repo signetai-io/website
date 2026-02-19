@@ -1,9 +1,10 @@
+
 # Signet Protocol: Verifiable Proof of Reasoning (VPR)
 **Deterministic Telemetry for AI Assets**
 
 Official Repository: [github.com/signetai-io/website](https://github.com/signetai-io/website)
 
-The Signet Protocol (draft-song-signet-03.1) defines a framework for the cryptographic attestation of AI-generated reasoning paths. It transforms non-deterministic LLM outputs into formally verified "Signets" aligned with C2PA 2.3.
+The Signet Protocol (draft-song-signet-03.2) defines a framework for the cryptographic attestation of AI-generated reasoning paths. It transforms non-deterministic LLM outputs into formally verified "Signets" aligned with C2PA 2.3.
 
 ## 1. Introduction
 As AI moves from "Chat" to "Reasoning," current watermarking standards (C2PA) are insufficient because they only sign the final result, not the process. Signet Protocol introduces **"Process Provenance"** via Verifiable Proof of Reasoning (VPR).
@@ -13,7 +14,7 @@ As AI moves from "Chat" to "Reasoning," current watermarking standards (C2PA) ar
 - **2.2. Neural Lens Engine**: A deterministic verifier that probes AI telemetry for logic drift.
 - **2.3. Universal Tail-Wrap (UTW)**: A Zero-Copy injection method for arbitrary binary formats (Video/Audio/PDF).
 
-## 3. CLI & Developer Tools (New in v0.3.1)
+## 3. CLI & Developer Tools (New in v0.3.2)
 The protocol now includes standalone Node.js tools and a Web Batch Processor.
 
 ### 3.1 Batch Processor (Web)

@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 export const MissionView: React.FC = () => {
@@ -93,7 +94,7 @@ export const MissionView: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {[
             { name: "Song Sheng-Liang", role: "Product Architect", id: "ssl" },
-            { name: "Neural Prism Group", role: "Core Engineering", id: "dev" },
+            { name: "Signet Protocol Group", role: "Core Engineering", id: "dev" },
             { name: "Open Source DAO", role: "Community Audit", id: "community" }
           ].map(member => (
             <div key={member.id} className="p-6 border border-[var(--border-light)] rounded bg-[var(--bg-standard)] hover:border-[var(--trust-blue)] transition-colors group">

@@ -1,8 +1,9 @@
+
 # 📑 Signet AI Labs: Phase 1.5 Verification Report
 
 **Subject:** Migration to C2PA-Native Cognitive Provenance  
 **Sprint Duration:** 40 Days (Re-alignment Day 41)  
-**Lead Architect:** Neural Prism Implementation Group  
+**Lead Architect:** Signet Protocol Group  
 **Master Signatory:** signetai.io:ssl  
 **Status:** [C2PA-COMPLIANT]  
 **Standards:** ISO/TC 290, C2PA v2.2, ISO/IEC 19566-5
@@ -33,4 +34,4 @@ Neural Prism now operates as a specialized **Cognitive Assertion Provider**. Whi
 **Public Key**: `ed25519:signet_v2.7_sovereign_5b9878a8583b7b38d719c7c8498f8981adc17bec0c311d76269e1275e4a8bdf9`
 
 ---
-*Signed: Lead Architect, Neural Prism Implementation*
+*Signed: Lead Architect, Signet Protocol Group*

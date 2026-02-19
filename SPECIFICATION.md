@@ -1,5 +1,6 @@
-# Signet Protocol Specification (v0.3.1)
-**Draft-Song-Signet-Neural-Lens-03.1**
+
+# Signet Protocol Specification (v0.3.2)
+**Draft-Song-Signet-Neural-Lens-03.2**
 
 ## 1. Introduction
 This document defines the Signet Protocol, a standard for attaching cryptographic proof of reasoning (VPR) to AI-generated content, aligned with **C2PA 2.3**.
@@ -52,7 +53,7 @@ This ensures the original binary substrate is cryptographically intact, even tho
 All Signet-compliant API responses MUST include the `X-Signet-VPR` header.
 
 ---
-**Official Master Signatory (v0.3.1):**
+**Official Master Signatory (v0.3.2):**
 **Anchor:** `signetai.io:ssl`
 **Organization:** [signetai-io](https://github.com/signetai-io)
 **Public Key:** `ed25519:signet_v2.7_sovereign_5b9878a8583b7b38d719c7c8498f8981adc17bec0c311d76269e1275e4a8bdf9`

@@ -107,7 +107,7 @@ export const SpecView: React.FC = () => {
     doc.rect(0, height - 20, width, 20, 'F');
     doc.setTextColor(255, 255, 255); // White Text on Blue Bar
     doc.setFontSize(8);
-    doc.text("CONFIDENTIAL - NEURAL PRISM WORKING GROUP", width/2, height - 8, { align: 'center' });
+    doc.text("CONFIDENTIAL - SIGNET PROTOCOL GROUP", width/2, height - 8, { align: 'center' });
 
     // --- PAGE 2: PROLOG / DOCUMENT CONTROL ---
     doc.addPage();

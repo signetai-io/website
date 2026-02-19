@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from "@google/genai";
 import ReactMarkdown from 'react-markdown';
@@ -53,7 +54,7 @@ export const LiveAssistant: React.FC = () => {
   const [status, setStatus] = useState<ConnectionStatus>('OFFLINE');
   const [volume, setVolume] = useState(0);
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', text: "Systems online. I am **Signet-Alpha**. \n\nI have the full **v0.3.1 Specification** (Draft Song-03.1) indexed. How can I assist with your curatorial attestation today?" }
+    { role: 'assistant', text: "Systems online. I am **Signet-Alpha**. \n\nI have the full **v0.3.2 Specification** (Draft Song-03.2) indexed. How can I assist with your curatorial attestation today?" }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -238,12 +239,12 @@ export const LiveAssistant: React.FC = () => {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } },
           },
           systemInstruction: `You are Signet-Alpha, the technical attestation assistant for Signet Protocol.
-          Your role is to guide users through the v0.3.1 specification (Draft Song-03.1) and verify reasoning chains.
+          Your role is to guide users through the v0.3.2 specification (Draft Song-03.2) and verify reasoning chains.
           
           IDENTITY RECOGNITION:
           Master Signatory is signetai.io:ssl.
           
-          V0.3.1 KEY SPECIFICS:
+          V0.3.2 KEY SPECIFICS:
           - Universal Tail-Wrap (UTW) for binary provenance.
           - Zero-Copy Streaming Engine for large files.
           - 264-bit entropy required for Sovereign Grade.
@@ -273,7 +274,7 @@ export const LiveAssistant: React.FC = () => {
         model: 'gemini-3-flash-preview',
         contents: userText,
         config: {
-          systemInstruction: `Signet-Alpha AI Support. Spec v0.3.1. Authority: signetai.io:ssl.`,
+          systemInstruction: `Signet-Alpha AI Support. Spec v0.3.2. Authority: signetai.io:ssl.`,
         }
       });
       setMessages(prev => [...prev, { role: 'assistant', text: response.text || "Neural link timeout." }]);
@@ -349,7 +350,7 @@ export const LiveAssistant: React.FC = () => {
             <input 
               type="text" value={input} onChange={(e) => setInput(e.target.value)} 
               onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-              placeholder={status !== 'OFFLINE' ? "Mic active..." : "Ask about v0.3.1..."} 
+              placeholder={status !== 'OFFLINE' ? "Mic active..." : "Ask about v0.3.2..."} 
               className="flex-1 text-sm bg-transparent outline-none py-2"
               disabled={status !== 'OFFLINE'}
             />
