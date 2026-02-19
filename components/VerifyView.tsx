@@ -64,7 +64,12 @@ export const VerifyView: React.FC = () => {
     if (!url) return null;
     const reg = /[?&]list=([^#\&\?]+)/;
     const match = url.match(reg);
-    return match ? match[1] : null;
+    if (match) return match[1];
+    
+    // Fallback for path-based playlist links (e.g. Studio)
+    const pathReg = /\/playlist\/([a-zA-Z0-9_-]+)/;
+    const pathMatch = url.match(pathReg);
+    return pathMatch ? pathMatch[1] : null;
   };
 
   const getGoogleDriveId = (url: string) => {
