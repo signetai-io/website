@@ -96,7 +96,7 @@ export const PART_2 = [
                 Signet maintains dual-binding assurance:
               </p>
               <ul className="list-disc pl-5 mt-2 space-y-2 text-sm opacity-80">
-                <li><strong>Hard-Binding:</strong> SHA-256 hash of the raw binary substrate. Any bit-flip invalidates the seal.</li>
+                <li><strong>Hard-Binding:</strong> SHA-256 hash of the raw binary substrate. Any bit-level modification invalidates the seal.</li>
                 <li><strong>Soft-Binding:</strong> pHash (Perceptual Hash) for recovering credentials if metadata is stripped by social platforms.</li>
               </ul>
            </div>
@@ -197,13 +197,13 @@ export const PART_2 = [
   {
     category: "TECHNICAL AUDIT",
     title: "12.5 The Difference Engine (Audit Scoring)",
-    text: "12.5.1 Deterministic Quantization\nTo move beyond binary Pass/Fail verification for lossy formats (JPEG/MP4), Signet introduces an Audit-Grade Difference Engine. \n\nFormula:\nScore = (0.6 * dHash_Dist) + (0.4 * pHash_Dist)\n\nConfidence Bands:\n0-30: Verified Original\n30-120: Platform Consistent\n120-300: Modified Content\n>300: Divergent Source",
+    text: "12.5.1 The Difference Engine (formerly Audit Engine)\nMoving beyond binary 'Truth' verification, Signet 0.3.3 introduces the Difference Engine.\n\nCore Concept: Source A vs Source B\nInstead of verifying a single asset against a registry, the engine calculates the perceptual and temporal distance between a Reference (Source A) and a Candidate (Source B).\n\nDifference Bands (Δ):\n0-30: MINIMAL DIFFERENCE (Match)\n30-120: LOW DIFFERENCE (Consistent)\n120-300: MODERATE DIFFERENCE (Modified)\n>300: HIGH DIFFERENCE (Distinct)",
     content: (
       <div className="space-y-8 animate-in fade-in duration-500">
         <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">12.5 The Difference Engine</h2>
         
         <p className="opacity-80 leading-loose mb-6">
-          To quantify "How modified is this?", Signet introduces a deterministic scoring engine normalized to a <strong>0-1023</strong> integer scale.
+          To accommodate a decentralized web where "Truth" is relative to the observer, Signet introduces the <strong>Difference Engine</strong>. This module quantifies the <em>distance</em> between two assets (Source A vs Source B) rather than asserting absolute validity.
         </p>
 
         <div className="p-6 bg-[var(--code-bg)] border border-[var(--border-light)] rounded-lg mb-8">
@@ -221,22 +221,21 @@ export const PART_2 = [
         </div>
 
         <div className="p-6 bg-[var(--code-bg)] border border-[var(--border-light)] rounded-lg mb-8">
-           <h4 className="font-mono text-[10px] uppercase font-bold text-[var(--trust-blue)] mb-2">12.5.2 Prime-Offset Temporal Sampling</h4>
-           <p className="text-xs opacity-80 mb-3">To defeat "intro-stuffing" attacks and credit-sequence noise, Signet enforces boundaries based on video entropy.</p>
+           <h4 className="font-mono text-[10px] uppercase font-bold text-[var(--trust-blue)] mb-2">12.5.2 Pairwise Comparison Logic</h4>
+           <p className="text-xs opacity-80 mb-3">The engine allows users to define their own <strong>Reference (Source A)</strong>, such as a YouTube Playlist or original broadcast, against which <strong>Candidates (Source B)</strong> are measured.</p>
            <ul className="list-disc pl-4 text-xs opacity-70 font-mono space-y-1">
-              <li><strong>Low Entropy Rejection:</strong> Sampling starts at T+7s (Prime Base) to skip black/fade-ins.</li>
-              <li><strong>End Boundary:</strong> Sampling halts 10s before EOF to avoid credit sequences.</li>
-              <li><strong>Dynamic Count:</strong> Total anchors scale linearly with duration (1 frame/min).</li>
+              <li><strong>Dynamic Anchors:</strong> Temporal anchors are generated on-the-fly from Source A's duration.</li>
+              <li><strong>Neutral Scoring:</strong> The system reports <code>Δ (Delta)</code> instead of "Pass/Fail".</li>
            </ul>
         </div>
 
-        <h4 className="font-bold text-[var(--text-header)] text-lg mb-4">Confidence Bands</h4>
+        <h4 className="font-bold text-[var(--text-header)] text-lg mb-4">Difference Bands (Δ)</h4>
         <div className="space-y-2">
            {[
-             { band: "0 - 30", label: "VERIFIED ORIGINAL", desc: "Bit-perfect or negligible drift.", color: "bg-emerald-500" },
-             { band: "30 - 120", label: "PLATFORM CONSISTENT", desc: "Transcoding artifacts (YouTube/compression) detected but accepted.", color: "bg-blue-500" },
-             { band: "120 - 300", label: "MODIFIED CONTENT", desc: "Valid derivation (cropping, filters, text overlay).", color: "bg-amber-500" },
-             { band: "> 300", label: "DIVERGENT SOURCE", desc: "Fundamental disconnect. Likely deepfake or unrelated asset.", color: "bg-red-500" }
+             { band: "0 - 30", label: "MINIMAL DIFFERENCE (Match)", desc: "Perceptually identical. Bit-perfect or negligible drift.", color: "bg-emerald-500" },
+             { band: "30 - 120", label: "LOW DIFFERENCE (Consistent)", desc: "Transcoding artifacts (YouTube/compression) detected but structurally consistent.", color: "bg-blue-500" },
+             { band: "120 - 300", label: "MODERATE DIFFERENCE (Modified)", desc: "Valid derivation (cropping, filters, text overlay) or significant compression.", color: "bg-amber-500" },
+             { band: "> 300", label: "HIGH DIFFERENCE (Distinct)", desc: "Fundamental disconnect. Different content or deep modification.", color: "bg-red-500" }
            ].map((b, i) => (
              <div key={i} className="flex items-center gap-4 p-3 border-b border-[var(--border-light)]">
                 <div className={`w-24 font-mono text-xs font-bold ${b.color.replace('bg-', 'text-')}`}>{b.band}</div>

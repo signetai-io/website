@@ -4,7 +4,7 @@ import ReactMarkdown from 'react-markdown';
 
 const TODO_CONTENT = `# Signet AI Project Status & Roadmap
 
-**Current Version:** 0.3.2_UTW  
+**Current Version:** 0.3.3_DIFF  
 **Protocol Spec:** draft-song-03.2
 
 ## Phase 1: Core Architecture (Foundation)
@@ -59,10 +59,11 @@ const TODO_CONTENT = `# Signet AI Project Status & Roadmap
     - [x] Drag-and-drop external URL support
     - [x] CORS Policy update for cross-origin fetching
 
-- [x] **Batch Processor (GUI)**
-    - [x] Recursive Directory Scanning (Discovery)
-    - [x] Sidecar (.json) Generation & Verification
-    - [x] Embedded (UTW) Verification with Slicing
+- [x] **The Difference Engine (v0.3.3)**
+    - [x] **Neutral Architecture**: Source A (Reference) vs Source B (Candidate).
+    - [x] **Playlist Support**: Ingest YouTube Playlists as Source A.
+    - [x] **Delta Scoring**: 0-1023 Difference Bands (Match -> Distinct).
+    - [x] **Batch Processor**: Recursive directory scanning for drive comparisons.
 
 - [ ] **Resilience Layer (Soft-Binding)**
     - [ ] **Client-side pHash** calculation (WASM/JS) for Images
@@ -83,7 +84,7 @@ const TODO_CONTENT = `# Signet AI Project Status & Roadmap
 - **PDF Incremental Updates**: Post-EOF injection is valid, but multiple signs need a formal xref table update to be "Adobe Compliant" (currently "Signet Compliant").
 
 ---
-*Last Updated: Feb 20, 2026 (CLI Tool Source Available)*`;
+*Last Updated: Feb 21, 2026 (Difference Engine Deployed)*`;
 
 const LOG_CONTENT = `# Signet AI Evolution Log
 
@@ -225,7 +226,7 @@ The "Sign vs. Verify" dichotomy is artificial. The system should detect if a fil
 - **Outcome**: "Any Size. Zero RAM." UX is now fully realized for both Signing AND Verification.
 
 ## Entry 23: Multimodal Documentation
-**Date:** Current
+**Date:** Feb 20, 2026
 **Task Goal:** Generate high-level explanatory content from the specification text.
 
 **Reasoning Path:**
@@ -234,6 +235,16 @@ A text-only specification limits accessibility. We need "Cognitive Provenance" t
 - **Input**: The raw text of this specification (SpecView.tsx).
 - **Output**: Autonomous "Deep Dive" Podcast summarizing the protocol.
 - **Link**: [notebooklm.google.com/notebook/f21cb...](https://notebooklm.google.com/notebook/f21cb4f4-4193-4497-b1c3-5d0b25e3b56a)
+
+## Entry 24: The Difference Engine
+**Date:** Feb 21, 2026
+**Task Goal:** Pivot from "Truth Verification" to neutral "Pairwise Comparison".
+
+**Reasoning Path:**
+"Verification" implies a hierarchy of truth. In a decentralized web, we often just want to know the *distance* between two assets.
+- **Architecture**: Refactored Audit Engine to accept **Source A (Reference)** and **Source B (Candidate)**.
+- **Metric**: Introduced the **Difference Score (Δ)** on a 0-1023 scale.
+- **UX**: Added support for YouTube Playlists as Source A to compare against Drive Folders (Source B).
 
 ---
 *Signed: Master Curator, signetai.io:ssl*`;
