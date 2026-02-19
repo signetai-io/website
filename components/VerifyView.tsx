@@ -4,6 +4,65 @@ import { Admonition } from './Admonition';
 import { NutritionLabel } from './NutritionLabel';
 import { GOOGLE_GEMINI_KEY } from '../private_keys';
 
+// --- VISUAL FINGERPRINTING UTILS ---
+
+// Compute Hamming Distance between two binary strings
+const getHammingDistance = (str1: string, str2: string) => {
+  let dist = 0;
+  for (let i = 0; i < str1.length; i++) {
+    if (str1[i] !== str2[i]) dist++;
+  }
+  return dist;
+};
+
+// Generate Difference Hash (dHash) from an image URL
+// 1. Fetch image -> Bitmap
+// 2. Resize to 32x33 (for row comparison)
+// 3. Grayscale
+// 4. Compare pixel[x] > pixel[x+1]
+const generateVisualHash = async (imageUrl: string): Promise<string | null> => {
+    try {
+        const response = await fetch(imageUrl, { mode: 'cors' });
+        const blob = await response.blob();
+        const imgBitmap = await createImageBitmap(blob);
+
+        const width = 32;
+        const height = 32;
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return null;
+
+        // Draw resized
+        ctx.drawImage(imgBitmap, 0, 0, width, height);
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
+
+        let hash = '';
+        // Calculate grayscale average
+        let total = 0;
+        const grays = [];
+        for (let i = 0; i < data.length; i += 4) {
+            const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+            grays.push(avg);
+            total += avg;
+        }
+        
+        const mean = total / grays.length;
+
+        // Simple Mean Hash (aHash) - robust for exact thumbnail duplicates
+        for (let i = 0; i < grays.length; i++) {
+            hash += (grays[i] >= mean) ? '1' : '0';
+        }
+
+        return hash;
+    } catch (e) {
+        console.warn("pHash Gen Failed", e);
+        return null;
+    }
+};
+
 export const VerifyView: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -284,7 +343,7 @@ export const VerifyView: React.FC = () => {
           const params = new URLSearchParams({
               q: q,
               key: apiKey,
-              fields: "files(id,name,mimeType,size,createdTime)",
+              fields: "files(id,name,mimeType,size,createdTime,thumbnailLink)", // Added thumbnailLink
               pageSize: "50",
               supportsAllDrives: "true",
               includeItemsFromAllDrives: "true"
@@ -297,37 +356,25 @@ export const VerifyView: React.FC = () => {
           
           if (!listRes.ok) {
               const textBody = await listRes.text();
-              addLog(`API Response Status: ${listRes.status} ${listRes.statusText}`);
-              addLog(`API Response Body: ${textBody}`);
-              
-              let errorMessage = listRes.statusText;
-              try {
-                  const errorJson = JSON.parse(textBody);
-                  if (errorJson.error && errorJson.error.message) {
-                      errorMessage = errorJson.error.message;
-                  }
-              } catch (e) {
-                  errorMessage = textBody.substring(0, 200);
-              }
-
-              throw new Error(`Drive API Error (${listRes.status}): ${errorMessage}`);
+              throw new Error(`Drive API Error (${listRes.status}): ${listRes.statusText}`);
           }
 
           const data = await listRes.json();
           const files = data.files || [];
           addLog(`Folder scan complete. Found ${files.length} items.`);
           
-          // 2. Parallel Deep Verification
-          const verifiedFiles = await Promise.all(files.map(async (f: any) => {
+          // 2. Parallel Deep Verification + pHash Generation
+          const processedFiles = await Promise.all(files.map(async (f: any) => {
               let status = 'UNSIGNED';
               let signer = null;
+              let pHash = null;
               const fileSize = parseInt(f.size || '0');
 
+              // A. Signature Check (Tail Scan)
               if (fileSize > 0 && f.mimeType !== 'application/vnd.google-apps.folder') {
                   try {
                       // Range Request
                       const rangeStart = Math.max(0, fileSize - 20480);
-                      // IMPORTANT: Using `encodeURIComponent` for file ID not usually needed, but good practice if ID is weird
                       const fileUrl = `https://www.googleapis.com/drive/v3/files/${f.id}?key=${apiKey}&alt=media`;
                       
                       const rangeRes = await fetch(fileUrl, {
@@ -356,6 +403,13 @@ export const VerifyView: React.FC = () => {
                   }
               }
 
+              // B. pHash Generation (Thumbnails)
+              if (f.thumbnailLink) {
+                  // Use CORS proxy or fetch mode if possible, mostly Drive thumbs are public enough for this context
+                  // We treat the thumbnail as a "Visual Fingerprint" of the video content
+                  pHash = await generateVisualHash(f.thumbnailLink);
+              }
+
               return {
                   id: f.id,
                   name: f.name, 
@@ -363,13 +417,40 @@ export const VerifyView: React.FC = () => {
                   size: f.size ? `${(fileSize / (1024 * 1024)).toFixed(1)} MB` : 'Unknown',
                   status: status,
                   signer: signer,
-                  date: f.createdTime ? new Date(f.createdTime).toLocaleDateString() : 'Unknown'
+                  date: f.createdTime ? new Date(f.createdTime).toLocaleDateString() : 'Unknown',
+                  pHash: pHash,
+                  softBindingMatch: null as string | null
               };
           }));
+
+          // 3. Cross-Reference for Soft-Binding (Duplicate/Stripped Detection)
+          // Compare every file against every other file
+          for (let i = 0; i < processedFiles.length; i++) {
+              const fileA = processedFiles[i];
+              if (!fileA.pHash) continue;
+
+              for (let j = 0; j < processedFiles.length; j++) {
+                  if (i === j) continue;
+                  const fileB = processedFiles[j];
+                  if (!fileB.pHash) continue;
+
+                  const distance = getHammingDistance(fileA.pHash, fileB.pHash);
+                  
+                  // Threshold for visual similarity (e.g., < 5 bits difference out of 1024)
+                  // For exact video duplicates (one signed, one not), distance should be 0 or 1.
+                  if (distance < 5) {
+                      // Found a visual match.
+                      // Scenario: File A is unsigned, File B is signed. File A is likely a stripped copy.
+                      if (fileA.status === 'UNSIGNED' && fileB.status === 'SUCCESS') {
+                          fileA.softBindingMatch = `Matches Signed Asset: ${fileB.name}`;
+                      }
+                  }
+              }
+          }
           
-          setFolderContents(verifiedFiles);
+          setFolderContents(processedFiles);
           setVerificationStatus('BATCH_REPORT');
-          addLog("Batch audit complete.");
+          addLog("Batch audit complete with pHash Soft-Binding.");
 
       } catch (e: any) {
           addLog(`CRITICAL ERROR: ${e.message}`);
@@ -706,24 +787,36 @@ export const VerifyView: React.FC = () => {
                 
                 <div className="flex-1 overflow-y-auto space-y-2">
                     {folderContents.map((item, i) => (
-                        <div key={i} className="flex items-center justify-between p-3 bg-white border border-[var(--border-light)] rounded-lg shadow-sm">
-                            <div className="flex items-center gap-3 overflow-hidden">
-                                <span className="text-xl flex-shrink-0">
-                                    {item.type.includes('video') ? '🎬' : '📄'}
-                                </span>
-                                <div className="min-w-0">
-                                    <p className="font-bold text-xs text-[var(--text-header)] truncate" title={item.name}>{item.name}</p>
-                                    <p className="font-mono text-[9px] opacity-50">{item.size} • {item.date}</p>
-                                    {item.signer && (
-                                      <p className="font-mono text-[8px] text-[var(--trust-blue)] mt-0.5 truncate">Signed by: {item.signer}</p>
-                                    )}
+                        <div key={i} className="flex flex-col p-3 bg-white border border-[var(--border-light)] rounded-lg shadow-sm">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3 overflow-hidden">
+                                    <span className="text-xl flex-shrink-0">
+                                        {item.type.includes('video') ? '🎬' : '📄'}
+                                    </span>
+                                    <div className="min-w-0">
+                                        <p className="font-bold text-xs text-[var(--text-header)] truncate" title={item.name}>{item.name}</p>
+                                        <p className="font-mono text-[9px] opacity-50">{item.size} • {item.date}</p>
+                                        {item.signer && (
+                                          <p className="font-mono text-[8px] text-[var(--trust-blue)] mt-0.5 truncate">Signed by: {item.signer}</p>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className={`px-2 py-1 rounded text-[9px] font-mono font-bold uppercase whitespace-nowrap flex-shrink-0 ${
+                                    item.status === 'SUCCESS' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-red-50 text-red-500 border border-red-100'
+                                }`}>
+                                    {item.status === 'SUCCESS' ? '✓ Verified' : '✕ Unsigned'}
                                 </div>
                             </div>
-                            <div className={`px-2 py-1 rounded text-[9px] font-mono font-bold uppercase whitespace-nowrap flex-shrink-0 ${
-                                item.status === 'SUCCESS' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-red-50 text-red-500 border border-red-100'
-                            }`}>
-                                {item.status === 'SUCCESS' ? '✓ Verified' : '✕ Unsigned'}
-                            </div>
+                            
+                            {/* pHash Soft-Binding Alerts */}
+                            {item.softBindingMatch && (
+                                <div className="mt-2 pt-2 border-t border-dashed border-[var(--border-light)] flex items-start gap-2">
+                                    <span className="text-[10px]">⚠️</span>
+                                    <p className="text-[10px] text-amber-600 font-bold font-mono">
+                                        MATCH DETECTED: <span className="font-normal opacity-80">{item.softBindingMatch}. Provenance likely stripped from this copy.</span>
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>
@@ -803,6 +896,7 @@ export const VerifyView: React.FC = () => {
 
     if (verificationStatus === 'BATCH_REPORT') {
         const verifiedCount = folderContents.filter(i => i.status === 'SUCCESS').length;
+        const matchesCount = folderContents.filter(i => i.softBindingMatch).length;
         return (
             <div className="h-[400px] border border-[var(--border-light)] rounded-xl bg-[var(--code-bg)] flex flex-col items-center justify-center text-center p-8 space-y-4">
                <span className="text-5xl">📊</span>
@@ -812,13 +906,13 @@ export const VerifyView: React.FC = () => {
                      <span className="block text-2xl font-bold text-emerald-600">{verifiedCount}</span>
                      <span className="text-[10px] uppercase opacity-60 font-bold">Verified</span>
                   </div>
-                  <div className="p-3 bg-red-500/10 border border-red-500/20 rounded">
-                     <span className="block text-2xl font-bold text-red-600">{folderContents.length - verifiedCount}</span>
-                     <span className="text-[10px] uppercase opacity-60 font-bold">Unsigned</span>
+                  <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded">
+                     <span className="block text-2xl font-bold text-amber-600">{matchesCount}</span>
+                     <span className="text-[10px] uppercase opacity-60 font-bold">Stripped</span>
                   </div>
                </div>
                <p className="text-xs opacity-50 italic">
-                 {folderContents.length} files scanned for Signet VPR manifests.
+                 {folderContents.length} files scanned for VPR manifests & pHash collisions.
                </p>
             </div>
         );

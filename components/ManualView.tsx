@@ -191,6 +191,48 @@ export const ManualView: React.FC = () => {
         </div>
       </ManualSection>
 
+      <ManualSection title="09. Cloud Audit Architecture">
+        <p className="text-lg leading-loose text-[var(--text-body)] opacity-80 font-serif mb-8">
+          The logs you observe demonstrate Signet's <strong>Zero-Copy Cloud Audit</strong> capability. Instead of downloading gigabytes of data to verify a folder, the client uses precision <strong>HTTP Range Requests</strong>.
+        </p>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+           <div className="p-6 bg-[var(--bg-standard)] border border-[var(--border-light)] rounded">
+              <h5 className="font-bold text-[var(--text-header)] mb-2 flex items-center gap-2">
+                <span className="text-[var(--trust-blue)]">⚡</span> HTTP 206 Partial Content
+              </h5>
+              <p className="text-sm opacity-70">
+                To verify a 2GB video in Google Drive, the client fetches only the <strong>last 20KB</strong> (Tail Bytes).
+                <br/><br/>
+                <code className="text-xs bg-[var(--code-bg)] p-1 rounded border border-[var(--border-light)]">Range: bytes=FileSize-20480-</code>
+              </p>
+           </div>
+           
+           <div className="p-6 bg-[var(--bg-standard)] border border-[var(--border-light)] rounded">
+              <h5 className="font-bold text-[var(--text-header)] mb-2 flex items-center gap-2">
+                <span className="text-emerald-600">✓</span> Signature Discovery
+              </h5>
+              <p className="text-sm opacity-70">
+                The client scans this tail fragment for the <code>%SIGNET_VPR_START</code> magic bytes. If found, it parses the manifest and confirms the <strong>Identity Binding</strong> without needing the full file payload.
+              </p>
+           </div>
+        </div>
+
+        <div className="mt-6 p-4 border-l-4 border-[var(--trust-blue)] bg-[var(--admonition-bg)] text-xs font-mono">
+           <strong className="block mb-2 text-[var(--trust-blue)]">Verification Depth Matrix</strong>
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             <div>
+                <span className="font-bold block opacity-60">Batch Mode (Cloud)</span>
+                <span className="text-green-600 font-bold">Presence Audit:</span> Verifies the file IS signed and parses the metadata. Does NOT verify full binary integrity (to save bandwidth).
+             </div>
+             <div>
+                <span className="font-bold block opacity-60">Local Mode (Drop)</span>
+                <span className="text-blue-600 font-bold">Deep Audit:</span> Hashes the entire file content (0 to UTW) and compares it against the signed hash. Guarantees bit-perfect integrity.
+             </div>
+           </div>
+        </div>
+      </ManualSection>
+
       <div className="mt-20 pt-10 border-t border-[var(--border-light)] flex justify-between items-center">
         <a href="#" onClick={(e) => { e.preventDefault(); window.location.hash = ''; }} className="text-[var(--trust-blue)] hover:underline font-mono text-[10px] uppercase tracking-widest font-bold">
           &larr; Return to Dashboard
