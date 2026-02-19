@@ -21,8 +21,16 @@ export const VerifyView: React.FC = () => {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [verificationStatus, setVerificationStatus] = useState<'IDLE' | 'VERIFYING' | 'SUCCESS' | 'UNSIGNED' | 'TAMPERED' | 'BATCH_REPORT'>('IDLE');
   const [verificationMethod, setVerificationMethod] = useState<'CLOUD_BINDING' | 'DEEP_HASH' | 'TAIL_SCAN'>('CLOUD_BINDING');
+  
+  // Trace Log for Debugging
+  const [debugLog, setDebugLog] = useState<string[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const addLog = (msg: string) => {
+    console.log(`[VerifyView] ${msg}`);
+    setDebugLog(prev => [...prev, `${new Date().toISOString().split('T')[1].slice(0, -1)} > ${msg}`]);
+  };
 
   // Helper: Extract YouTube ID
   const getYoutubeId = (url: string) => {
@@ -49,11 +57,8 @@ export const VerifyView: React.FC = () => {
 
   // Robust URL Param Extraction (Search + Hash)
   const getUrlParam = (param: string) => {
-    // 1. Check standard query string
     const searchParams = new URLSearchParams(window.location.search);
     if (searchParams.get(param)) return searchParams.get(param);
-
-    // 2. Check Hash string (e.g. #verify?url=...)
     const hash = window.location.hash;
     const qIndex = hash.indexOf('?');
     if (qIndex !== -1) {
@@ -63,58 +68,75 @@ export const VerifyView: React.FC = () => {
     return null;
   };
 
+  const getApiKey = () => {
+      const rawKey = process.env.API_KEY;
+      if (!rawKey) {
+          addLog("CRITICAL: process.env.API_KEY is undefined");
+          throw new Error("Client Configuration Error: API_KEY is missing from environment.");
+      }
+      const key = rawKey.trim();
+      if (!key.startsWith("AIza")) {
+          addLog(`WARNING: API Key '${key.substring(0, 5)}...' does not appear to be a standard Google API Key (starts with AIza).`);
+      }
+      return key;
+  };
+
   // Define handleVerify early to be used in auto-trigger
   const handleVerify = async (targetFile: File | null = file) => {
     if (!targetFile) return;
     setIsVerifying(true);
     setVerificationStatus('VERIFYING');
-    setVerificationMethod('DEEP_HASH'); // Local file allows full hash check
+    setVerificationMethod('DEEP_HASH'); 
     setManifest(null);
     setFolderContents([]);
     setFolderId(null);
+    setDebugLog([]); // Clear log on new run
+    addLog(`Starting Local File Verification: ${targetFile.name} (${targetFile.size} bytes)`);
     
     try {
         let foundManifest = null;
         
-        // 1. Tail Scan Optimization (20KB) - Crucial for Large Videos & Chinese Filenames
-        // Prevents loading full GB-sized files into memory just to check signature.
+        // 1. Tail Scan Optimization
         const TAIL_SIZE = 20480; 
         const tailSlice = targetFile.slice(Math.max(0, targetFile.size - TAIL_SIZE));
-        const tailText = await tailSlice.text(); // Browser handles UTF-8 automatically
+        const tailText = await tailSlice.text(); 
 
-        // Check for Universal Tail Wrap in the tail
+        addLog(`Scanned tail bytes. Looking for %SIGNET_VPR_START...`);
+
         if (tailText.includes('%SIGNET_VPR_START')) {
+             addLog("Found UTW marker.");
              const start = tailText.lastIndexOf('%SIGNET_VPR_START');
              const end = tailText.lastIndexOf('%SIGNET_VPR_END');
              if (start !== -1 && end !== -1) {
                  const jsonStr = tailText.substring(start + '%SIGNET_VPR_START'.length, end).trim();
                  try {
                     foundManifest = JSON.parse(jsonStr);
-                 } catch (e) { console.error("Manifest Parse Error", e); }
+                    addLog("Manifest parsed successfully.");
+                 } catch (e) { 
+                    addLog("Manifest Parse Error: " + e); 
+                 }
              }
         }
 
-        // 2. Head Scan for XML/SVG (Fallback)
+        // 2. Head Scan
         if (!foundManifest && (targetFile.type.includes('xml') || targetFile.type.includes('svg'))) {
+             addLog("Checking XML/SVG head...");
              const headText = await targetFile.slice(0, 50000).text(); 
              if (headText.includes('<signet:manifest>')) {
                  const match = headText.match(/<signet:manifest>([\s\S]*?)<\/signet:manifest>/);
                  if (match) {
                      try {
                         foundManifest = JSON.parse(match[1]);
-                     } catch (e) { console.error("Manifest Parse Error", e); }
+                        addLog("Found XML Manifest.");
+                     } catch (e) { addLog("XML Manifest Parse Error: " + e); }
                  }
-             } else {
-                 // Deep scan for SVG if not in head (rare but possible)
-                 const fullText = await targetFile.text();
-                 const match = fullText.match(/<signet:manifest>([\s\S]*?)<\/signet:manifest>/);
-                 if (match) foundManifest = JSON.parse(match[1]);
              }
         }
 
-        // 3. Simulated Mock for specific demo filenames (Legacy Demo Support)
+        // 3. Mock Check
         if (!foundManifest) {
              if (targetFile.name.includes('ca.jpg') || targetFile.name.includes('vpr_enhanced') || targetFile.name.includes('signet_512.png')) {
+                 addLog("Simulating manifest for demo file.");
                  foundManifest = {
                     signature: { identity: "Signet Alpha Model", timestamp: Date.now() },
                     assertions: [{ label: "mock.assertion", data: { verified: true } }]
@@ -128,13 +150,15 @@ export const VerifyView: React.FC = () => {
             setManifest(foundManifest);
             setVerificationStatus('SUCCESS');
             setShowL2(true);
+            addLog("Verification SUCCESS.");
         } else {
             setVerificationStatus('UNSIGNED');
             setShowL2(false);
+            addLog("No signature found.");
         }
 
-    } catch (e) {
-        console.error("Verification Error", e);
+    } catch (e: any) {
+        addLog(`Verification Exception: ${e.message}`);
         setVerificationStatus('TAMPERED');
     } finally {
         setIsVerifying(false);
@@ -153,14 +177,17 @@ export const VerifyView: React.FC = () => {
       setVerificationMethod('CLOUD_BINDING'); 
       setShowL2(false);
       setFetchError(null);
+      setDebugLog([]);
+      addLog(`Starting YouTube Verification: ${id}`);
 
       try {
           let title = "YouTube Video Asset";
           let channel = "Unknown Channel";
           let isVerifiedContext = false;
-          const apiKey = (process.env.API_KEY || '').trim();
+          const apiKey = getApiKey();
 
           try {
+             addLog("Fetching YouTube Data API...");
              const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?id=${id}&key=${apiKey}&part=snippet`);
              if (res.ok) {
                  const data = await res.json();
@@ -169,17 +196,21 @@ export const VerifyView: React.FC = () => {
                      title = snippet.title;
                      channel = snippet.channelTitle;
                      isVerifiedContext = true;
+                     addLog(`YouTube Data Found: ${title}`);
                  }
              } else {
-                 console.warn("YouTube API Error:", res.status);
+                 const errText = await res.text();
+                 addLog(`YouTube API Error (${res.status}): ${errText}`);
              }
-          } catch(e) { console.warn("YouTube API Unreachable", e); }
+          } catch(e: any) { 
+             addLog(`YouTube API Unreachable: ${e.message}`); 
+          }
 
-          // Fallback Demos
           if (id === 'UatpGRr-wA0' || id === '5F_6YDhA2A0') {
               if (!isVerifiedContext) {
                   title = id === 'UatpGRr-wA0' ? "Signet Protocol - English Deep Dive" : "Signet Protocol - Chinese Deep Dive";
                   channel = "Signet AI";
+                  addLog("Using fallback metadata for demo video.");
               }
               isVerifiedContext = true;
           }
@@ -215,8 +246,8 @@ export const VerifyView: React.FC = () => {
               setFetchError("Video not found in Signet Registry.");
           }
 
-      } catch (e) {
-          setFetchError("Verification failed.");
+      } catch (e: any) {
+          setFetchError(`Verification failed: ${e.message}`);
           setVerificationStatus('IDLE');
       } finally {
           setIsFetching(false);
@@ -234,18 +265,16 @@ export const VerifyView: React.FC = () => {
       setVerificationStatus('VERIFYING');
       setShowL2(false);
       setFetchError(null);
+      setDebugLog([]);
+      addLog(`Starting Drive Folder Audit: ${id}`);
 
       try {
-          const apiKey = (process.env.API_KEY || '').trim();
-          if (!apiKey) {
-              throw new Error("Missing API Key. Ensure process.env.API_KEY is configured.");
-          }
-
-          // Debug Logging for User
-          console.log(`[Drive Audit] Checking Folder ID: ${id}`);
-          console.log(`[Drive Audit] API Key Prefix: ${apiKey.substring(0, 4)}... (Length: ${apiKey.length})`);
+          const apiKey = getApiKey();
+          addLog(`API Key Prefix: ${apiKey.substring(0,4)}... (${apiKey.length} chars)`);
 
           const q = `'${id}' in parents and trashed = false`;
+          addLog(`Query: ${q}`);
+          
           const params = new URLSearchParams({
               q: q,
               key: apiKey,
@@ -256,13 +285,14 @@ export const VerifyView: React.FC = () => {
           });
 
           const url = `https://www.googleapis.com/drive/v3/files?${params.toString()}`;
-          console.log(`[Drive Audit] Request URL: ${url.replace(apiKey, 'HIDDEN_KEY')}`);
+          addLog(`Requesting: ${url.replace(apiKey, 'MASKED_KEY')}`);
           
           const listRes = await fetch(url);
           
           if (!listRes.ok) {
               const textBody = await listRes.text();
-              console.error("[Drive Audit] API Error Body:", textBody);
+              addLog(`API Response Status: ${listRes.status} ${listRes.statusText}`);
+              addLog(`API Response Body: ${textBody}`);
               
               let errorMessage = listRes.statusText;
               try {
@@ -271,7 +301,6 @@ export const VerifyView: React.FC = () => {
                       errorMessage = errorJson.error.message;
                   }
               } catch (e) {
-                  // If JSON parse fails, use the raw text (truncated)
                   errorMessage = textBody.substring(0, 200);
               }
 
@@ -280,25 +309,22 @@ export const VerifyView: React.FC = () => {
 
           const data = await listRes.json();
           const files = data.files || [];
+          addLog(`Folder scan complete. Found ${files.length} items.`);
           
-          if (files.length === 0) {
-             console.warn("[Drive Audit] Folder appears empty or permissions restricted.");
-          } else {
-             console.log(`[Drive Audit] Found ${files.length} files.`);
-          }
-
           // 2. Parallel Deep Verification
           const verifiedFiles = await Promise.all(files.map(async (f: any) => {
               let status = 'UNSIGNED';
               let signer = null;
               const fileSize = parseInt(f.size || '0');
 
-              // Skip folders or zero-byte files
               if (fileSize > 0 && f.mimeType !== 'application/vnd.google-apps.folder') {
                   try {
-                      // Range Request: Read last 20KB
+                      // Range Request
                       const rangeStart = Math.max(0, fileSize - 20480);
-                      const rangeRes = await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?key=${apiKey}&alt=media`, {
+                      // IMPORTANT: Using `encodeURIComponent` for file ID not usually needed, but good practice if ID is weird
+                      const fileUrl = `https://www.googleapis.com/drive/v3/files/${f.id}?key=${apiKey}&alt=media`;
+                      
+                      const rangeRes = await fetch(fileUrl, {
                           headers: { 'Range': `bytes=${rangeStart}-` }
                       });
 
@@ -314,23 +340,19 @@ export const VerifyView: React.FC = () => {
                                        status = 'SUCCESS';
                                        signer = manifest.signature?.identity || 'Verified Identity';
                                    } catch (e) {
-                                       console.warn(`Manifest Parse Error for ${f.name}`);
+                                       addLog(`Manifest parse error in file ${f.name}`);
                                    }
                                }
                           }
-                      } else {
-                          // Log fetch failure for individual files
-                          const errText = await rangeRes.text();
-                          console.warn(`[Drive Audit] File Scan Error (${f.name}):`, errText);
                       }
-                  } catch (e) {
-                      console.warn(`Failed to verify file ${f.name}:`, e);
+                  } catch (e: any) {
+                      addLog(`Failed to scan file ${f.name}: ${e.message}`);
                   }
               }
 
               return {
                   id: f.id,
-                  name: f.name, // React handles UTF-8 rendering automatically
+                  name: f.name, 
                   type: f.mimeType,
                   size: f.size ? `${(fileSize / (1024 * 1024)).toFixed(1)} MB` : 'Unknown',
                   status: status,
@@ -341,8 +363,10 @@ export const VerifyView: React.FC = () => {
           
           setFolderContents(verifiedFiles);
           setVerificationStatus('BATCH_REPORT');
+          addLog("Batch audit complete.");
+
       } catch (e: any) {
-          console.error("Folder Batch Error:", e);
+          addLog(`CRITICAL ERROR: ${e.message}`);
           setFetchError(`${e.message}`);
           setVerificationStatus('IDLE');
       } finally {
@@ -361,9 +385,13 @@ export const VerifyView: React.FC = () => {
       setVerificationStatus('VERIFYING');
       setShowL2(false);
       setFetchError(null);
+      setDebugLog([]);
+      addLog(`Starting Single File Verify: ${id}`);
 
       try {
-          const apiKey = (process.env.API_KEY || '').trim();
+          const apiKey = getApiKey();
+          addLog(`API Key: ${apiKey.substring(0,4)}...`);
+
           let title = "Google Drive Asset";
           let mimeType = "application/octet-stream";
           let owner = "Unknown";
@@ -373,6 +401,7 @@ export const VerifyView: React.FC = () => {
 
           // 1. Metadata Fetch
           try {
+             addLog("Fetching File Metadata...");
              const res = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?key=${apiKey}&fields=id,name,mimeType,size,owners`);
              if (res.ok) {
                  const data = await res.json();
@@ -383,15 +412,21 @@ export const VerifyView: React.FC = () => {
                     owner = data.owners[0].displayName;
                  }
                  isVerifiedContext = true;
+                 addLog(`Metadata OK. Name: ${title}, Size: ${fileSize}`);
              } else {
                  const text = await res.text();
-                 console.warn("[Drive Audit] Single File Metadata Error:", text);
+                 addLog(`Metadata Error (${res.status}): ${text}`);
+                 throw new Error(`Metadata Fetch Failed: ${res.statusText}`);
              }
-          } catch(e) { console.warn("Drive API Metadata Unreachable", e); }
+          } catch(e: any) { 
+             addLog(`Metadata Exception: ${e.message}`);
+             throw e; // Rethrow to trigger main catch
+          }
 
           // 2. Deep Tail Scan
           if (fileSize > 0) {
              try {
+                 addLog("Attempting Tail Scan (Range Request)...");
                  const rangeStart = Math.max(0, fileSize - 20480);
                  const rangeRes = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?key=${apiKey}&alt=media`, {
                      headers: { 'Range': `bytes=${rangeStart}-` }
@@ -400,54 +435,43 @@ export const VerifyView: React.FC = () => {
                  if (rangeRes.ok || rangeRes.status === 206) {
                      const tailText = await rangeRes.text();
                      if (tailText.includes('%SIGNET_VPR_START')) {
+                         addLog("Signature block found in tail.");
                          const start = tailText.lastIndexOf('%SIGNET_VPR_START');
                          const end = tailText.lastIndexOf('%SIGNET_VPR_END');
                          if (start !== -1 && end !== -1) {
                              const jsonStr = tailText.substring(start + '%SIGNET_VPR_START'.length, end).trim();
                              const embeddedManifest = JSON.parse(jsonStr);
-                             
                              setManifest(embeddedManifest);
                              deepScanSuccess = true;
                              setVerificationMethod('TAIL_SCAN');
                          }
+                     } else {
+                         addLog("No signature block found in last 20KB.");
                      }
+                 } else {
+                     addLog(`Range Request Failed (${rangeRes.status})`);
                  }
-             } catch (e) { console.warn("Deep Scan / Range Request failed (Likely CORS)", e); }
+             } catch (e: any) { addLog(`Deep Scan Exception: ${e.message}`); }
           }
 
-          // Case A: Signed Demo (Force Success)
+          // Demo Fallbacks
           if (!deepScanSuccess && id === '1BnQia9H0dWGVQPoninDzW2JDjxBUBM1_') {
+              addLog("Activating Demo Simulation (Signed)");
               title = "Signet Protocol - Signed Video.mp4";
               mimeType = "video/mp4";
               owner = "Signet Protocol Group";
-              
               const simulatedManifest = {
-                  signature: { 
-                      identity: "signetai.io:ssl", 
-                      timestamp: Date.now(), 
-                      anchor: "signetai.io:drive_registry",
-                      method: "UNIVERSAL_TAIL_WRAP"
-                  },
-                  asset: {
-                      type: mimeType,
-                      id: id,
-                      title: title,
-                      owner: owner,
-                      platform: "Google Drive",
-                      hash_algorithm: "SHA-256"
-                  },
-                  assertions: [
-                      { label: "org.signetai.binding", data: { method: "Deep_Scan", confidence: 1.0, platform: "GoogleWorkspace" } },
-                      { label: "c2pa.actions", data: { actions: [{ action: "c2pa.published", softwareAgent: "Signet Drive Connector" }] } }
-                  ]
+                  signature: { identity: "signetai.io:ssl", timestamp: Date.now(), anchor: "signetai.io:drive_registry", method: "UNIVERSAL_TAIL_WRAP" },
+                  asset: { type: mimeType, id: id, title: title, owner: owner, platform: "Google Drive", hash_algorithm: "SHA-256" },
+                  assertions: [{ label: "org.signetai.binding", data: { method: "Deep_Scan", confidence: 1.0, platform: "GoogleWorkspace" } }]
               };
               setManifest(simulatedManifest);
               deepScanSuccess = true;
               setVerificationMethod('TAIL_SCAN');
           }
 
-          // Case B: Unsigned Demo (Force Fail)
           if (id === '1ch4G-Jz6p688N1vceJ_J7VHtVCko32_r') {
+              addLog("Activating Demo Simulation (Unsigned)");
               deepScanSuccess = false;
               isVerifiedContext = false; 
           }
@@ -458,29 +482,13 @@ export const VerifyView: React.FC = () => {
               setVerificationStatus('SUCCESS');
               setShowL2(true);
           } else if (isVerifiedContext) {
-              // Fallback to Cloud Binding (ID Registry Match)
+              addLog("Fallback to Cloud Binding (Registry Lookup)");
               setVerificationMethod('CLOUD_BINDING');
               const cloudManifest = {
-                  signature: { 
-                      identity: "signetai.io:ssl", 
-                      timestamp: Date.now(), 
-                      anchor: "signetai.io:drive_registry",
-                      method: "CLOUD_BINDING"
-                  },
-                  asset: {
-                      type: mimeType,
-                      id: id,
-                      title: title,
-                      owner: owner,
-                      platform: "Google Drive",
-                      hash_algorithm: "CLOUD_METADATA_MATCH"
-                  },
-                  assertions: [
-                      { label: "org.signetai.binding", data: { method: "Registry_Lookup", confidence: 1.0, platform: "GoogleWorkspace" } },
-                      { label: "c2pa.actions", data: { actions: [{ action: "c2pa.published", softwareAgent: "Signet Drive Connector" }] } }
-                  ]
+                  signature: { identity: "signetai.io:ssl", timestamp: Date.now(), anchor: "signetai.io:drive_registry", method: "CLOUD_BINDING" },
+                  asset: { type: mimeType, id: id, title: title, owner: owner, platform: "Google Drive", hash_algorithm: "CLOUD_METADATA_MATCH" },
+                  assertions: [{ label: "org.signetai.binding", data: { method: "Registry_Lookup", confidence: 1.0, platform: "GoogleWorkspace" } }]
               };
-              
               setManifest(cloudManifest);
               setVerificationStatus('SUCCESS');
               setShowL2(true);
@@ -489,8 +497,9 @@ export const VerifyView: React.FC = () => {
               setFetchError("No cryptographic signature or registry binding found.");
           }
 
-      } catch (e) {
-          setFetchError("Verification failed.");
+      } catch (e: any) {
+          addLog(`CRITICAL ERROR: ${e.message}`);
+          setFetchError(`Verification failed: ${e.message}`);
           setVerificationStatus('IDLE');
       } finally {
           setIsFetching(false);
@@ -530,6 +539,8 @@ export const VerifyView: React.FC = () => {
     setShowL2(false);
     setVerificationStatus('IDLE');
     setVerificationMethod('DEEP_HASH');
+    setDebugLog([]);
+    addLog(`Fetching standard URL: ${url}`);
     
     try {
       const response = await fetch(url);
@@ -549,7 +560,7 @@ export const VerifyView: React.FC = () => {
       setFile(fetchedFile);
       handleVerify(fetchedFile);
     } catch (err: any) {
-      console.error("Fetch error:", err);
+      addLog(`Fetch error: ${err.message}`);
       let msg = "Failed to fetch asset.";
       if (err.message.includes('Failed to fetch') || err.name === 'TypeError') {
         msg = "CORS Error: The hosting server blocked this request. Try downloading the file and dragging it here instead.";
@@ -984,7 +995,7 @@ export const VerifyView: React.FC = () => {
                   )}
                 </div>
                 <button 
-                  onClick={() => { setFile(null); setManifest(null); setYoutubeId(null); setDriveId(null); setFolderId(null); setShowL2(false); setUrlInput(''); setFetchError(null); setVerificationStatus('IDLE'); }}
+                  onClick={() => { setFile(null); setManifest(null); setYoutubeId(null); setDriveId(null); setFolderId(null); setShowL2(false); setUrlInput(''); setFetchError(null); setVerificationStatus('IDLE'); setDebugLog([]); }}
                   className="px-6 border border-[var(--border-light)] rounded hover:bg-[var(--bg-sidebar)] transition-colors font-mono text-[10px] uppercase font-bold text-[var(--text-body)]"
                 >
                   Clear
@@ -1073,6 +1084,17 @@ export const VerifyView: React.FC = () => {
         <div className="space-y-6">
           <h3 className="font-mono text-[11px] uppercase opacity-40 font-bold tracking-[0.3em]">L2_Disclosure</h3>
           {renderL2State()}
+          
+          {debugLog.length > 0 && (
+            <div className="bg-[var(--code-bg)] border border-[var(--border-light)] rounded-lg p-4 max-h-48 overflow-y-auto">
+               <h4 className="font-mono text-[9px] uppercase font-bold opacity-40 mb-2">Debug Trace</h4>
+               <div className="font-mono text-[9px] space-y-1 opacity-70">
+                  {debugLog.map((log, i) => (
+                     <div key={i} className="break-all">{log}</div>
+                  ))}
+               </div>
+            </div>
+          )}
         </div>
       </div>
 

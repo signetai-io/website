@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Admonition } from './Admonition';
 import { PersistenceService } from '../services/PersistenceService';
@@ -251,7 +252,8 @@ export const BatchVerifier: React.FC = () => {
       let localResults: FileResult[] = [];
 
       async function scanDir(handle: any) {
-        for await (const entry of handle.values()) {
+        for await (const rawEntry of handle.values()) {
+          const entry = rawEntry as any;
           if (entry.kind === 'file') {
             if (entry.name.startsWith('.') || entry.name.endsWith('.signet.json')) continue;
             const file = await entry.getFile();
@@ -287,15 +289,18 @@ export const BatchVerifier: React.FC = () => {
     if (e.target.files) {
       setIsScanning(true);
       const files = Array.from(e.target.files);
-      setResults(files.filter(f => !f.name.startsWith('.') && !f.name.endsWith('.json')).map(f => ({
+      const newResults: FileResult[] = files
+        .filter((f: File) => !f.name.startsWith('.') && !f.name.endsWith('.json'))
+        .map((f: File) => ({
           name: f.name,
           status: 'QUEUED',
           msg: 'Ready',
           hash: '',
           size: f.size,
           file: f
-      })));
-      updateSummary(results);
+        }));
+      setResults(newResults);
+      updateSummary(newResults);
       setIsScanning(false);
     }
   };
