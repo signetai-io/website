@@ -67,7 +67,7 @@ const Sidebar: React.FC<{ currentView: string; isOpen: boolean }> = ({ currentVi
         <a href="#developers" className="sidebar-link">2. Neural Prism Pipeline</a>
         <a href="#schema" className={`sidebar-link ${currentView === 'schema' ? 'active' : ''}`}>3. VPR JSON Manifest</a>
         <a href="#spec" className={`sidebar-link ${currentView === 'spec' ? 'active' : ''}`}>4. Technical Draft</a>
-        <p className="px-4 py-2 text-[9px] text-[var(--text-body)] opacity-40 font-mono">Draft Song-03.2 (C2PA 2.3)</p>
+        <p className="px-4 py-2 text-[9px] text-[var(--text-body)] opacity-40 font-mono">v0.3.2 (C2PA 2.3)</p>
         
         <p className="px-4 pt-8 text-[10px] uppercase tracking-widest font-bold text-[var(--text-body)] opacity-40 mb-4">Identity & Trust</p>
         <a href="#identity" className={`sidebar-link ${currentView === 'identity' ? 'active' : ''}`}>5. TrustKey Registry (Register)</a>

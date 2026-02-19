@@ -1,6 +1,6 @@
 
 # Signet Protocol Specification (v0.3.2)
-**Draft-Song-Signet-Neural-Lens-03.2**
+**Neural-Lens-03.2**
 
 ## 1. Introduction
 This document defines the Signet Protocol, a standard for attaching cryptographic proof of reasoning (VPR) to AI-generated content, aligned with **C2PA 2.3**.

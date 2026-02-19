@@ -99,7 +99,7 @@ export const SpecView: React.FC = () => {
     // Metadata
     doc.setFontSize(10);
     doc.setTextColor(80, 80, 80); // Dark Grey
-    doc.text("VERSION 0.3.2 (DRAFT-SONG-03.2)", width/2, 230, { align: 'center' });
+    doc.text("VERSION 0.3.2", width/2, 230, { align: 'center' });
     doc.text("ISO/TC 290 Alignment", width/2, 236, { align: 'center' });
     
     // Bottom Bar
