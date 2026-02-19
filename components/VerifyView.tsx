@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Admonition } from './Admonition';
 import { NutritionLabel } from './NutritionLabel';
+import { firebaseConfig } from '../private_keys';
 
 export const VerifyView: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -69,16 +70,27 @@ export const VerifyView: React.FC = () => {
   };
 
   const getApiKey = () => {
-      const rawKey = process.env.API_KEY;
-      if (!rawKey) {
-          addLog("CRITICAL: process.env.API_KEY is undefined");
-          throw new Error("Client Configuration Error: API_KEY is missing from environment.");
+      const envKey = process.env.API_KEY;
+      
+      // 1. Priority: Environment Variable (if valid and not placeholder)
+      if (envKey && envKey.startsWith("AIza") && !envKey.includes("UNUSED")) {
+          return envKey;
       }
-      const key = rawKey.trim();
-      if (!key.startsWith("AIza")) {
-          addLog(`WARNING: API Key '${key.substring(0, 5)}...' does not appear to be a standard Google API Key (starts with AIza).`);
+
+      if (envKey) {
+          addLog(`WARNING: Environment API Key '${envKey.substring(0, 5)}...' is invalid/placeholder. Attempting fallback.`);
+      } else {
+          addLog("WARNING: Environment API Key is undefined. Attempting fallback.");
       }
-      return key;
+
+      // 2. Fallback: Internal Configuration (private_keys.ts)
+      if (firebaseConfig && firebaseConfig.apiKey && firebaseConfig.apiKey.startsWith("AIza")) {
+          addLog("Using fallback API Key from firebaseConfig.");
+          return firebaseConfig.apiKey;
+      }
+
+      addLog("CRITICAL: No valid API Key found in environment or fallback config.");
+      throw new Error("Client Configuration Error: API_KEY is missing/invalid.");
   };
 
   // Define handleVerify early to be used in auto-trigger
