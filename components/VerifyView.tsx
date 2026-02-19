@@ -237,26 +237,54 @@ export const VerifyView: React.FC = () => {
 
       try {
           const apiKey = (process.env.API_KEY || '').trim();
-          if (!apiKey) throw new Error("API Key configuration missing.");
+          if (!apiKey) {
+              throw new Error("Missing API Key. Ensure process.env.API_KEY is configured.");
+          }
 
-          // 1. List Folder Contents
-          // Enforce URL encoding and trimming to prevent 'API key not valid' errors
+          // Debug Logging for User
+          console.log(`[Drive Audit] Checking Folder ID: ${id}`);
+          console.log(`[Drive Audit] API Key Prefix: ${apiKey.substring(0, 4)}... (Length: ${apiKey.length})`);
+
           const q = `'${id}' in parents and trashed = false`;
-          const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&key=${apiKey}&fields=files(id,name,mimeType,size,createdTime)&pageSize=50&supportsAllDrives=true&includeItemsFromAllDrives=true`;
+          const params = new URLSearchParams({
+              q: q,
+              key: apiKey,
+              fields: "files(id,name,mimeType,size,createdTime)",
+              pageSize: "50",
+              supportsAllDrives: "true",
+              includeItemsFromAllDrives: "true"
+          });
+
+          const url = `https://www.googleapis.com/drive/v3/files?${params.toString()}`;
+          console.log(`[Drive Audit] Request URL: ${url.replace(apiKey, 'HIDDEN_KEY')}`);
           
           const listRes = await fetch(url);
           
           if (!listRes.ok) {
-              const errBody = await listRes.json().catch(() => ({}));
-              const msg = errBody.error?.message || listRes.statusText;
-              throw new Error(`Drive API Error (${listRes.status}): ${msg}`);
+              const textBody = await listRes.text();
+              console.error("[Drive Audit] API Error Body:", textBody);
+              
+              let errorMessage = listRes.statusText;
+              try {
+                  const errorJson = JSON.parse(textBody);
+                  if (errorJson.error && errorJson.error.message) {
+                      errorMessage = errorJson.error.message;
+                  }
+              } catch (e) {
+                  // If JSON parse fails, use the raw text (truncated)
+                  errorMessage = textBody.substring(0, 200);
+              }
+
+              throw new Error(`Drive API Error (${listRes.status}): ${errorMessage}`);
           }
 
           const data = await listRes.json();
           const files = data.files || [];
           
           if (files.length === 0) {
-             console.warn("Folder is empty or access restricted.");
+             console.warn("[Drive Audit] Folder appears empty or permissions restricted.");
+          } else {
+             console.log(`[Drive Audit] Found ${files.length} files.`);
           }
 
           // 2. Parallel Deep Verification
@@ -290,6 +318,10 @@ export const VerifyView: React.FC = () => {
                                    }
                                }
                           }
+                      } else {
+                          // Log fetch failure for individual files
+                          const errText = await rangeRes.text();
+                          console.warn(`[Drive Audit] File Scan Error (${f.name}):`, errText);
                       }
                   } catch (e) {
                       console.warn(`Failed to verify file ${f.name}:`, e);
@@ -351,6 +383,9 @@ export const VerifyView: React.FC = () => {
                     owner = data.owners[0].displayName;
                  }
                  isVerifiedContext = true;
+             } else {
+                 const text = await res.text();
+                 console.warn("[Drive Audit] Single File Metadata Error:", text);
              }
           } catch(e) { console.warn("Drive API Metadata Unreachable", e); }
 
