@@ -29,7 +29,7 @@ export const VerifyView: React.FC = () => {
   
   // Inputs
   const [urlInput, setUrlInput] = useState('');
-  const [referenceInput, setReferenceInput] = useState(''); // New Reference Input
+  const [referenceInput, setReferenceInput] = useState(''); // Source A
 
   const [dragActive, setDragActive] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -106,11 +106,10 @@ export const VerifyView: React.FC = () => {
     setFolderId(null);
     setAuditResult(null);
     setDebugLog([]); 
-    addLog(`Starting Local File Verification: ${targetFile.name} (${targetFile.size} bytes)`);
+    addLog(`Starting Local File Audit: ${targetFile.name} (${targetFile.size} bytes)`);
     
     try {
         let foundManifest = null;
-        
         const TAIL_SIZE = 20480; 
         const tailSlice = targetFile.slice(Math.max(0, targetFile.size - TAIL_SIZE));
         const tailText = await tailSlice.text(); 
@@ -162,7 +161,7 @@ export const VerifyView: React.FC = () => {
             setManifest(foundManifest);
             setVerificationStatus('SUCCESS');
             setShowL2(true);
-            addLog("Verification SUCCESS.");
+            addLog("Structure MATCH.");
         } else {
             setVerificationStatus('UNSIGNED');
             setShowL2(false);
@@ -170,7 +169,7 @@ export const VerifyView: React.FC = () => {
         }
 
     } catch (e: any) {
-        addLog(`Verification Exception: ${e.message}`);
+        addLog(`Audit Exception: ${e.message}`);
         setVerificationStatus('TAMPERED');
     } finally {
         setIsVerifying(false);
@@ -189,7 +188,7 @@ export const VerifyView: React.FC = () => {
       setShowL2(false);
       setFetchError(null);
       setDebugLog([]);
-      addLog(`Starting YouTube Verification: ${id}`);
+      addLog(`Analyzing Source A (YouTube): ${id}`);
 
       try {
           let title = "YouTube Video Asset";
@@ -207,7 +206,7 @@ export const VerifyView: React.FC = () => {
                      title = snippet.title;
                      channel = snippet.channelTitle;
                      isVerifiedContext = true;
-                     addLog(`YouTube Data Found: ${title}`);
+                     addLog(`Metadata Found: ${title}`);
                  }
              }
           } catch(e: any) { 
@@ -249,7 +248,7 @@ export const VerifyView: React.FC = () => {
               setShowL2(true);
           } else {
               setVerificationStatus('UNSIGNED');
-              setFetchError("Video not found in Signet Registry.");
+              setFetchError("Video not found in Registry.");
           }
 
       } catch (e: any) {
@@ -273,14 +272,14 @@ export const VerifyView: React.FC = () => {
       setShowL2(false);
       setFetchError(null);
       setDebugLog([]);
-      addLog(`Starting Drive Folder Audit: ${id}`);
+      addLog(`Connecting to Source B (Drive Folder): ${id}`);
 
       // Resolve Reference ID
       const refUrlToCheck = manualRef || referenceInput;
       const refId = getYoutubeId(refUrlToCheck);
       
       if (!refId) {
-          setFetchError("Reference Source (YouTube URL) required for Audit Engine.");
+          setFetchError("Source A (YouTube URL) required for Difference Engine.");
           setIsFetching(false);
           return;
       }
@@ -307,41 +306,30 @@ export const VerifyView: React.FC = () => {
 
           const data = await listRes.json();
           const files = data.files || [];
-          addLog(`Folder scan complete. Found ${files.length} items.`);
+          addLog(`Source B scan complete. Found ${files.length} items in pool.`);
 
           // --- AUDIT ENGINE INITIALIZATION ---
           const YOUTUBE_REF_ID = refId;
-          addLog(`Reference Source Established: YouTube[${YOUTUBE_REF_ID}]`);
+          addLog(`Source A Established: YouTube[${YOUTUBE_REF_ID}]`);
           
           // 1. Establish Reference Frames (The Truth Source)
-          // STRATEGY: Variable Length / Prime Offset / Low Entropy Rejection
-          // Video: ~7m 09s (429s)
-          // Prime Base: 7s (Skips fade-in)
-          // End Buffer: 10s (Skips credits)
-          
           const VIDEO_DURATION_SEC = 429; 
           const PRIME_OFFSET = 7;
           const INTERVAL = 60;
           const referenceUrls: ReferenceFrame[] = [];
           
-          addLog(`Initializing Dynamic Sampling: Base=${PRIME_OFFSET}s, Interval=${INTERVAL}s, Duration=${VIDEO_DURATION_SEC}s`);
+          addLog(`Initializing Dynamic Sampling: Base=${PRIME_OFFSET}s, Interval=${INTERVAL}s`);
 
-          // Cover is always required
           referenceUrls.push({ 
               label: 'Meta: Cover', 
               hashes: (await generateDualHash(`https://img.youtube.com/vi/${YOUTUBE_REF_ID}/maxresdefault.jpg`))!,
               weight: 1.0 
           });
 
-          // Generate Temporal Anchors using Dynamic While Loop
           let cursor = PRIME_OFFSET;
           let idx = 0;
           
           while (cursor < VIDEO_DURATION_SEC - 10) { 
-              const fmtTime = new Date(cursor * 1000).toISOString().substring(14, 19);
-              
-              // Map to available YT assets (1,2,3) using modulo to ensure visual variety in demo
-              // In production, this would hit specific frame endpoints
               const ytAssetId = (idx % 3) + 1; 
               const url = `https://img.youtube.com/vi/${YOUTUBE_REF_ID}/${ytAssetId}.jpg`;
               
@@ -352,28 +340,32 @@ export const VerifyView: React.FC = () => {
                       hashes,
                       weight: 1.0
                   });
-                  addLog(`Anchor Established [${fmtTime}]: dHash=${hashes.dHash.substring(0,8)}...`);
               }
               cursor += INTERVAL;
               idx++;
           }
+          addLog(`${referenceUrls.length} Anchors generated from Source A.`);
           
           // 2. Process Candidates (Drive Files)
           const candidates: FrameCandidate[] = [];
           
           const processedFiles = await Promise.all(files.map(async (f: any) => {
-              let status = 'UNSIGNED';
+              let diffScore = null;
               
-              // Compute Hashes for Candidates
               if (f.thumbnailLink) {
-                  // Drive thumbnails are temporary URLs, often CORS restricted. 
                   const hashes = await generateDualHash(f.thumbnailLink);
                   if (hashes) {
                       candidates.push({
                           id: f.id,
                           hashes
                       });
-                      addLog(`Candidate Hashed [${f.name}]: d=${hashes.dHash.substring(0,8)}...`);
+                      
+                      // Calculate Individual Score for List Display
+                      const singleCandidate = [{ id: f.id, hashes }];
+                      const result = computeAuditScore(singleCandidate, referenceUrls);
+                      diffScore = result.score;
+                      
+                      addLog(`Computed Diff for [${f.name}]: ${diffScore}`);
                   }
               }
 
@@ -384,17 +376,17 @@ export const VerifyView: React.FC = () => {
                   type: f.mimeType,
                   size: f.size ? `${(fileSize / (1024 * 1024)).toFixed(1)} MB` : 'Unknown',
                   thumbnailLink: f.thumbnailLink,
-                  status: status,
+                  diffScore: diffScore,
                   date: f.createdTime ? new Date(f.createdTime).toLocaleDateString() : 'Unknown'
               };
           }));
 
-          // 3. Execute Audit Engine
+          // 3. Execute Global Audit Engine (Best Match)
           if (candidates.length > 0 && referenceUrls.length > 0) {
-              addLog(`Executing Audit Engine: ${candidates.length} candidates vs ${referenceUrls.length} references.`);
+              addLog(`Executing Global Consensus: ${candidates.length} candidates vs ${referenceUrls.length} anchors.`);
               const result = computeAuditScore(candidates, referenceUrls);
               setAuditResult(result);
-              addLog(`Audit Score: ${result.score} (${result.band})`);
+              addLog(`Best Consensus Score: ${result.score} (${result.band})`);
           } else {
               addLog("Insufficient data for full audit.");
           }
@@ -423,7 +415,7 @@ export const VerifyView: React.FC = () => {
       setShowL2(false);
       setFetchError(null);
       setDebugLog([]);
-      addLog(`Starting Single File Verify: ${id}`);
+      addLog(`Starting Single File Analysis: ${id}`);
 
       setTimeout(() => {
           if (id === '1BnQia9H0dWGVQPoninDzW2JDjxBUBM1_') {
@@ -455,7 +447,6 @@ export const VerifyView: React.FC = () => {
     const dId = getGoogleDriveId(url);
     if (dId) {
         if (isFolderUrl(url)) {
-            // Pass explicit reference URL if available from hash
             handleGoogleDriveFolderVerify(dId, refUrl);
         } else {
             const sim = url.includes('signet_sim=unsigned') ? 'unsigned' : undefined;
@@ -474,7 +465,6 @@ export const VerifyView: React.FC = () => {
           const decodedRef = refUrl ? decodeURIComponent(refUrl) : '';
           
           setUrlInput(prev => {
-             // Only fetch if URL changed or if Ref changed and we haven't fetched yet
              if (prev !== decodedUrl || (decodedRef && referenceInput !== decodedRef)) {
                  if (decodedRef) setReferenceInput(decodedRef);
                  handleUrlFetch(decodedUrl, decodedRef);
@@ -542,13 +532,22 @@ export const VerifyView: React.FC = () => {
             <div className="h-[400px] border border-[var(--border-light)] rounded-xl bg-[var(--code-bg)] flex flex-col items-center justify-center text-center p-8">
                 <div className="w-8 h-8 border-2 border-[var(--trust-blue)] border-t-transparent rounded-full animate-spin mb-4"></div>
                 <p className="font-mono text-[10px] uppercase tracking-widest text-[var(--trust-blue)]">
-                    {folderId ? 'Running Multi-Frame Consensus...' : 'Scanning Substrate...'}
+                    {folderId ? 'Running Difference Engine...' : 'Scanning Substrate...'}
                 </p>
             </div>
         );
     }
 
     if (verificationStatus === 'BATCH_REPORT' && auditResult) {
+        // --- DIFFERENCE REPORT DISPLAY ---
+        // Remapped bands to neutral terminology
+        const bandLabels = {
+            'VERIFIED_ORIGINAL': 'MINIMAL DIFFERENCE (Match)',
+            'PLATFORM_CONSISTENT': 'LOW DIFFERENCE (Consistent)',
+            'MODIFIED_CONTENT': 'MODERATE DIFFERENCE (Modified)',
+            'DIVERGENT_SOURCE': 'HIGH DIFFERENCE (Distinct)'
+        };
+        
         const bandColors = {
             'VERIFIED_ORIGINAL': 'text-emerald-500 border-emerald-500/30 bg-emerald-500/10',
             'PLATFORM_CONSISTENT': 'text-blue-500 border-blue-500/30 bg-blue-500/10',
@@ -568,8 +567,8 @@ export const VerifyView: React.FC = () => {
                        </div>
                    </div>
                    <div className="space-y-1">
-                       <h4 className={`font-serif text-2xl font-bold italic ${bandColor.split(' ')[0]}`}>
-                           {auditResult.band.replace('_', ' ')}
+                       <h4 className={`font-serif text-xl font-bold italic ${bandColor.split(' ')[0]}`}>
+                           {bandLabels[auditResult.band]}
                        </h4>
                        <p className="font-mono text-[10px] opacity-60 uppercase tracking-widest">
                            Confidence: {(auditResult.confidence * 100).toFixed(1)}%
@@ -580,32 +579,32 @@ export const VerifyView: React.FC = () => {
                {/* Signal Breakdown */}
                <div className="grid grid-cols-2 gap-4">
                    <div className="p-3 bg-[var(--bg-standard)] border border-[var(--border-light)] rounded">
-                       <span className="block font-mono text-[9px] opacity-40 uppercase font-bold mb-1">Visual Signal (D_vis)</span>
+                       <span className="block font-mono text-[9px] opacity-40 uppercase font-bold mb-1">Visual Delta (D_vis)</span>
                        <div className="flex items-end gap-2">
                            <span className="text-xl font-bold">{auditResult.signals.dVisual.toFixed(3)}</span>
                            <span className="text-[9px] opacity-50 mb-1">dual-hash</span>
                        </div>
                        <div className="h-1 bg-[var(--border-light)] mt-2 rounded-full overflow-hidden">
-                           <div className="h-full bg-[var(--trust-blue)]" style={{ width: `${(1 - auditResult.signals.dVisual) * 100}%` }}></div>
+                           <div className="h-full bg-[var(--trust-blue)]" style={{ width: `${(auditResult.signals.dVisual) * 100}%` }}></div>
                        </div>
                    </div>
                    
                    <div className="p-3 bg-[var(--bg-standard)] border border-[var(--border-light)] rounded">
-                       <span className="block font-mono text-[9px] opacity-40 uppercase font-bold mb-1">Temporal Signal (D_temp)</span>
+                       <span className="block font-mono text-[9px] opacity-40 uppercase font-bold mb-1">Temporal Delta (D_temp)</span>
                        <div className="flex items-end gap-2">
                            <span className="text-xl font-bold">{auditResult.signals.dTemporal.toFixed(3)}</span>
                            <span className="text-[9px] opacity-50 mb-1">structure</span>
                        </div>
                        <div className="h-1 bg-[var(--border-light)] mt-2 rounded-full overflow-hidden">
-                           <div className="h-full bg-purple-500" style={{ width: `${(1 - auditResult.signals.dTemporal) * 100}%` }}></div>
+                           <div className="h-full bg-purple-500" style={{ width: `${(auditResult.signals.dTemporal) * 100}%` }}></div>
                        </div>
                    </div>
                </div>
 
                <div className="p-3 border-l-2 border-[var(--trust-blue)] bg-[var(--admonition-bg)] text-[10px] opacity-80 leading-relaxed font-serif italic">
                    {auditResult.bestMatchLabel ? 
-                       `Primary Anchor: Matched visual consensus on frame "${auditResult.bestMatchLabel}".` : 
-                       "No visual anchor established. Signal degraded."}
+                       `Primary Anchor: Closest visual match found at "${auditResult.bestMatchLabel}".` : 
+                       "No strong visual anchor established. High divergence."}
                </div>
             </div>
         );
@@ -648,7 +647,7 @@ export const VerifyView: React.FC = () => {
                <div className="flex items-center gap-4 mb-4">
                    <img src="https://ssl.gstatic.com/images/branding/product/1x/drive_2020q4_48dp.png" alt="Drive" className="w-6 h-6"/>
                    <div>
-                       <h4 className="font-bold text-[var(--text-header)] text-sm">Source Audit</h4>
+                       <h4 className="font-bold text-[var(--text-header)] text-sm">Source B (Pool)</h4>
                        <p className="text-[9px] opacity-60">Scanning {folderContents.length} assets</p>
                    </div>
                </div>
@@ -658,7 +657,14 @@ export const VerifyView: React.FC = () => {
                            <span className="text-lg">{item.type.includes('video') ? '🎬' : '📄'}</span>
                            <div className="flex-1 min-w-0">
                                <p className="font-bold truncate">{item.name}</p>
-                               <p className="opacity-50">{item.size}</p>
+                               <div className="flex justify-between items-center">
+                                   <p className="opacity-50">{item.size}</p>
+                                   {item.diffScore !== null && (
+                                       <span className={`font-mono font-bold ${item.diffScore < 100 ? 'text-emerald-600' : item.diffScore > 300 ? 'text-red-500' : 'text-amber-600'}`}>
+                                           Diff: {item.diffScore}
+                                       </span>
+                                   )}
+                               </div>
                            </div>
                        </div>
                    ))}
@@ -675,7 +681,7 @@ export const VerifyView: React.FC = () => {
         <div className="flex items-center justify-between">
            <div>
              <span className="font-mono text-[10px] text-[var(--trust-blue)] tracking-[0.4em] uppercase font-bold">Public Verification Tool</span>
-             <h2 className="text-5xl font-bold italic tracking-tighter text-[var(--text-header)]">Audit Content History.</h2>
+             <h2 className="text-5xl font-bold italic tracking-tighter text-[var(--text-header)]">The Difference Engine.</h2>
            </div>
            <button 
              onClick={() => window.location.hash = '#batch'}
@@ -685,7 +691,7 @@ export const VerifyView: React.FC = () => {
            </button>
         </div>
         <p className="text-xl opacity-60 max-w-2xl font-serif italic">
-          Drag and drop any asset (or paste a YouTube/Drive URL) to inspect its Content Credentials. Verified by the global Signet Registry.
+          Compare a <strong>Reference Source (A)</strong> against a <strong>Target Pool (B)</strong> to calculate logic drift and visual divergence.
         </p>
       </header>
 
@@ -707,7 +713,7 @@ export const VerifyView: React.FC = () => {
             {isFetching ? (
                <div className="text-center space-y-4 relative z-10 animate-pulse">
                  <span className="text-6xl">🌐</span>
-                 <p className="font-mono text-[10px] uppercase font-bold tracking-[0.3em] text-[var(--trust-blue)]">Resolving Asset...</p>
+                 <p className="font-mono text-[10px] uppercase font-bold tracking-[0.3em] text-[var(--trust-blue)]">Resolving Sources...</p>
                </div>
             ) : (file || youtubeId || driveId || folderId) ? (
               <div className="relative z-10 w-full h-full flex flex-col items-center justify-center p-0 md:p-8 animate-in zoom-in-95 duration-300">
@@ -730,13 +736,13 @@ export const VerifyView: React.FC = () => {
              {/* Reference Source Input */}
              <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none opacity-40">
-                  <span className="text-xs">📡</span>
+                  <span className="text-xs">A</span>
                 </div>
                 <input 
                   type="text"
                   value={referenceInput}
                   onChange={(e) => setReferenceInput(e.target.value)}
-                  placeholder="Reference Source (Truth) - YouTube URL..."
+                  placeholder="Source A (Reference) - YouTube URL..."
                   className="w-full pl-9 pr-4 py-3 bg-[var(--code-bg)] border border-[var(--border-light)] rounded-t font-mono text-[10px] outline-none focus:border-[var(--trust-blue)] transition-colors text-[var(--text-body)]"
                 />
              </div>
@@ -745,13 +751,13 @@ export const VerifyView: React.FC = () => {
              <div className="flex gap-2 -mt-2">
                 <div className="flex-1 relative group">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none opacity-40">
-                    <span className="text-xs">🔗</span>
+                    <span className="text-xs">B</span>
                   </div>
                   <input 
                     type="text"
                     value={urlInput}
                     onChange={(e) => setUrlInput(e.target.value)}
-                    placeholder="Target Candidate (Audit) - Drive Folder / File URL"
+                    placeholder="Source B (Target) - Drive Folder / File URL"
                     onKeyDown={(e) => e.key === 'Enter' && handleUrlFetch(urlInput)}
                     className="w-full pl-9 pr-4 py-3 bg-[var(--bg-standard)] border border-[var(--border-light)] rounded-b font-mono text-[11px] outline-none focus:border-[var(--trust-blue)] transition-colors text-[var(--text-body)] shadow-sm"
                   />
@@ -784,7 +790,7 @@ export const VerifyView: React.FC = () => {
                     }}
                     className="text-[10px] text-purple-600 hover:underline font-mono uppercase font-bold flex items-center gap-2"
                   >
-                    <span>📂</span> Drive Folder: Audit Engine Demo (Dual Input)
+                    <span>📂</span> Drive Folder: Difference Engine Demo
                   </button>
                   <span className="text-[9px] font-bold text-blue-500 bg-blue-500/10 px-1.5 rounded border border-blue-500/20">BATCH</span>
                 </div>
@@ -807,16 +813,16 @@ export const VerifyView: React.FC = () => {
                }`}
              >
                {isVerifying ? 'PROBING SUBSTRATE...' : 
-                verificationStatus === 'SUCCESS' ? 'VERIFIED ✓' : 
-                verificationStatus === 'BATCH_REPORT' ? 'AUDIT COMPLETE' :
+                verificationStatus === 'SUCCESS' ? 'STRUCTURE MATCHED ✓' : 
+                verificationStatus === 'BATCH_REPORT' ? 'REPORT READY' :
                 verificationStatus === 'UNSIGNED' ? 'NO SIGNATURE FOUND ✕' : 
-                'Execute Audit (∑)'}
+                'Calculate Difference (Δ)'}
              </button>
           </div>
         </div>
 
         <div className="space-y-6">
-          <h3 className="font-mono text-[11px] uppercase opacity-40 font-bold tracking-[0.3em]">L2_Disclosure</h3>
+          <h3 className="font-mono text-[11px] uppercase opacity-40 font-bold tracking-[0.3em]">Analysis Report</h3>
           {renderL2State()}
           
           {debugLog.length > 0 && (
