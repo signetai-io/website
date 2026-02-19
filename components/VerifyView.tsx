@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Admonition } from './Admonition';
 import { NutritionLabel } from './NutritionLabel';
-import { firebaseConfig } from '../private_keys';
+import { firebaseConfig, GOOGLE_GEMINI_KEY } from '../private_keys';
 
 export const VerifyView: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -78,12 +78,18 @@ export const VerifyView: React.FC = () => {
       }
 
       if (envKey) {
-          addLog(`WARNING: Environment API Key '${envKey.substring(0, 5)}...' is invalid/placeholder. Attempting fallback.`);
+          addLog(`WARNING: Environment API Key '${envKey.substring(0, 5)}...' is invalid/placeholder.`);
       } else {
-          addLog("WARNING: Environment API Key is undefined. Attempting fallback.");
+          addLog("WARNING: Environment API Key is undefined.");
       }
 
-      // 2. Fallback: Internal Configuration (private_keys.ts)
+      // 2. Priority: Dedicated Gemini Key (private_keys.ts)
+      if (GOOGLE_GEMINI_KEY && GOOGLE_GEMINI_KEY.startsWith("AIza")) {
+          addLog("Using fallback GOOGLE_GEMINI_KEY from private_keys.");
+          return GOOGLE_GEMINI_KEY;
+      }
+
+      // 3. Fallback: Firebase Config (private_keys.ts)
       if (firebaseConfig && firebaseConfig.apiKey && firebaseConfig.apiKey.startsWith("AIza")) {
           addLog("Using fallback API Key from firebaseConfig.");
           return firebaseConfig.apiKey;

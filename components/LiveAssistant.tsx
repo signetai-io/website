@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from "@google/genai";
 import ReactMarkdown from 'react-markdown';
+import { GOOGLE_GEMINI_KEY } from '../private_keys';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -81,6 +82,19 @@ export const LiveAssistant: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
+  // Robust Key Retrieval
+  const getApiKey = () => {
+    if (GOOGLE_GEMINI_KEY && GOOGLE_GEMINI_KEY.startsWith('AIza')) {
+      return GOOGLE_GEMINI_KEY;
+    }
+    const envKey = process.env.API_KEY;
+    if (envKey && !envKey.includes('UNUSED')) {
+      return envKey;
+    }
+    console.warn("LiveAssistant: No valid API Key found.");
+    return '';
+  };
+
   const cleanupAudio = () => {
     if (sessionRef.current) {
       try { sessionRef.current.close?.(); } catch(e) {}
@@ -113,6 +127,12 @@ export const LiveAssistant: React.FC = () => {
       return;
     }
 
+    const apiKey = getApiKey();
+    if (!apiKey) {
+      setMessages(prev => [...prev, { role: 'assistant', text: "⚠️ **Config Error:** No valid API Key found. Please check private_keys.ts or environment variables." }]);
+      return;
+    }
+
     setStatus('CONNECTING');
 
     // 1. Setup Audio Contexts
@@ -127,7 +147,7 @@ export const LiveAssistant: React.FC = () => {
     }
 
     // Always create new instance for the most up-to-date key
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey });
 
     try {
       streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -272,13 +292,20 @@ export const LiveAssistant: React.FC = () => {
 
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return;
+    
+    const apiKey = getApiKey();
+    if (!apiKey) {
+      setMessages(prev => [...prev, { role: 'assistant', text: "⚠️ **Auth Error:** Missing API Key." }]);
+      return;
+    }
+
     const userText = input;
     setInput('');
     setMessages(prev => [...prev, { role: 'user', text: userText }]);
     setIsLoading(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: userText,
