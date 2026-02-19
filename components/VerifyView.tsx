@@ -226,73 +226,84 @@ export const VerifyView: React.FC = () => {
 
       try {
           // 1. List Folder Contents
-          // We fetch ID, Name, MIME Type, Size, and Created Time
-          const listRes = await fetch(`https://www.googleapis.com/drive/v3/files?q='${id}'+in+parents&key=${process.env.API_KEY}&fields=files(id,name,mimeType,size,createdTime)&pageSize=20`);
+          // Use encodeURIComponent to correctly handle spaces/operators in query
+          // Added 'trashed = false' to ignore deleted files
+          const q = `'${id}' in parents and trashed = false`;
+          const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&key=${process.env.API_KEY}&fields=files(id,name,mimeType,size,createdTime)&pageSize=50&supportsAllDrives=true&includeItemsFromAllDrives=true`;
           
-          if (listRes.ok) {
-              const data = await listRes.json();
-              const files = data.files || [];
-              
-              // 2. Parallel Deep Verification
-              // We must fetch the tail bytes of EACH file to check for signatures.
-              // This is NOT a simulation; we are actually reading the files from Drive.
-              const verifiedFiles = await Promise.all(files.map(async (f: any) => {
-                  let status = 'UNSIGNED';
-                  let signer = null;
-                  const fileSize = parseInt(f.size || '0');
-
-                  // Skip folders or zero-byte files
-                  if (fileSize > 0 && f.mimeType !== 'application/vnd.google-apps.folder') {
-                      try {
-                          // Range Request: Read last 20KB
-                          const rangeStart = Math.max(0, fileSize - 20000);
-                          const rangeRes = await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?key=${process.env.API_KEY}&alt=media`, {
-                              headers: { 'Range': `bytes=${rangeStart}-` }
-                          });
-
-                          if (rangeRes.ok || rangeRes.status === 206) {
-                              const tailText = await rangeRes.text();
-                              // Check for Signet UTW Marker
-                              if (tailText.includes('%SIGNET_VPR_START')) {
-                                   const start = tailText.lastIndexOf('%SIGNET_VPR_START');
-                                   const end = tailText.lastIndexOf('%SIGNET_VPR_END');
-                                   if (start !== -1 && end !== -1) {
-                                       const jsonStr = tailText.substring(start + '%SIGNET_VPR_START'.length, end).trim();
-                                       try {
-                                           const manifest = JSON.parse(jsonStr);
-                                           status = 'SUCCESS';
-                                           signer = manifest.signature?.identity || 'Verified Identity';
-                                       } catch (e) {
-                                           // JSON Parse Error inside signature block
-                                           console.warn(`Manifest Parse Error for ${f.name}`);
-                                       }
-                                   }
-                              }
-                          }
-                      } catch (e) {
-                          console.warn(`Failed to verify file ${f.name}:`, e);
-                      }
-                  }
-
-                  return {
-                      id: f.id,
-                      name: f.name,
-                      type: f.mimeType,
-                      size: f.size ? `${(fileSize / (1024 * 1024)).toFixed(1)} MB` : 'Unknown',
-                      status: status,
-                      signer: signer,
-                      date: f.createdTime ? new Date(f.createdTime).toLocaleDateString() : 'Unknown'
-                  };
-              }));
-              
-              setFolderContents(verifiedFiles);
-              setVerificationStatus('BATCH_REPORT');
-          } else {
-              throw new Error("Drive API Error: Unable to list folder contents. Check permissions or API key.");
+          const listRes = await fetch(url);
+          
+          if (!listRes.ok) {
+              const errBody = await listRes.json().catch(() => ({}));
+              const msg = errBody.error?.message || listRes.statusText;
+              const code = errBody.error?.code || listRes.status;
+              throw new Error(`Drive API Error (${code}): ${msg}`);
           }
+
+          const data = await listRes.json();
+          const files = data.files || [];
+          
+          if (files.length === 0) {
+             console.warn("Folder is empty or access restricted.");
+          }
+
+          // 2. Parallel Deep Verification
+          // We must fetch the tail bytes of EACH file to check for signatures.
+          // This is NOT a simulation; we are actually reading the files from Drive.
+          const verifiedFiles = await Promise.all(files.map(async (f: any) => {
+              let status = 'UNSIGNED';
+              let signer = null;
+              const fileSize = parseInt(f.size || '0');
+
+              // Skip folders or zero-byte files
+              if (fileSize > 0 && f.mimeType !== 'application/vnd.google-apps.folder') {
+                  try {
+                      // Range Request: Read last 20KB
+                      const rangeStart = Math.max(0, fileSize - 20000);
+                      const rangeRes = await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?key=${process.env.API_KEY}&alt=media`, {
+                          headers: { 'Range': `bytes=${rangeStart}-` }
+                      });
+
+                      if (rangeRes.ok || rangeRes.status === 206) {
+                          const tailText = await rangeRes.text();
+                          // Check for Signet UTW Marker
+                          if (tailText.includes('%SIGNET_VPR_START')) {
+                               const start = tailText.lastIndexOf('%SIGNET_VPR_START');
+                               const end = tailText.lastIndexOf('%SIGNET_VPR_END');
+                               if (start !== -1 && end !== -1) {
+                                   const jsonStr = tailText.substring(start + '%SIGNET_VPR_START'.length, end).trim();
+                                   try {
+                                       const manifest = JSON.parse(jsonStr);
+                                       status = 'SUCCESS';
+                                       signer = manifest.signature?.identity || 'Verified Identity';
+                                   } catch (e) {
+                                       // JSON Parse Error inside signature block
+                                       console.warn(`Manifest Parse Error for ${f.name}`);
+                                   }
+                               }
+                          }
+                      }
+                  } catch (e) {
+                      console.warn(`Failed to verify file ${f.name}:`, e);
+                  }
+              }
+
+              return {
+                  id: f.id,
+                  name: f.name,
+                  type: f.mimeType,
+                  size: f.size ? `${(fileSize / (1024 * 1024)).toFixed(1)} MB` : 'Unknown',
+                  status: status,
+                  signer: signer,
+                  date: f.createdTime ? new Date(f.createdTime).toLocaleDateString() : 'Unknown'
+              };
+          }));
+          
+          setFolderContents(verifiedFiles);
+          setVerificationStatus('BATCH_REPORT');
       } catch (e: any) {
           console.error("Folder Batch Error:", e);
-          setFetchError(`Batch Audit Failed: ${e.message}`);
+          setFetchError(`${e.message}`);
           setVerificationStatus('IDLE');
       } finally {
           setIsFetching(false);
@@ -636,19 +647,19 @@ export const VerifyView: React.FC = () => {
                 <div className="flex-1 overflow-y-auto space-y-2">
                     {folderContents.map((item, i) => (
                         <div key={i} className="flex items-center justify-between p-3 bg-white border border-[var(--border-light)] rounded-lg shadow-sm">
-                            <div className="flex items-center gap-3">
-                                <span className="text-xl">
+                            <div className="flex items-center gap-3 overflow-hidden">
+                                <span className="text-xl flex-shrink-0">
                                     {item.type.includes('video') ? '🎬' : '📄'}
                                 </span>
-                                <div>
-                                    <p className="font-bold text-xs text-[var(--text-header)]">{item.name}</p>
+                                <div className="min-w-0">
+                                    <p className="font-bold text-xs text-[var(--text-header)] truncate" title={item.name}>{item.name}</p>
                                     <p className="font-mono text-[9px] opacity-50">{item.size} • {item.date}</p>
                                     {item.signer && (
-                                      <p className="font-mono text-[8px] text-[var(--trust-blue)] mt-0.5">Signed by: {item.signer}</p>
+                                      <p className="font-mono text-[8px] text-[var(--trust-blue)] mt-0.5 truncate">Signed by: {item.signer}</p>
                                     )}
                                 </div>
                             </div>
-                            <div className={`px-2 py-1 rounded text-[9px] font-mono font-bold uppercase ${
+                            <div className={`px-2 py-1 rounded text-[9px] font-mono font-bold uppercase whitespace-nowrap flex-shrink-0 ${
                                 item.status === 'SUCCESS' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-red-50 text-red-500 border border-red-100'
                             }`}>
                                 {item.status === 'SUCCESS' ? '✓ Verified' : '✕ Unsigned'}
@@ -992,7 +1003,7 @@ export const VerifyView: React.FC = () => {
              </div>
 
              {fetchError && (
-               <div className="p-3 bg-red-500/10 text-red-600 border border-red-500/20 rounded text-xs font-serif italic flex gap-2 items-center">
+               <div className="p-3 bg-red-500/10 text-red-600 border border-red-500/20 rounded text-xs font-serif italic flex gap-2 items-center break-words">
                  <span>⚠️</span> {fetchError}
                </div>
              )}
