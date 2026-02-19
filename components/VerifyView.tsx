@@ -74,32 +74,45 @@ export const VerifyView: React.FC = () => {
     setFolderId(null);
     
     try {
-        const text = await targetFile.text();
         let foundManifest = null;
         
-        // 1. Check for XML Injection (SVG)
-        if (text.includes('<signet:manifest>')) {
-             const match = text.match(/<signet:manifest>([\s\S]*?)<\/signet:manifest>/);
-             if (match) {
-                 try {
-                    foundManifest = JSON.parse(match[1]);
-                 } catch (e) { console.error("Manifest Parse Error", e); }
-             }
-        }
-        
-        // 2. Check for Universal Tail Wrap
-        if (!foundManifest && text.includes('%SIGNET_VPR_START')) {
-             const start = text.lastIndexOf('%SIGNET_VPR_START');
-             const end = text.lastIndexOf('%SIGNET_VPR_END');
+        // 1. Tail Scan Optimization (20KB) - Crucial for Large Videos & Chinese Filenames
+        // Prevents loading full GB-sized files into memory just to check signature.
+        const TAIL_SIZE = 20480; 
+        const tailSlice = targetFile.slice(Math.max(0, targetFile.size - TAIL_SIZE));
+        const tailText = await tailSlice.text(); // Browser handles UTF-8 automatically
+
+        // Check for Universal Tail Wrap in the tail
+        if (tailText.includes('%SIGNET_VPR_START')) {
+             const start = tailText.lastIndexOf('%SIGNET_VPR_START');
+             const end = tailText.lastIndexOf('%SIGNET_VPR_END');
              if (start !== -1 && end !== -1) {
-                 const jsonStr = text.substring(start + '%SIGNET_VPR_START'.length, end).trim();
+                 const jsonStr = tailText.substring(start + '%SIGNET_VPR_START'.length, end).trim();
                  try {
                     foundManifest = JSON.parse(jsonStr);
                  } catch (e) { console.error("Manifest Parse Error", e); }
              }
         }
 
-        // 3. Simulated Mock for specific demo filenames
+        // 2. Head Scan for XML/SVG (Fallback)
+        if (!foundManifest && (targetFile.type.includes('xml') || targetFile.type.includes('svg'))) {
+             const headText = await targetFile.slice(0, 50000).text(); 
+             if (headText.includes('<signet:manifest>')) {
+                 const match = headText.match(/<signet:manifest>([\s\S]*?)<\/signet:manifest>/);
+                 if (match) {
+                     try {
+                        foundManifest = JSON.parse(match[1]);
+                     } catch (e) { console.error("Manifest Parse Error", e); }
+                 }
+             } else {
+                 // Deep scan for SVG if not in head (rare but possible)
+                 const fullText = await targetFile.text();
+                 const match = fullText.match(/<signet:manifest>([\s\S]*?)<\/signet:manifest>/);
+                 if (match) foundManifest = JSON.parse(match[1]);
+             }
+        }
+
+        // 3. Simulated Mock for specific demo filenames (Legacy Demo Support)
         if (!foundManifest) {
              if (targetFile.name.includes('ca.jpg') || targetFile.name.includes('vpr_enhanced') || targetFile.name.includes('signet_512.png')) {
                  foundManifest = {
@@ -142,29 +155,27 @@ export const VerifyView: React.FC = () => {
       setFetchError(null);
 
       try {
-          // Attempt Fetch from YouTube Data API
           let title = "YouTube Video Asset";
           let channel = "Unknown Channel";
-          let desc = "No description available.";
           let isVerifiedContext = false;
+          const apiKey = (process.env.API_KEY || '').trim();
 
           try {
-             // Using the provided API KEY env variable which is usually for Gemini but works for YT if scoped correctly
-             const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?id=${id}&key=${process.env.API_KEY}&part=snippet`);
+             const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?id=${id}&key=${apiKey}&part=snippet`);
              if (res.ok) {
                  const data = await res.json();
                  if (data.items && data.items.length > 0) {
                      const snippet = data.items[0].snippet;
                      title = snippet.title;
                      channel = snippet.channelTitle;
-                     desc = snippet.description;
-                     isVerifiedContext = true; // API call succeeded
+                     isVerifiedContext = true;
                  }
              } else {
                  console.warn("YouTube API Error:", res.status);
              }
           } catch(e) { console.warn("YouTube API Unreachable", e); }
 
+          // Fallback Demos
           if (id === 'UatpGRr-wA0' || id === '5F_6YDhA2A0') {
               if (!isVerifiedContext) {
                   title = id === 'UatpGRr-wA0' ? "Signet Protocol - English Deep Dive" : "Signet Protocol - Chinese Deep Dive";
@@ -225,19 +236,20 @@ export const VerifyView: React.FC = () => {
       setFetchError(null);
 
       try {
+          const apiKey = (process.env.API_KEY || '').trim();
+          if (!apiKey) throw new Error("API Key configuration missing.");
+
           // 1. List Folder Contents
-          // Use encodeURIComponent to correctly handle spaces/operators in query
-          // Added 'trashed = false' to ignore deleted files
+          // Enforce URL encoding and trimming to prevent 'API key not valid' errors
           const q = `'${id}' in parents and trashed = false`;
-          const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&key=${process.env.API_KEY}&fields=files(id,name,mimeType,size,createdTime)&pageSize=50&supportsAllDrives=true&includeItemsFromAllDrives=true`;
+          const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&key=${apiKey}&fields=files(id,name,mimeType,size,createdTime)&pageSize=50&supportsAllDrives=true&includeItemsFromAllDrives=true`;
           
           const listRes = await fetch(url);
           
           if (!listRes.ok) {
               const errBody = await listRes.json().catch(() => ({}));
               const msg = errBody.error?.message || listRes.statusText;
-              const code = errBody.error?.code || listRes.status;
-              throw new Error(`Drive API Error (${code}): ${msg}`);
+              throw new Error(`Drive API Error (${listRes.status}): ${msg}`);
           }
 
           const data = await listRes.json();
@@ -248,8 +260,6 @@ export const VerifyView: React.FC = () => {
           }
 
           // 2. Parallel Deep Verification
-          // We must fetch the tail bytes of EACH file to check for signatures.
-          // This is NOT a simulation; we are actually reading the files from Drive.
           const verifiedFiles = await Promise.all(files.map(async (f: any) => {
               let status = 'UNSIGNED';
               let signer = null;
@@ -259,14 +269,13 @@ export const VerifyView: React.FC = () => {
               if (fileSize > 0 && f.mimeType !== 'application/vnd.google-apps.folder') {
                   try {
                       // Range Request: Read last 20KB
-                      const rangeStart = Math.max(0, fileSize - 20000);
-                      const rangeRes = await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?key=${process.env.API_KEY}&alt=media`, {
+                      const rangeStart = Math.max(0, fileSize - 20480);
+                      const rangeRes = await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?key=${apiKey}&alt=media`, {
                           headers: { 'Range': `bytes=${rangeStart}-` }
                       });
 
                       if (rangeRes.ok || rangeRes.status === 206) {
                           const tailText = await rangeRes.text();
-                          // Check for Signet UTW Marker
                           if (tailText.includes('%SIGNET_VPR_START')) {
                                const start = tailText.lastIndexOf('%SIGNET_VPR_START');
                                const end = tailText.lastIndexOf('%SIGNET_VPR_END');
@@ -277,7 +286,6 @@ export const VerifyView: React.FC = () => {
                                        status = 'SUCCESS';
                                        signer = manifest.signature?.identity || 'Verified Identity';
                                    } catch (e) {
-                                       // JSON Parse Error inside signature block
                                        console.warn(`Manifest Parse Error for ${f.name}`);
                                    }
                                }
@@ -290,7 +298,7 @@ export const VerifyView: React.FC = () => {
 
               return {
                   id: f.id,
-                  name: f.name,
+                  name: f.name, // React handles UTF-8 rendering automatically
                   type: f.mimeType,
                   size: f.size ? `${(fileSize / (1024 * 1024)).toFixed(1)} MB` : 'Unknown',
                   status: status,
@@ -323,6 +331,7 @@ export const VerifyView: React.FC = () => {
       setFetchError(null);
 
       try {
+          const apiKey = (process.env.API_KEY || '').trim();
           let title = "Google Drive Asset";
           let mimeType = "application/octet-stream";
           let owner = "Unknown";
@@ -332,7 +341,7 @@ export const VerifyView: React.FC = () => {
 
           // 1. Metadata Fetch
           try {
-             const res = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?key=${process.env.API_KEY}&fields=id,name,mimeType,size,owners`);
+             const res = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?key=${apiKey}&fields=id,name,mimeType,size,owners`);
              if (res.ok) {
                  const data = await res.json();
                  title = data.name;
@@ -345,11 +354,11 @@ export const VerifyView: React.FC = () => {
              }
           } catch(e) { console.warn("Drive API Metadata Unreachable", e); }
 
-          // 2. Deep Tail Scan (Attempt to read signature bytes)
+          // 2. Deep Tail Scan
           if (fileSize > 0) {
              try {
-                 const rangeStart = Math.max(0, fileSize - 20000); // Last 20KB
-                 const rangeRes = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?key=${process.env.API_KEY}&alt=media`, {
+                 const rangeStart = Math.max(0, fileSize - 20480);
+                 const rangeRes = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?key=${apiKey}&alt=media`, {
                      headers: { 'Range': `bytes=${rangeStart}-` }
                  });
                  
@@ -371,7 +380,6 @@ export const VerifyView: React.FC = () => {
              } catch (e) { console.warn("Deep Scan / Range Request failed (Likely CORS)", e); }
           }
 
-          // --- DEMO SIMULATION LOGIC ---
           // Case A: Signed Demo (Force Success)
           if (!deepScanSuccess && id === '1BnQia9H0dWGVQPoninDzW2JDjxBUBM1_') {
               title = "Signet Protocol - Signed Video.mp4";
