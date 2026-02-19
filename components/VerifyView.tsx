@@ -26,7 +26,11 @@ export const VerifyView: React.FC = () => {
   const [isFetching, setIsFetching] = useState(false);
   const [manifest, setManifest] = useState<any>(null);
   const [showL2, setShowL2] = useState(false);
+  
+  // Inputs
   const [urlInput, setUrlInput] = useState('');
+  const [referenceInput, setReferenceInput] = useState(''); // New Reference Input
+
   const [dragActive, setDragActive] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [verificationStatus, setVerificationStatus] = useState<'IDLE' | 'VERIFYING' | 'SUCCESS' | 'UNSIGNED' | 'TAMPERED' | 'BATCH_REPORT'>('IDLE');
@@ -46,6 +50,7 @@ export const VerifyView: React.FC = () => {
   };
 
   const getYoutubeId = (url: string) => {
+    if (!url) return null;
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
     const match = url.match(regExp);
     return (match && match[2].length === 11) ? match[2] : null;
@@ -173,9 +178,6 @@ export const VerifyView: React.FC = () => {
   };
 
   const handleYoutubeVerify = async (id: string) => {
-      // (Simplified logic for single YouTube video lookup)
-      // Note: Full dual-hash audit usually happens in Folder Mode against YouTube refs
-      // This function just checks the registry.
       setIsFetching(true);
       setYoutubeId(id);
       setDriveId(null);
@@ -258,7 +260,7 @@ export const VerifyView: React.FC = () => {
       }
   };
 
-  const handleGoogleDriveFolderVerify = async (id: string) => {
+  const handleGoogleDriveFolderVerify = async (id: string, manualRef?: string) => {
       setIsFetching(true);
       setFolderId(id);
       setDriveId(null);
@@ -272,6 +274,16 @@ export const VerifyView: React.FC = () => {
       setFetchError(null);
       setDebugLog([]);
       addLog(`Starting Drive Folder Audit: ${id}`);
+
+      // Resolve Reference ID
+      const refUrlToCheck = manualRef || referenceInput;
+      const refId = getYoutubeId(refUrlToCheck);
+      
+      if (!refId) {
+          setFetchError("Reference Source (YouTube URL) required for Audit Engine.");
+          setIsFetching(false);
+          return;
+      }
 
       try {
           const apiKey = getApiKey();
@@ -298,7 +310,8 @@ export const VerifyView: React.FC = () => {
           addLog(`Folder scan complete. Found ${files.length} items.`);
 
           // --- AUDIT ENGINE INITIALIZATION ---
-          const YOUTUBE_REF_ID = 'UatpGRr-wA0';
+          const YOUTUBE_REF_ID = refId;
+          addLog(`Reference Source Established: YouTube[${YOUTUBE_REF_ID}]`);
           
           // 1. Establish Reference Frames (The Truth Source)
           // STRATEGY: Variable Length / Prime Offset / Low Entropy Rejection
@@ -324,7 +337,7 @@ export const VerifyView: React.FC = () => {
           let cursor = PRIME_OFFSET;
           let idx = 0;
           
-          while (cursor < VIDEO_DURATION_SEC - 10) { // Reject end-of-file entropy (credits)
+          while (cursor < VIDEO_DURATION_SEC - 10) { 
               const fmtTime = new Date(cursor * 1000).toISOString().substring(14, 19);
               
               // Map to available YT assets (1,2,3) using modulo to ensure visual variety in demo
@@ -350,18 +363,10 @@ export const VerifyView: React.FC = () => {
           
           const processedFiles = await Promise.all(files.map(async (f: any) => {
               let status = 'UNSIGNED';
-              let signer = null;
               
-              // Only simulate metadata parsing for logic demo
-              const fileSize = parseInt(f.size || '0');
-              if (fileSize > 0 && f.name.endsWith('.mp4')) {
-                  // Simulate deep scan logic if needed
-              }
-
               // Compute Hashes for Candidates
               if (f.thumbnailLink) {
                   // Drive thumbnails are temporary URLs, often CORS restricted. 
-                  // In prod, use proxy. Here we try direct.
                   const hashes = await generateDualHash(f.thumbnailLink);
                   if (hashes) {
                       candidates.push({
@@ -372,6 +377,7 @@ export const VerifyView: React.FC = () => {
                   }
               }
 
+              const fileSize = parseInt(f.size || '0');
               return {
                   id: f.id,
                   name: f.name, 
@@ -406,9 +412,6 @@ export const VerifyView: React.FC = () => {
   };
 
   const handleGoogleDriveVerify = async (id: string, simMode?: string) => {
-      // (Single file verification logic - simplified for space, uses existing pattern)
-      // ... [Kept existing logic for single file handling]
-      // Just updating logs and state calls to match new imports
       setIsFetching(true);
       setDriveId(id);
       setFolderId(null);
@@ -422,8 +425,6 @@ export const VerifyView: React.FC = () => {
       setDebugLog([]);
       addLog(`Starting Single File Verify: ${id}`);
 
-      // ... [Logic omitted for brevity, identical to previous specific implementation]
-      // Simulating success for the demo ID
       setTimeout(() => {
           if (id === '1BnQia9H0dWGVQPoninDzW2JDjxBUBM1_') {
               const simulatedManifest = {
@@ -442,7 +443,7 @@ export const VerifyView: React.FC = () => {
       }, 1500);
   };
 
-  const handleUrlFetch = async (url: string) => {
+  const handleUrlFetch = async (url: string, refUrl?: string) => {
     if (!url) return;
     
     const ytId = getYoutubeId(url);
@@ -454,23 +455,29 @@ export const VerifyView: React.FC = () => {
     const dId = getGoogleDriveId(url);
     if (dId) {
         if (isFolderUrl(url)) {
-            handleGoogleDriveFolderVerify(dId);
+            // Pass explicit reference URL if available from hash
+            handleGoogleDriveFolderVerify(dId, refUrl);
         } else {
             const sim = url.includes('signet_sim=unsigned') ? 'unsigned' : undefined;
             handleGoogleDriveVerify(dId, sim);
         }
         return;
     }
-    // ... [Standard fetch logic]
   };
 
   const checkParams = useCallback(() => {
         const deepLinkUrl = getUrlParam('url') || getUrlParam('verify_url');
+        const refUrl = getUrlParam('ref');
+        
         if (deepLinkUrl) {
           const decodedUrl = decodeURIComponent(deepLinkUrl);
+          const decodedRef = refUrl ? decodeURIComponent(refUrl) : '';
+          
           setUrlInput(prev => {
-             if (prev !== decodedUrl) {
-                 handleUrlFetch(decodedUrl);
+             // Only fetch if URL changed or if Ref changed and we haven't fetched yet
+             if (prev !== decodedUrl || (decodedRef && referenceInput !== decodedRef)) {
+                 if (decodedRef) setReferenceInput(decodedRef);
+                 handleUrlFetch(decodedUrl, decodedRef);
                  return decodedUrl;
              }
              return prev;
@@ -542,7 +549,6 @@ export const VerifyView: React.FC = () => {
     }
 
     if (verificationStatus === 'BATCH_REPORT' && auditResult) {
-        // --- AUDIT GRADE DISPLAY ---
         const bandColors = {
             'VERIFIED_ORIGINAL': 'text-emerald-500 border-emerald-500/30 bg-emerald-500/10',
             'PLATFORM_CONSISTENT': 'text-blue-500 border-blue-500/30 bg-blue-500/10',
@@ -636,8 +642,6 @@ export const VerifyView: React.FC = () => {
   };
 
   const renderPreview = () => {
-      // Reuse existing preview logic, truncated for brevity in this delta
-      // The implementation is standard logic for file/youtube/folder rendering
       if (folderId) {
           return (
             <div className="w-full h-full bg-[#F8F9FA] flex flex-col p-6 overflow-hidden cursor-default" onClick={(e) => e.stopPropagation()}>
@@ -662,7 +666,6 @@ export const VerifyView: React.FC = () => {
             </div>
           );
       }
-      // ... other preview types
       return null;
   };
 
@@ -724,7 +727,22 @@ export const VerifyView: React.FC = () => {
           </div>
 
           <div className="space-y-4">
-             <div className="flex gap-2">
+             {/* Reference Source Input */}
+             <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none opacity-40">
+                  <span className="text-xs">📡</span>
+                </div>
+                <input 
+                  type="text"
+                  value={referenceInput}
+                  onChange={(e) => setReferenceInput(e.target.value)}
+                  placeholder="Reference Source (Truth) - YouTube URL..."
+                  className="w-full pl-9 pr-4 py-3 bg-[var(--code-bg)] border border-[var(--border-light)] rounded-t font-mono text-[10px] outline-none focus:border-[var(--trust-blue)] transition-colors text-[var(--text-body)]"
+                />
+             </div>
+
+             {/* Target Candidate Input */}
+             <div className="flex gap-2 -mt-2">
                 <div className="flex-1 relative group">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none opacity-40">
                     <span className="text-xs">🔗</span>
@@ -733,21 +751,21 @@ export const VerifyView: React.FC = () => {
                     type="text"
                     value={urlInput}
                     onChange={(e) => setUrlInput(e.target.value)}
-                    placeholder="https://youtube.com/... or Google Drive Link"
+                    placeholder="Target Candidate (Audit) - Drive Folder / File URL"
                     onKeyDown={(e) => e.key === 'Enter' && handleUrlFetch(urlInput)}
-                    className="w-full pl-9 pr-4 py-3 bg-[var(--bg-standard)] border border-[var(--border-light)] rounded font-mono text-[11px] outline-none focus:border-[var(--trust-blue)] transition-colors text-[var(--text-body)]"
+                    className="w-full pl-9 pr-4 py-3 bg-[var(--bg-standard)] border border-[var(--border-light)] rounded-b font-mono text-[11px] outline-none focus:border-[var(--trust-blue)] transition-colors text-[var(--text-body)] shadow-sm"
                   />
                   {urlInput && (
                     <button 
                       onClick={() => handleUrlFetch(urlInput)}
-                      className="absolute inset-y-0 right-0 px-4 text-[9px] font-bold uppercase hover:bg-[var(--bg-sidebar)] transition-colors rounded-r border-l border-[var(--border-light)] text-[var(--trust-blue)]"
+                      className="absolute inset-y-0 right-0 px-4 text-[9px] font-bold uppercase hover:bg-[var(--bg-sidebar)] transition-colors rounded-br border-l border-[var(--border-light)] text-[var(--trust-blue)]"
                     >
                       Fetch
                     </button>
                   )}
                 </div>
                 <button 
-                  onClick={() => { setFile(null); setManifest(null); setYoutubeId(null); setDriveId(null); setFolderId(null); setUrlInput(''); setFetchError(null); setVerificationStatus('IDLE'); setDebugLog([]); }}
+                  onClick={() => { setFile(null); setManifest(null); setYoutubeId(null); setDriveId(null); setFolderId(null); setUrlInput(''); setReferenceInput(''); setFetchError(null); setVerificationStatus('IDLE'); setDebugLog([]); }}
                   className="px-6 border border-[var(--border-light)] rounded hover:bg-[var(--bg-sidebar)] transition-colors font-mono text-[10px] uppercase font-bold text-[var(--text-body)]"
                 >
                   Clear
@@ -761,11 +779,12 @@ export const VerifyView: React.FC = () => {
                   <button 
                     onClick={() => { 
                         const driveUrl = "https://drive.google.com/drive/folders/1dKxGvDBrxHp9ys_7jy7cXNt74JnaryA9";
-                        window.location.hash = `#verify?url=${encodeURIComponent(driveUrl)}`;
+                        const refUrl = "https://www.youtube.com/watch?v=UatpGRr-wA0";
+                        window.location.hash = `#verify?url=${encodeURIComponent(driveUrl)}&ref=${encodeURIComponent(refUrl)}`;
                     }}
                     className="text-[10px] text-purple-600 hover:underline font-mono uppercase font-bold flex items-center gap-2"
                   >
-                    <span>📂</span> Drive Folder: Audit Engine Demo
+                    <span>📂</span> Drive Folder: Audit Engine Demo (Dual Input)
                   </button>
                   <span className="text-[9px] font-bold text-blue-500 bg-blue-500/10 px-1.5 rounded border border-blue-500/20">BATCH</span>
                 </div>
