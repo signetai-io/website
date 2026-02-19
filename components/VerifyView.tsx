@@ -425,6 +425,7 @@ export const VerifyView: React.FC = () => {
 
           // 3. Cross-Reference for Soft-Binding (Duplicate/Stripped Detection)
           // Compare every file against every other file
+          const THRESHOLD = 5;
           for (let i = 0; i < processedFiles.length; i++) {
               const fileA = processedFiles[i];
               if (!fileA.pHash) continue;
@@ -438,11 +439,11 @@ export const VerifyView: React.FC = () => {
                   
                   // Threshold for visual similarity (e.g., < 5 bits difference out of 1024)
                   // For exact video duplicates (one signed, one not), distance should be 0 or 1.
-                  if (distance < 5) {
+                  if (distance < THRESHOLD) {
                       // Found a visual match.
                       // Scenario: File A is unsigned, File B is signed. File A is likely a stripped copy.
                       if (fileA.status === 'UNSIGNED' && fileB.status === 'SUCCESS') {
-                          fileA.softBindingMatch = `Matches Signed Asset: ${fileB.name}`;
+                          fileA.softBindingMatch = `Matches Signed Asset: ${fileB.name} (Hamming Dist: ${distance}, Threshold: <${THRESHOLD})`;
                       }
                   }
               }
@@ -759,7 +760,10 @@ export const VerifyView: React.FC = () => {
   const renderPreview = () => {
     if (youtubeId) {
         return (
-            <div className="w-full h-full bg-black flex items-center justify-center">
+            <div 
+                className="w-full h-full bg-black flex items-center justify-center cursor-default"
+                onClick={(e) => e.stopPropagation()}
+            >
                 <iframe 
                     width="100%" 
                     height="100%" 
@@ -776,7 +780,10 @@ export const VerifyView: React.FC = () => {
 
     if (folderId) {
         return (
-            <div className="w-full h-full bg-[#F8F9FA] flex flex-col p-6 overflow-hidden">
+            <div 
+                className="w-full h-full bg-[#F8F9FA] flex flex-col p-6 overflow-hidden cursor-default"
+                onClick={(e) => e.stopPropagation()}
+            >
                 <div className="flex items-center gap-4 mb-6 border-b border-[var(--border-light)] pb-4">
                     <img src="https://ssl.gstatic.com/images/branding/product/1x/drive_2020q4_48dp.png" alt="Google Drive" className="w-8 h-8" />
                     <div>
@@ -831,7 +838,10 @@ export const VerifyView: React.FC = () => {
 
     if (driveId) {
         return (
-            <div className="w-full h-full bg-[#F5F5F5] flex flex-col items-center justify-center border border-[var(--border-light)] rounded-lg relative overflow-hidden">
+            <div 
+                className="w-full h-full bg-[#F5F5F5] flex flex-col items-center justify-center border border-[var(--border-light)] rounded-lg relative overflow-hidden cursor-default"
+                onClick={(e) => e.stopPropagation()}
+            >
                 <div className="absolute inset-0 opacity-10 bg-[url('https://ssl.gstatic.com/images/branding/product/2x/drive_2020q4_48dp.png')] bg-center bg-no-repeat bg-contain"></div>
                 <div className="z-10 text-center space-y-4 p-8">
                     <img src="https://ssl.gstatic.com/images/branding/product/1x/drive_2020q4_48dp.png" alt="Google Drive" className="w-16 h-16 mx-auto" />
@@ -868,6 +878,7 @@ export const VerifyView: React.FC = () => {
               src={previewUrl} 
               controls 
               className="max-w-full max-h-[80%] rounded shadow-lg"
+              onClick={(e) => e.stopPropagation()}
             />
         );
     } else {
