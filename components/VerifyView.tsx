@@ -22,7 +22,10 @@ const getHammingDistance = (str1: string, str2: string) => {
 // 4. Compare pixel[x] > pixel[x+1]
 const generateVisualHash = async (imageUrl: string): Promise<string | null> => {
     try {
+        // Try to fetch (handle potential 404s for maxresdefault gracefully)
         const response = await fetch(imageUrl, { mode: 'cors' });
+        if (!response.ok) return null;
+        
         const blob = await response.blob();
         const imgBitmap = await createImageBitmap(blob);
 
@@ -34,7 +37,7 @@ const generateVisualHash = async (imageUrl: string): Promise<string | null> => {
         const ctx = canvas.getContext('2d');
         if (!ctx) return null;
 
-        // Draw resized
+        // Draw resized (This stretch normalizes aspect ratios for hashing)
         ctx.drawImage(imgBitmap, 0, 0, width, height);
         const imageData = ctx.getImageData(0, 0, width, height);
         const data = imageData.data;
@@ -58,7 +61,7 @@ const generateVisualHash = async (imageUrl: string): Promise<string | null> => {
 
         return hash;
     } catch (e) {
-        console.warn("pHash Gen Failed", e);
+        // console.warn("pHash Gen Failed", imageUrl, e); 
         return null;
     }
 };
@@ -362,8 +365,27 @@ export const VerifyView: React.FC = () => {
           const data = await listRes.json();
           const files = data.files || [];
           addLog(`Folder scan complete. Found ${files.length} items.`);
+
+          // --- 1. Generate Baseline for Cross-Platform Audit (YouTube) ---
+          const YOUTUBE_REF_ID = 'UatpGRr-wA0';
+          const YOUTUBE_IMG_URL = `https://img.youtube.com/vi/${YOUTUBE_REF_ID}/maxresdefault.jpg`;
+          let youtubePHash: string | null = null;
           
-          // 2. Parallel Deep Verification + pHash Generation
+          try {
+              // Note: YouTube thumbnails often have CORS enabled, but if not, this will fail gracefully.
+              youtubePHash = await generateVisualHash(YOUTUBE_IMG_URL);
+              if (!youtubePHash) {
+                  // Fallback to HQ if MaxRes unavailable
+                  youtubePHash = await generateVisualHash(`https://img.youtube.com/vi/${YOUTUBE_REF_ID}/hqdefault.jpg`);
+              }
+              if (youtubePHash) {
+                  addLog(`Cross-Ref: Generated pHash for YouTube ID ${YOUTUBE_REF_ID}`);
+              }
+          } catch(e) {
+              addLog("Cross-Ref: Failed to fetch YouTube reference.");
+          }
+          
+          // --- 2. Parallel Deep Verification + pHash Generation ---
           const processedFiles = await Promise.all(files.map(async (f: any) => {
               let status = 'UNSIGNED';
               let signer = null;
@@ -423,13 +445,23 @@ export const VerifyView: React.FC = () => {
               };
           }));
 
-          // 3. Cross-Reference for Soft-Binding (Duplicate/Stripped Detection)
-          // Compare every file against every other file
+          // --- 3. Cross-Reference for Soft-Binding (Duplicate/Stripped Detection) ---
           const THRESHOLD = 5;
+          
           for (let i = 0; i < processedFiles.length; i++) {
               const fileA = processedFiles[i];
               if (!fileA.pHash) continue;
 
+              // 3a. Check against YouTube Reference
+              if (youtubePHash) {
+                  const ytDist = getHammingDistance(fileA.pHash, youtubePHash);
+                  if (ytDist < THRESHOLD) {
+                      const matchMsg = `Visual Match: YouTube ${YOUTUBE_REF_ID} (Dist: ${ytDist})`;
+                      fileA.softBindingMatch = fileA.softBindingMatch ? fileA.softBindingMatch + " | " + matchMsg : matchMsg;
+                  }
+              }
+
+              // 3b. Check against other files in folder
               for (let j = 0; j < processedFiles.length; j++) {
                   if (i === j) continue;
                   const fileB = processedFiles[j];
@@ -437,13 +469,11 @@ export const VerifyView: React.FC = () => {
 
                   const distance = getHammingDistance(fileA.pHash, fileB.pHash);
                   
-                  // Threshold for visual similarity (e.g., < 5 bits difference out of 1024)
-                  // For exact video duplicates (one signed, one not), distance should be 0 or 1.
                   if (distance < THRESHOLD) {
-                      // Found a visual match.
                       // Scenario: File A is unsigned, File B is signed. File A is likely a stripped copy.
                       if (fileA.status === 'UNSIGNED' && fileB.status === 'SUCCESS') {
-                          fileA.softBindingMatch = `Matches Signed Asset: ${fileB.name} (Hamming Dist: ${distance}, Threshold: <${THRESHOLD})`;
+                          const matchMsg = `Matches Signed File: ${fileB.name} (Dist: ${distance})`;
+                          fileA.softBindingMatch = fileA.softBindingMatch ? fileA.softBindingMatch + " | " + matchMsg : matchMsg;
                       }
                   }
               }
@@ -451,7 +481,7 @@ export const VerifyView: React.FC = () => {
           
           setFolderContents(processedFiles);
           setVerificationStatus('BATCH_REPORT');
-          addLog("Batch audit complete with pHash Soft-Binding.");
+          addLog("Batch audit complete with Cross-Platform Soft-Binding.");
 
       } catch (e: any) {
           addLog(`CRITICAL ERROR: ${e.message}`);
@@ -820,7 +850,7 @@ export const VerifyView: React.FC = () => {
                                 <div className="mt-2 pt-2 border-t border-dashed border-[var(--border-light)] flex items-start gap-2">
                                     <span className="text-[10px]">⚠️</span>
                                     <p className="text-[10px] text-amber-600 font-bold font-mono">
-                                        MATCH DETECTED: <span className="font-normal opacity-80">{item.softBindingMatch}. Provenance likely stripped from this copy.</span>
+                                        <span className="font-normal opacity-80">{item.softBindingMatch}. Provenance recovered via visual fingerprint.</span>
                                     </p>
                                 </div>
                             )}
@@ -919,7 +949,7 @@ export const VerifyView: React.FC = () => {
                   </div>
                   <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded">
                      <span className="block text-2xl font-bold text-amber-600">{matchesCount}</span>
-                     <span className="text-[10px] uppercase opacity-60 font-bold">Stripped</span>
+                     <span className="text-[10px] uppercase opacity-60 font-bold">Matches Found</span>
                   </div>
                </div>
                <p className="text-xs opacity-50 italic">
