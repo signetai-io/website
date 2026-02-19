@@ -379,7 +379,7 @@ export const VerifyView: React.FC = () => {
                   youtubePHash = await generateVisualHash(`https://img.youtube.com/vi/${YOUTUBE_REF_ID}/hqdefault.jpg`);
               }
               if (youtubePHash) {
-                  addLog(`Cross-Ref: Generated pHash for YouTube ID ${YOUTUBE_REF_ID}`);
+                  addLog(`Cross-Ref: YouTube Baseline pHash (${YOUTUBE_REF_ID}): ${youtubePHash}`);
               }
           } catch(e) {
               addLog("Cross-Ref: Failed to fetch YouTube reference.");
@@ -430,6 +430,9 @@ export const VerifyView: React.FC = () => {
                   // Use CORS proxy or fetch mode if possible, mostly Drive thumbs are public enough for this context
                   // We treat the thumbnail as a "Visual Fingerprint" of the video content
                   pHash = await generateVisualHash(f.thumbnailLink);
+                  if (pHash) {
+                      addLog(`pHash Computed [${f.name}]: ${pHash}`);
+                  }
               }
 
               return {
@@ -455,6 +458,7 @@ export const VerifyView: React.FC = () => {
               // 3a. Check against YouTube Reference
               if (youtubePHash) {
                   const ytDist = getHammingDistance(fileA.pHash, youtubePHash);
+                  addLog(`Hamming Distance: ${fileA.name} ↔ YouTube = ${ytDist}`);
                   if (ytDist < THRESHOLD) {
                       const matchMsg = `Visual Match: YouTube ${YOUTUBE_REF_ID} (Dist: ${ytDist})`;
                       fileA.softBindingMatch = fileA.softBindingMatch ? fileA.softBindingMatch + " | " + matchMsg : matchMsg;
@@ -472,6 +476,7 @@ export const VerifyView: React.FC = () => {
                   if (distance < THRESHOLD) {
                       // Scenario: File A is unsigned, File B is signed. File A is likely a stripped copy.
                       if (fileA.status === 'UNSIGNED' && fileB.status === 'SUCCESS') {
+                          addLog(`Hamming Distance: ${fileA.name} ↔ ${fileB.name} = ${distance}`);
                           const matchMsg = `Matches Signed File: ${fileB.name} (Dist: ${distance})`;
                           fileA.softBindingMatch = fileA.softBindingMatch ? fileA.softBindingMatch + " | " + matchMsg : matchMsg;
                       }
