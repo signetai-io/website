@@ -16,6 +16,7 @@ export const VerifyView: React.FC = () => {
   const [dragActive, setDragActive] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [verificationStatus, setVerificationStatus] = useState<'IDLE' | 'VERIFYING' | 'SUCCESS' | 'UNSIGNED' | 'TAMPERED'>('IDLE');
+  const [verificationMethod, setVerificationMethod] = useState<'CLOUD_BINDING' | 'DEEP_HASH' | 'TAIL_SCAN'>('CLOUD_BINDING');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -61,6 +62,7 @@ export const VerifyView: React.FC = () => {
     if (!targetFile) return;
     setIsVerifying(true);
     setVerificationStatus('VERIFYING');
+    setVerificationMethod('DEEP_HASH'); // Local file allows full hash check
     setManifest(null);
     
     try {
@@ -126,6 +128,7 @@ export const VerifyView: React.FC = () => {
       setPreviewUrl(null);
       setManifest(null);
       setVerificationStatus('VERIFYING');
+      setVerificationMethod('CLOUD_BINDING'); // YouTube implies transcoding, so we use ID binding
       setShowL2(false);
       setFetchError(null);
 
@@ -217,24 +220,55 @@ export const VerifyView: React.FC = () => {
           let title = "Google Drive Asset";
           let mimeType = "application/octet-stream";
           let owner = "Unknown";
+          let fileSize = 0;
           let isVerifiedContext = false;
+          let deepScanSuccess = false;
 
-          // Attempt Fetch from Google Drive API
+          // 1. Metadata Fetch
           try {
-             const res = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?key=${process.env.API_KEY}&fields=id,name,mimeType,owners`);
+             const res = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?key=${process.env.API_KEY}&fields=id,name,mimeType,size,owners`);
              if (res.ok) {
                  const data = await res.json();
                  title = data.name;
                  mimeType = data.mimeType;
+                 if (data.size) fileSize = parseInt(data.size);
                  if (data.owners && data.owners.length > 0) {
                     owner = data.owners[0].displayName;
                  }
                  isVerifiedContext = true;
              }
-          } catch(e) { console.warn("Drive API Unreachable", e); }
+          } catch(e) { console.warn("Drive API Metadata Unreachable", e); }
+
+          // 2. Deep Tail Scan (Attempt to read signature bytes)
+          // Google Drive does NOT transcode original files, so UTW signatures should exist.
+          if (fileSize > 0) {
+             try {
+                 const rangeStart = Math.max(0, fileSize - 20000); // Last 20KB
+                 const rangeRes = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?key=${process.env.API_KEY}&alt=media`, {
+                     headers: { 'Range': `bytes=${rangeStart}-` }
+                 });
+                 
+                 if (rangeRes.ok || rangeRes.status === 206) {
+                     const tailText = await rangeRes.text();
+                     if (tailText.includes('%SIGNET_VPR_START')) {
+                         const start = tailText.lastIndexOf('%SIGNET_VPR_START');
+                         const end = tailText.lastIndexOf('%SIGNET_VPR_END');
+                         if (start !== -1 && end !== -1) {
+                             const jsonStr = tailText.substring(start + '%SIGNET_VPR_START'.length, end).trim();
+                             const embeddedManifest = JSON.parse(jsonStr);
+                             
+                             // Upgrade to Deep Scan Manifest
+                             setManifest(embeddedManifest);
+                             deepScanSuccess = true;
+                             setVerificationMethod('TAIL_SCAN');
+                         }
+                     }
+                 }
+             } catch (e) { console.warn("Deep Scan / Range Request failed (Likely CORS)", e); }
+          }
 
           // Fallback / Hardcoded Trust for Demo Folder
-          if (id === '1dKxGvDBrxHp9ys_7jy7cXNt74JnaryA9') {
+          if (!deepScanSuccess && id === '1dKxGvDBrxHp9ys_7jy7cXNt74JnaryA9') {
               if (!isVerifiedContext) {
                   title = "Signet Protocol - Specification Assets (Folder)";
                   mimeType = "application/vnd.google-apps.folder";
@@ -243,9 +277,15 @@ export const VerifyView: React.FC = () => {
               isVerifiedContext = true;
           }
 
-          await new Promise(r => setTimeout(r, 1500)); // Simulating Registry Lookup
+          await new Promise(r => setTimeout(r, 1500)); 
 
-          if (isVerifiedContext) {
+          if (deepScanSuccess) {
+              // Manifest was set in step 2
+              setVerificationStatus('SUCCESS');
+              setShowL2(true);
+          } else if (isVerifiedContext) {
+              // Fallback to Cloud Binding
+              setVerificationMethod('CLOUD_BINDING');
               const cloudManifest = {
                   signature: { 
                       identity: "signetai.io:ssl", 
@@ -309,6 +349,7 @@ export const VerifyView: React.FC = () => {
     setDriveId(null);
     setShowL2(false);
     setVerificationStatus('IDLE');
+    setVerificationMethod('DEEP_HASH');
     
     try {
       const response = await fetch(url);
@@ -515,7 +556,8 @@ export const VerifyView: React.FC = () => {
             <div className="h-[400px] border border-[var(--border-light)] rounded-xl bg-[var(--code-bg)] flex flex-col items-center justify-center text-center p-8">
                 <div className="w-8 h-8 border-2 border-[var(--trust-blue)] border-t-transparent rounded-full animate-spin mb-4"></div>
                 <p className="font-mono text-[10px] uppercase tracking-widest text-[var(--trust-blue)]">
-                    {youtubeId || driveId ? 'Consulting Global Registry...' : 'Scanning Substrate...'}
+                    {verificationMethod === 'TAIL_SCAN' ? 'Scanning Remote File Tail...' :
+                     youtubeId || driveId ? 'Consulting Global Registry...' : 'Scanning Substrate...'}
                 </p>
             </div>
         );
@@ -632,9 +674,15 @@ export const VerifyView: React.FC = () => {
 
                 {driveId && (
                     <div className="mt-2 flex flex-col items-center gap-1">
-                       <div className="px-3 py-1 bg-blue-600 text-white rounded font-mono text-[9px] uppercase tracking-widest font-bold flex items-center gap-2">
-                          <span>☁</span> Drive Cloud Binding
-                       </div>
+                       {verificationMethod === 'TAIL_SCAN' ? (
+                           <div className="px-3 py-1 bg-emerald-600 text-white rounded font-mono text-[9px] uppercase tracking-widest font-bold flex items-center gap-2">
+                              <span>✓</span> Digital Original (Preserved)
+                           </div>
+                       ) : (
+                           <div className="px-3 py-1 bg-blue-600 text-white rounded font-mono text-[9px] uppercase tracking-widest font-bold flex items-center gap-2">
+                              <span>☁</span> Drive Cloud Binding
+                           </div>
+                       )}
                     </div>
                 )}
                 
