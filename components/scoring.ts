@@ -65,12 +65,22 @@ export const getHammingDistance = (str1: string, str2: string): number => {
 };
 
 // Generate Dual-Hash from Image URL (Canvas API)
-export const generateDualHash = async (imageUrl: string): Promise<DualHash | null> => {
+export const generateDualHash = async (imageUrl: string, logFn?: (msg: string) => void): Promise<DualHash | null> => {
   try {
     // Note: 'cors' mode is essential for canvas readback. 
     // YouTube and Google Drive thumbnails usually support this.
-    const response = await fetch(imageUrl, { mode: 'cors' });
-    if (!response.ok) return null;
+    // Added credentials: 'omit' to avoid auth conflicts on public drive links
+    const response = await fetch(imageUrl, { 
+      mode: 'cors',
+      credentials: 'omit',
+      referrerPolicy: 'no-referrer'
+    });
+    
+    if (!response.ok) {
+      if (logFn) logFn(`Hash Fetch Error: ${response.status} ${response.statusText}`);
+      return null;
+    }
+    
     const blob = await response.blob();
     const imgBitmap = await createImageBitmap(blob);
     const originalSize = `${imgBitmap.width}x${imgBitmap.height}`;
@@ -127,8 +137,9 @@ export const generateDualHash = async (imageUrl: string): Promise<DualHash | nul
     }
 
     return { dHash, pHash, originalSize, byteSize };
-  } catch (e) {
+  } catch (e: any) {
     console.error("Hash Gen Error", e);
+    if (logFn) logFn(`Hash Gen Exception: ${e.message}`);
     return null;
   }
 };

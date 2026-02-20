@@ -239,7 +239,7 @@ export const VerifyView: React.FC = () => {
           addLog(`Generating Anchors for Source A (v2)...`);
           // Cover
           const coverUrl = `https://img.youtube.com/vi/${selectedSourceA}/maxresdefault.jpg`;
-          const coverHash = await generateDualHash(coverUrl);
+          const coverHash = await generateDualHash(coverUrl, addLog);
           if (coverHash) {
               referenceUrls.push({ 
                   label: 'Meta: Cover', 
@@ -259,7 +259,7 @@ export const VerifyView: React.FC = () => {
           while (cursor < durationSec - 10 && idx < 10) {
               const ytAssetId = (idx % 3) + 1; // Simulation: Rotate through available thumbs
               const thumbUrl = `https://img.youtube.com/vi/${selectedSourceA}/${ytAssetId}.jpg`;
-              const hashes = await generateDualHash(thumbUrl);
+              const hashes = await generateDualHash(thumbUrl, addLog);
               if (hashes) {
                   referenceUrls.push({ 
                       label: `T+${cursor}s (Thumb ${ytAssetId})`, 
@@ -280,7 +280,7 @@ export const VerifyView: React.FC = () => {
           const targetFile = folderContents.find(f => f.id === selectedSourceB);
           if (!targetFile?.thumbnailLink) throw new Error("Source B has no visual preview.");
           
-          const bHashes = await generateDualHash(targetFile.thumbnailLink);
+          const bHashes = await generateDualHash(targetFile.thumbnailLink, addLog);
           if (!bHashes) throw new Error("Failed to hash Source B.");
           addLog(`Source B Hash: ${bHashes.originalSize} (${bHashes.byteSize}B) | pHash: ${bHashes.pHash.substring(0,8)}...`);
 
