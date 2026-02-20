@@ -42,6 +42,7 @@ export const VerifyView: React.FC = () => {
   
   // Audit Engine State
   const [auditResult, setAuditResult] = useState<AuditResult | null>(null);
+  const [visualEvidence, setVisualEvidence] = useState<{ refUrl: string, candUrl: string, label: string } | null>(null);
   
   // Trace Log for Debugging
   const [debugLog, setDebugLog] = useState<string[]>([]);
@@ -206,6 +207,7 @@ export const VerifyView: React.FC = () => {
 
       setIsVerifying(true);
       setAuditResult(null);
+      setVisualEvidence(null);
       setVerificationStatus('VERIFYING');
       addLog(`Starting Pairwise Audit: A[${selectedSourceA}] vs B[${selectedSourceB}]`);
 
@@ -235,8 +237,9 @@ export const VerifyView: React.FC = () => {
           
           addLog(`Generating Anchors for Source A...`);
           // Cover
-          const coverHash = await generateDualHash(`https://img.youtube.com/vi/${selectedSourceA}/maxresdefault.jpg`);
-          if (coverHash) referenceUrls.push({ label: 'Meta: Cover', hashes: coverHash, weight: 1.0 });
+          const coverUrl = `https://img.youtube.com/vi/${selectedSourceA}/maxresdefault.jpg`;
+          const coverHash = await generateDualHash(coverUrl);
+          if (coverHash) referenceUrls.push({ label: 'Meta: Cover', hashes: coverHash, weight: 1.0, meta: { url: coverUrl } });
 
           // Temporal
           let cursor = PRIME_OFFSET;
@@ -244,10 +247,10 @@ export const VerifyView: React.FC = () => {
           // Limit to max 10 anchors for speed in demo
           while (cursor < durationSec - 10 && idx < 10) {
               const ytAssetId = (idx % 3) + 1; // Simulation: Rotate through available thumbs
-              const url = `https://img.youtube.com/vi/${selectedSourceA}/${ytAssetId}.jpg`;
-              const hashes = await generateDualHash(url);
+              const thumbUrl = `https://img.youtube.com/vi/${selectedSourceA}/${ytAssetId}.jpg`;
+              const hashes = await generateDualHash(thumbUrl);
               if (hashes) {
-                  referenceUrls.push({ label: `T+${cursor}s`, hashes, weight: 1.0 });
+                  referenceUrls.push({ label: `T+${cursor}s (Thumb ${ytAssetId})`, hashes, weight: 1.0, meta: { url: thumbUrl } });
               }
               cursor += INTERVAL;
               idx++;
@@ -266,6 +269,15 @@ export const VerifyView: React.FC = () => {
           // 4. Compute
           const result = computeAuditScore(candidates, referenceUrls);
           setAuditResult(result);
+          
+          // Set Visual Debugging Evidence
+          if (result.bestMatchMeta?.url) {
+              setVisualEvidence({
+                  refUrl: result.bestMatchMeta.url,
+                  candUrl: targetFile.thumbnailLink,
+                  label: result.bestMatchLabel || 'Best Match'
+              });
+          }
           
           // Update the list view score for B
           setFolderContents(prev => prev.map(f => f.id === selectedSourceB ? { ...f, diffScore: result.score } : f));
@@ -352,7 +364,9 @@ export const VerifyView: React.FC = () => {
         }[auditResult.band];
 
         return (
-            <div className="h-[400px] border border-[var(--border-light)] rounded-xl bg-[var(--code-bg)] flex flex-col p-8 space-y-6 relative overflow-hidden">
+            <div className="border border-[var(--border-light)] rounded-xl bg-[var(--code-bg)] flex flex-col p-8 space-y-6 relative overflow-hidden">
+               
+               {/* Score Header */}
                <div className="flex items-center gap-8">
                    <div className={`relative w-24 h-24 rounded-full border-4 flex items-center justify-center ${bandColor.replace('bg-', 'border-').split(' ')[1]}`}>
                        <div className="text-center">
@@ -369,8 +383,41 @@ export const VerifyView: React.FC = () => {
                        </p>
                    </div>
                </div>
+
+               {/* Visual Alignment Evidence */}
+               {visualEvidence && (
+                   <div className="border-t border-[var(--border-light)] pt-6 mt-2">
+                       <h5 className="font-mono text-[10px] uppercase font-bold text-[var(--text-header)] mb-4">Visual Alignment Evidence</h5>
+                       <div className="grid grid-cols-2 gap-4">
+                           <div className="space-y-2">
+                               <div className="aspect-video bg-black rounded overflow-hidden border border-[var(--border-light)] relative group">
+                                   <img src={visualEvidence.refUrl} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                                   <div className="absolute top-2 left-2 px-2 py-1 bg-black/70 text-white text-[8px] font-mono rounded">SOURCE A (Best Match)</div>
+                               </div>
+                               <p className="font-mono text-[9px] opacity-60 truncate">Frame: {visualEvidence.label}</p>
+                           </div>
+                           <div className="space-y-2">
+                               <div className="aspect-video bg-black rounded overflow-hidden border border-[var(--border-light)] relative group">
+                                   <img src={visualEvidence.candUrl} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                                   <div className="absolute top-2 left-2 px-2 py-1 bg-black/70 text-white text-[8px] font-mono rounded">SOURCE B (Candidate)</div>
+                               </div>
+                               <p className="font-mono text-[9px] opacity-60 truncate">Target Thumbnail</p>
+                           </div>
+                       </div>
+                       <p className="text-[10px] mt-4 opacity-60 italic font-serif leading-relaxed">
+                           <span className="text-[var(--trust-blue)] font-bold">Analysis:</span> The Difference Score (Δ) is calculated from the perceptual distance between these two images. If they are visually distinct, the high score indicates a correct detection of misalignment (e.g., Cover vs Start Frame).
+                       </p>
+                   </div>
+               )}
+
                <div className="p-3 border-l-2 border-[var(--trust-blue)] bg-[var(--admonition-bg)] text-[10px] opacity-80 leading-relaxed font-serif italic">
                    Comparison: Source A [{selectedSourceA}] vs Source B [{folderContents.find(f=>f.id===selectedSourceB)?.name.substring(0,15)}...]
+               </div>
+
+               {/* Feature Request Placeholder */}
+               <div className="flex items-center gap-2 pt-2 opacity-40 hover:opacity-100 transition-opacity cursor-not-allowed">
+                   <div className="w-2 h-2 rounded-full bg-neutral-400"></div>
+                   <span className="font-mono text-[9px] uppercase font-bold decoration-dotted underline">Audio Comparison (Audio-to-Text Seed) - Coming Soon</span>
                </div>
             </div>
         );

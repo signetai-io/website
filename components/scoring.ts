@@ -1,6 +1,6 @@
 
 /**
- * SIGNET AUDIT ENGINE (v0.3.2)
+ * SIGNET AUDIT ENGINE (v0.3.3)
  * ----------------------------
  * Deterministic scoring logic for verifying media integrity across lossy boundaries.
  * Implements "Multi-Frame Consensus" and "Temporal Structure" fusion.
@@ -23,6 +23,7 @@ export interface ReferenceFrame {
   label: string; // e.g., "Start", "Mid", "End", "Cover"
   hashes: DualHash;
   weight: number; // 0.0 - 1.0
+  meta?: any; // Payload for visual debugging (e.g., source URL)
 }
 
 export interface AuditSignals {
@@ -36,6 +37,7 @@ export interface AuditResult {
   band: 'VERIFIED_ORIGINAL' | 'PLATFORM_CONSISTENT' | 'MODIFIED_CONTENT' | 'DIVERGENT_SOURCE';
   signals: AuditSignals;
   bestMatchLabel?: string;
+  bestMatchMeta?: any; // The metadata of the best matching reference frame
   confidence: number;
 }
 
@@ -54,6 +56,8 @@ export const getHammingDistance = (str1: string, str2: string): number => {
 // Generate Dual-Hash from Image URL (Canvas API)
 export const generateDualHash = async (imageUrl: string): Promise<DualHash | null> => {
   try {
+    // Note: 'cors' mode is essential for canvas readback. 
+    // YouTube and Google Drive thumbnails usually support this.
     const response = await fetch(imageUrl, { mode: 'cors' });
     if (!response.ok) return null;
     const blob = await response.blob();
@@ -128,6 +132,7 @@ export const computeAuditScore = (
   // We look for the BEST matching frame (Minimum Distance) across all candidates
   let minVisualDist = 1.0;
   let bestMatchLabel = "None";
+  let bestMatchMeta = null;
 
   // Thresholds for "Match" counting (Temporal Signal)
   const VISUAL_MATCH_THRESHOLD = 0.25; // 25% Normalized Distance (~16 bits on 64-bit hash)
@@ -156,6 +161,7 @@ export const computeAuditScore = (
     if (bestRefDist < minVisualDist) {
       minVisualDist = bestRefDist;
       bestMatchLabel = ref.label;
+      bestMatchMeta = ref.meta;
     }
 
     // Temporal Accounting
@@ -197,6 +203,7 @@ export const computeAuditScore = (
       dAudio: audioScore || undefined
     },
     bestMatchLabel,
+    bestMatchMeta,
     confidence: Math.max(0, 1.0 - D_total)
   };
 };
