@@ -232,7 +232,7 @@ export const VerifyView: React.FC = () => {
 
           // 2. Generate Reference Anchors (Source A)
           const PRIME_OFFSET = 7;
-          const INTERVAL = 45; // Tighter sampling for pair comparison
+          const INTERVAL = 60; // Tighter sampling for pair comparison
           const referenceUrls: ReferenceFrame[] = [];
           
           addLog(`Generating Anchors for Source A...`);
@@ -251,6 +251,7 @@ export const VerifyView: React.FC = () => {
               const hashes = await generateDualHash(thumbUrl);
               if (hashes) {
                   referenceUrls.push({ label: `T+${cursor}s (Thumb ${ytAssetId})`, hashes, weight: 1.0, meta: { url: thumbUrl } });
+                  addLog(`Selected Frame at T+${cursor}s: ${hashes.pHash.substring(0,8)}...`);
               }
               cursor += INTERVAL;
               idx++;
@@ -268,6 +269,15 @@ export const VerifyView: React.FC = () => {
 
           // 4. Compute
           const result = computeAuditScore(candidates, referenceUrls);
+          
+          if (result.frameDetails) {
+             result.frameDetails.forEach(fd => {
+                 addLog(`Frame [${fd.refLabel}] vs Candidate [${fd.bestCandId.substring(0,8)}...]: Dist=${fd.visualDistance.toFixed(4)} (${fd.isMatch ? 'MATCH' : 'MISS'})`);
+             });
+          }
+          addLog(`Scoring: D_visual=${result.signals.dVisual}, D_temporal=${result.signals.dTemporal}`);
+          addLog(`Final Score Calculation: (0.65 * ${result.signals.dVisual}) + (0.35 * ${result.signals.dTemporal}) = ${(0.65 * result.signals.dVisual + 0.35 * result.signals.dTemporal).toFixed(4)} -> Scaled: ${result.score}`);
+
           setAuditResult(result);
           
           // Set Visual Debugging Evidence

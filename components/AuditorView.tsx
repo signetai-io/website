@@ -195,13 +195,13 @@ export const AuditorView: React.FC = () => {
                   <div className="text-center">
                     <div className="w-16 h-16 border border-[var(--trust-blue)] flex items-center justify-center mx-auto mb-4 bg-[var(--bg-standard)] shadow-xl rounded-sm">
                       <span className="text-[var(--trust-blue)] font-bold text-xl select-none">
-                        <FileIcon format={selectedFile.format} />
+                        <FileIcon format={selectedFile!.format} />
                       </span>
                     </div>
-                    <p className="font-mono text-[11px] opacity-40 uppercase tracking-[0.2em] font-bold">{selectedFile.name}</p>
+                    <p className="font-mono text-[11px] opacity-40 uppercase tracking-[0.2em] font-bold">{selectedFile!.name}</p>
                   </div>
                   <div className="absolute top-4 right-4 px-3 py-1 bg-black text-white font-mono text-[9px] uppercase tracking-tighter rounded border border-white/20">
-                    {selectedFile.type}
+                    {selectedFile!.type}
                   </div>
                 </div>
 
@@ -211,25 +211,25 @@ export const AuditorView: React.FC = () => {
                     <h4 className="font-mono text-[10px] uppercase opacity-40 font-bold tracking-widest mb-4">Audit Result</h4>
                     <div className="flex items-center gap-4">
                       <div className={`text-4xl font-serif font-bold italic ${
-                        selectedFile.status === 'valid' ? 'text-green-500' : 'text-red-500'
+                        selectedFile!.status === 'valid' ? 'text-green-500' : 'text-red-500'
                       }`}>
-                        {selectedFile.status === 'valid' ? 'Verified' : 'Failed'}
+                        {selectedFile!.status === 'valid' ? 'Verified' : 'Failed'}
                       </div>
                       <div className="flex flex-col">
                         <span className="text-[10px] opacity-30 font-mono italic">Confidence</span>
-                        <span className="text-[10px] font-mono font-bold">{selectedFile.status === 'valid' ? '0.9997' : '0.0000'}</span>
+                        <span className="text-[10px] font-mono font-bold">{selectedFile!.status === 'valid' ? '0.9997' : '0.0000'}</span>
                       </div>
                     </div>
                     <p className="mt-4 text-[13px] opacity-60 leading-relaxed font-serif">
-                      {selectedFile.description}
+                      {selectedFile!.description}
                     </p>
                   </div>
 
                   <div className="p-6 bg-[var(--table-header)] border border-[var(--border-light)] rounded-lg">
                     <h4 className="font-mono text-[10px] uppercase opacity-40 font-bold tracking-widest mb-4">Authority Signature</h4>
                     <div className="space-y-1">
-                      <p className="font-serif text-lg font-bold text-[var(--text-header)]">{selectedFile.signature}</p>
-                      <p className="font-mono text-[9px] text-[var(--trust-blue)] opacity-60 break-all">Chain: CA_ROOT_SEC_PROV_{selectedFile.format.toUpperCase()}_02</p>
+                      <p className="font-serif text-lg font-bold text-[var(--text-header)]">{selectedFile!.signature}</p>
+                      <p className="font-mono text-[9px] text-[var(--trust-blue)] opacity-60 break-all">Chain: CA_ROOT_SEC_PROV_{selectedFile!.format.toUpperCase()}_02</p>
                     </div>
                   </div>
                 </div>
@@ -242,7 +242,7 @@ export const AuditorView: React.FC = () => {
                      <h3 className="font-mono text-[10px] uppercase font-bold tracking-widest">JUMBF Manifest Tree</h3>
                      <span className="px-2 py-0.5 bg-[var(--trust-blue)]/10 text-[var(--trust-blue)] rounded-full text-[8px] font-mono font-bold tracking-tighter">v2.2_SPEC</span>
                    </div>
-                   <span className="font-mono text-[9px] opacity-30 uppercase">{selectedFile.assertions} Assertions Found</span>
+                   <span className="font-mono text-[9px] opacity-30 uppercase">{selectedFile!.assertions} Assertions Found</span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left font-mono text-[11px]">
@@ -267,9 +267,9 @@ export const AuditorView: React.FC = () => {
                       <tr>
                         <td className="px-6 py-4 font-bold">c2pa.ingredients</td>
                         <td className="px-6 py-4 opacity-40 italic">/jumbf/c2pa/assertions/ingredients</td>
-                        <td className="px-6 py-4 text-right text-green-500 font-bold">{selectedFile.ingredients.length} ATTESTED</td>
+                        <td className="px-6 py-4 text-right text-green-500 font-bold">{selectedFile!.ingredients.length} ATTESTED</td>
                       </tr>
-                      {selectedFile.signature.includes('Signet') && (
+                      {selectedFile!.signature.includes('Signet') && (
                         <tr>
                           <td className="px-6 py-4 font-bold text-[var(--trust-blue)]">org.signetai.vpr.dag</td>
                           <td className="px-6 py-4 opacity-40 italic">/jumbf/c2pa/assertions/signet_vpr</td>
@@ -280,9 +280,9 @@ export const AuditorView: React.FC = () => {
                         <td className="px-6 py-4 font-bold">c2pa.signature</td>
                         <td className="px-6 py-4 opacity-40 italic">/jumbf/c2pa/signature</td>
                         <td className={`px-6 py-4 text-right font-bold ${
-                          selectedFile.status === 'valid' ? 'text-green-500' : 'text-red-500'
+                          selectedFile!.status === 'valid' ? 'text-green-500' : 'text-red-500'
                         }`}>
-                          {selectedFile.status === 'valid' ? 'MATCH' : 'TAMPERED'}
+                          {selectedFile!.status === 'valid' ? 'MATCH' : 'TAMPERED'}
                         </td>
                       </tr>
                     </tbody>
@@ -297,7 +297,7 @@ export const AuditorView: React.FC = () => {
                 <div className="p-6 border border-[var(--border-light)] bg-[var(--table-header)] rounded-lg flex items-center justify-between">
                    <div className="space-y-1">
                       <p className="font-mono text-[9px] opacity-40 uppercase font-bold">Ingredients List</p>
-                      <p className="font-serif text-[12px] italic text-[var(--text-body)]">{selectedFile.ingredients.join(' → ')}</p>
+                      <p className="font-serif text-[12px] italic text-[var(--text-body)]">{selectedFile!.ingredients.join(' → ')}</p>
                    </div>
                    <div className="w-8 h-8 rounded border border-[var(--border-light)] flex items-center justify-center opacity-20">
                       <span className="text-xs">🔗</span>

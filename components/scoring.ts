@@ -32,6 +32,13 @@ export interface AuditSignals {
   dAudio?: number; // [0-1] Audio distance (optional)
 }
 
+export interface FrameMatchResult {
+  refLabel: string;
+  bestCandId: string;
+  visualDistance: number;
+  isMatch: boolean;
+}
+
 export interface AuditResult {
   score: number; // [0-1023] The Signet Difference Score
   band: 'VERIFIED_ORIGINAL' | 'PLATFORM_CONSISTENT' | 'MODIFIED_CONTENT' | 'DIVERGENT_SOURCE';
@@ -39,6 +46,7 @@ export interface AuditResult {
   bestMatchLabel?: string;
   bestMatchMeta?: any; // The metadata of the best matching reference frame
   confidence: number;
+  frameDetails?: FrameMatchResult[];
 }
 
 // --- HASHING UTILITIES (Lightweight / Zero-Dep) ---
@@ -140,9 +148,11 @@ export const computeAuditScore = (
 
   // Track which references have been satisfied
   const satisfiedRefs = new Set<string>();
+  const frameDetails: FrameMatchResult[] = [];
 
   for (const ref of references) {
     let bestRefDist = 1.0;
+    let bestCandId = "None";
 
     for (const cand of candidates) {
       // Normalize Hamming (0-64) to (0-1)
@@ -154,6 +164,7 @@ export const computeAuditScore = (
 
       if (fusedDist < bestRefDist) {
         bestRefDist = fusedDist;
+        bestCandId = cand.id;
       }
     }
 
@@ -165,9 +176,17 @@ export const computeAuditScore = (
     }
 
     // Temporal Accounting
-    if (bestRefDist <= VISUAL_MATCH_THRESHOLD) {
+    const isMatch = bestRefDist <= VISUAL_MATCH_THRESHOLD;
+    if (isMatch) {
       satisfiedRefs.add(ref.label);
     }
+
+    frameDetails.push({
+      refLabel: ref.label,
+      bestCandId,
+      visualDistance: bestRefDist,
+      isMatch
+    });
   }
 
   const D_visual = minVisualDist;
@@ -204,7 +223,8 @@ export const computeAuditScore = (
     },
     bestMatchLabel,
     bestMatchMeta,
-    confidence: Math.max(0, 1.0 - D_total)
+    confidence: Math.max(0, 1.0 - D_total),
+    frameDetails
   };
 };
 
