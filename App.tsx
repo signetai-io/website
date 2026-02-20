@@ -322,7 +322,7 @@ const App: React.FC = () => {
               <a href="#privacy" className="hover:text-[var(--trust-blue)]">Privacy</a>
               <a href="#donate" className="hover:text-[var(--trust-blue)]">Grants</a>
               <span>VERSION: 0.3.3_UTW</span>
-              <span>UPDATED: {new Date().toISOString().split('T')[0]}</span>
+              <span>UPDATED: {new Date().toISOString().replace('T', ' ').split('.')[0]} UTC</span>
             </div>
           </footer>
         </div>
