@@ -2,18 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import { getAuth, signInWithPopup, GoogleAuthProvider, TwitterAuthProvider, FacebookAuthProvider, OAuthProvider, onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { firebaseConfig } from '../private_keys';
 import { PersistenceService, VaultRecord } from '../services/PersistenceService';
 import { BIP39_WORDS } from '../constants/Bip39Words';
-
-// Default empty config to prevent crash if env vars are missing
-const firebaseConfig = {
-  apiKey: process.env.FIREBASE_API_KEY || "AIzaSyDUMMY",
-  authDomain: process.env.FIREBASE_AUTH_DOMAIN || "signet-dummy.firebaseapp.com",
-  projectId: process.env.FIREBASE_PROJECT_ID || "signet-dummy",
-  storageBucket: process.env.FIREBASE_STORAGE_BUCKET || "signet-dummy.appspot.com",
-  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || "000000000000",
-  appId: process.env.FIREBASE_APP_ID || "1:000000000000:web:0000000000000000000000"
-};
 
 const initSignetFirebase = () => {
   try {
