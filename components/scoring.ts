@@ -11,6 +11,8 @@
 export interface DualHash {
   dHash: string; // Gradient-based (Fast, structure-sensitive)
   pHash: string; // Mean-based (Robust, scale-invariant simulation)
+  originalSize?: string; // e.g. "1920x1080"
+  byteSize?: number; // Size in bytes
 }
 
 export interface FrameCandidate {
@@ -71,6 +73,8 @@ export const generateDualHash = async (imageUrl: string): Promise<DualHash | nul
     if (!response.ok) return null;
     const blob = await response.blob();
     const imgBitmap = await createImageBitmap(blob);
+    const originalSize = `${imgBitmap.width}x${imgBitmap.height}`;
+    const byteSize = blob.size;
 
     // Standardize to 32x32 for calculation (produces 1024 pixels)
     // We utilize 8x8 blocks for final 64-bit hashes
@@ -122,7 +126,7 @@ export const generateDualHash = async (imageUrl: string): Promise<DualHash | nul
       }
     }
 
-    return { dHash, pHash };
+    return { dHash, pHash, originalSize, byteSize };
   } catch (e) {
     console.error("Hash Gen Error", e);
     return null;

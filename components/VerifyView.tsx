@@ -126,7 +126,8 @@ export const VerifyView: React.FC = () => {
                   id: item.snippet.resourceId.videoId,
                   title: item.snippet.title,
                   thumbnail: item.snippet.thumbnails?.default?.url,
-                  channel: item.snippet.videoOwnerChannelTitle
+                  channel: item.snippet.videoOwnerChannelTitle,
+                  size: 'Stream (N/A)' // YouTube API doesn't provide file size for streams
               }));
               setSourceAItems(items);
               addLog(`Loaded ${items.length} videos from playlist.`);
@@ -239,7 +240,15 @@ export const VerifyView: React.FC = () => {
           // Cover
           const coverUrl = `https://img.youtube.com/vi/${selectedSourceA}/maxresdefault.jpg`;
           const coverHash = await generateDualHash(coverUrl);
-          if (coverHash) referenceUrls.push({ label: 'Meta: Cover', hashes: coverHash, weight: 1.0, meta: { url: coverUrl } });
+          if (coverHash) {
+              referenceUrls.push({ 
+                  label: 'Meta: Cover', 
+                  hashes: coverHash, 
+                  weight: 1.0, 
+                  meta: { url: coverUrl, size: coverHash.originalSize, bytes: coverHash.byteSize } 
+              });
+              addLog(`Anchor [Meta: Cover]: ${coverHash.originalSize} (${coverHash.byteSize}B)`);
+          }
 
           // Temporal
           let cursor = PRIME_OFFSET;
@@ -250,8 +259,13 @@ export const VerifyView: React.FC = () => {
               const thumbUrl = `https://img.youtube.com/vi/${selectedSourceA}/${ytAssetId}.jpg`;
               const hashes = await generateDualHash(thumbUrl);
               if (hashes) {
-                  referenceUrls.push({ label: `T+${cursor}s (Thumb ${ytAssetId})`, hashes, weight: 1.0, meta: { url: thumbUrl } });
-                  addLog(`Selected Frame at T+${cursor}s: ${hashes.pHash.substring(0,8)}...`);
+                  referenceUrls.push({ 
+                      label: `T+${cursor}s (Thumb ${ytAssetId})`, 
+                      hashes, 
+                      weight: 1.0, 
+                      meta: { url: thumbUrl, size: hashes.originalSize, bytes: hashes.byteSize } 
+                  });
+                  addLog(`Anchor [T+${cursor}s]: ${hashes.originalSize} (${hashes.byteSize}B) | pHash: ${hashes.pHash.substring(0,8)}...`);
               }
               cursor += INTERVAL;
               idx++;
@@ -264,6 +278,7 @@ export const VerifyView: React.FC = () => {
           
           const bHashes = await generateDualHash(targetFile.thumbnailLink);
           if (!bHashes) throw new Error("Failed to hash Source B.");
+          addLog(`Source B Hash: ${bHashes.originalSize} (${bHashes.byteSize}B) | pHash: ${bHashes.pHash.substring(0,8)}...`);
 
           const candidates: FrameCandidate[] = [{ id: selectedSourceB, hashes: bHashes }];
 
@@ -272,7 +287,8 @@ export const VerifyView: React.FC = () => {
           
           if (result.frameDetails) {
              result.frameDetails.forEach(fd => {
-                 addLog(`Frame [${fd.refLabel}] vs Candidate [${fd.bestCandId.substring(0,8)}...]: Dist=${fd.visualDistance.toFixed(4)} (${fd.isMatch ? 'MATCH' : 'MISS'})`);
+                 const refInfo = fd.refMeta ? `[${fd.refMeta.size}, ${fd.refMeta.bytes}B]` : '';
+                 addLog(`Frame [${fd.refLabel}] ${refInfo} vs Candidate [${fd.bestCandId.substring(0,8)}...]: Dist=${fd.visualDistance.toFixed(4)} (${fd.isMatch ? 'MATCH' : 'MISS'})`);
              });
           }
           addLog(`Scoring: D_visual=${result.signals.dVisual}, D_temporal=${result.signals.dTemporal}`);
@@ -514,9 +530,12 @@ export const VerifyView: React.FC = () => {
                              className={`p-2 border rounded cursor-pointer transition-all flex gap-2 items-center ${selectedSourceA === item.id ? 'border-[var(--trust-blue)] bg-blue-50' : 'border-transparent hover:bg-neutral-50'}`}
                            >
                                <img src={item.thumbnail} className="w-8 h-8 object-cover rounded bg-neutral-200" />
-                               <div className="min-w-0">
+                               <div className="min-w-0 flex-1">
                                    <p className="font-bold truncate">{item.title}</p>
-                                   <p className="opacity-50 truncate">{item.channel}</p>
+                                   <div className="flex justify-between text-[9px] opacity-50">
+                                     <span className="truncate max-w-[60%]">{item.channel}</span>
+                                     <span>{item.size}</span>
+                                   </div>
                                </div>
                            </div>
                        )) : selectedSourceA ? (
