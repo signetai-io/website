@@ -233,6 +233,60 @@ export const ManualView: React.FC = () => {
         </div>
       </ManualSection>
 
+      <ManualSection title="10. Difference Engine Metrics">
+        <p className="text-lg leading-loose text-[var(--text-body)] opacity-80 font-serif mb-8">
+          The <strong>Performance Summary</strong> in <code>/verify</code> reports deterministic client-side metrics for each comparison run.
+        </p>
+
+        <div className="overflow-hidden border border-[var(--border-light)] rounded-lg">
+           <table className="w-full text-xs text-left">
+              <thead className="bg-[var(--table-header)] border-b border-[var(--border-light)]">
+                 <tr>
+                    <th className="p-4 font-bold text-[var(--text-header)]">Metric</th>
+                    <th className="p-4 font-bold text-[var(--trust-blue)]">Definition</th>
+                 </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border-light)]">
+                 <tr>
+                    <td className="p-4 font-mono text-[var(--text-header)]">Frames Read</td>
+                    <td className="p-4 opacity-70">Total hashed anchors processed in the run (<code>Source A anchors + Source B anchors</code>).</td>
+                 </tr>
+                 <tr>
+                    <td className="p-4 font-mono text-[var(--text-header)]">Bytes Processed (Pixel Buffer)</td>
+                    <td className="p-4 opacity-70">Client-side pixel bytes consumed by hashing. Current hash canvas is <code>32x32 RGBA</code> = <code>4096 B/frame</code>.</td>
+                 </tr>
+                 <tr>
+                    <td className="p-4 font-mono text-[var(--text-header)]">Compare Time</td>
+                    <td className="p-4 opacity-70">Elapsed wall-clock time for one pairwise comparison (milliseconds).</td>
+                 </tr>
+                 <tr>
+                    <td className="p-4 font-mono text-[var(--text-header)]">AI Tokens Used</td>
+                    <td className="p-4 opacity-70">Tokens consumed by the core compare path. In thumbnail compare mode this is <strong>0</strong> (no AI model call).</td>
+                 </tr>
+                 <tr>
+                    <td className="p-4 font-mono text-[var(--text-header)]">Final Score</td>
+                    <td className="p-4 opacity-70">Normalized Difference Score <code>Δ</code> in range <code>0-1000</code>.</td>
+                 </tr>
+                 <tr>
+                    <td className="p-4 font-mono text-[var(--text-header)]">Score Formula</td>
+                    <td className="p-4 opacity-70">
+                      <code>score = round(((0.8 * D_visual) + (0.2 * D_temporal)) * 1000)</code><br/>
+                      where <code>D_visual</code> is normalized pHash distance and <code>D_temporal</code> is anchor-match penalty.
+                    </td>
+                 </tr>
+              </tbody>
+           </table>
+        </div>
+
+        <div className="mt-6 p-4 border-l-4 border-[var(--trust-blue)] bg-[var(--admonition-bg)] text-xs font-mono">
+          <strong className="block mb-2 text-[var(--trust-blue)]">Thumbnail Mode Note</strong>
+          <span>
+            In YouTube Thumbnail Anchor Mode, labels represent <strong>anchor slots</strong> rather than true decoded video-frame timestamps.
+            Sample rows are shown as <code>S1..S4</code>, and drift metrics such as median shift are reported as <code>N/A</code>.
+          </span>
+        </div>
+      </ManualSection>
+
       <div className="mt-20 pt-10 border-t border-[var(--border-light)] flex justify-between items-center">
         <a href="#" onClick={(e) => { e.preventDefault(); window.location.hash = ''; }} className="text-[var(--trust-blue)] hover:underline font-mono text-[10px] uppercase tracking-widest font-bold">
           &larr; Return to Dashboard

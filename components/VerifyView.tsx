@@ -5,8 +5,10 @@ import { NutritionLabel } from './NutritionLabel';
 import { GOOGLE_GEMINI_KEY } from '../private_keys';
 import { 
   generateDualHash, 
-  computeAuditScore, 
+  computePairwiseFrameAuditScore,
   extractVideoFrames,
+  buildMinuteSamplingTimestamps,
+  parseIso8601DurationToSeconds,
   AuditResult, 
   FrameCandidate, 
   ReferenceFrame 
@@ -15,6 +17,13 @@ import {
 import { FrameAnalysisTable } from './FrameAnalysisTable';
 
 export const VerifyView: React.FC = () => {
+  type PerfMetrics = {
+    framesRead: number;
+    bytesProcessed: number;
+    compareMs: number;
+    aiTokensUsed: number;
+    formula: string;
+  };
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [youtubeId, setYoutubeId] = useState<string | null>(null);
@@ -33,13 +42,29 @@ export const VerifyView: React.FC = () => {
   
   // Operation State
   const [isVerifying, setIsVerifying] = useState(false);
+  const [verifyProgress, setVerifyProgress] = useState(0);
+  const [verifyStage, setVerifyStage] = useState('Preparing...');
   const [isFetching, setIsFetching] = useState(false);
   const [manifest, setManifest] = useState<any>(null);
   const [verificationStatus, setVerificationStatus] = useState<'IDLE' | 'VERIFYING' | 'SUCCESS' | 'UNSIGNED' | 'TAMPERED' | 'BATCH_REPORT'>('IDLE');
   
   // Inputs
-  const [urlInput, setUrlInput] = useState('https://drive.google.com/drive/folders/1dKxGvDBrxHp9ys_7jy7cXNt74JnaryA9'); // Default Source B
+  const [urlInput, setUrlInput] = useState('https://www.youtube.com/playlist?list=PLjnwycFexttARFrzatvBjzL0BEH-78Bft'); // Default Source B
   const [referenceInput, setReferenceInput] = useState('https://www.youtube.com/playlist?list=PLjnwycFexttARFrzatvBjzL0BEH-78Bft'); // Default Source A
+  const [sampleOffsetSec, setSampleOffsetSec] = useState(7);
+  const [sampleIntervalSec, setSampleIntervalSec] = useState(60);
+  const [autoMode, setAutoMode] = useState(true);
+  const [autoBatchMode, setAutoBatchMode] = useState(false);
+  const [showAdvancedControls, setShowAdvancedControls] = useState(false);
+  const [capturePermissionEnabled, setCapturePermissionEnabled] = useState(false);
+  const [capturePermissionGranted, setCapturePermissionGranted] = useState(false);
+  const [useRecordedClips, setUseRecordedClips] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(12);
+  const [recordingPlaybackSpeed, setRecordingPlaybackSpeed] = useState(2);
+  const [isRecordingA, setIsRecordingA] = useState(false);
+  const [isRecordingB, setIsRecordingB] = useState(false);
+  const [recordedClipA, setRecordedClipA] = useState<Blob | null>(null);
+  const [recordedClipB, setRecordedClipB] = useState<Blob | null>(null);
 
   const [dragActive, setDragActive] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -47,16 +72,99 @@ export const VerifyView: React.FC = () => {
   // Audit Engine State
   const [auditResult, setAuditResult] = useState<AuditResult | null>(null);
   const [auditCandidates, setAuditCandidates] = useState<FrameCandidate[]>([]);
+  const [perfMetrics, setPerfMetrics] = useState<PerfMetrics | null>(null);
   const [visualEvidence, setVisualEvidence] = useState<{ refUrl: string, candUrl: string, label: string, isFrame: boolean } | null>(null);
   
   // Trace Log for Debugging
   const [debugLog, setDebugLog] = useState<string[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const hasInitialized = useRef(false);
+  const lastFetchKeyRef = useRef('');
+  const lastAutoRunKeyRef = useRef('');
+  const batchRunningRef = useRef(false);
 
   const addLog = (msg: string) => {
     console.log(`[VerifyView] ${msg}`);
     setDebugLog(prev => [...prev, `${new Date().toISOString().split('T')[1].slice(0, -1)} > ${msg}`]);
+  };
+
+  const requestClientCapturePermission = async () => {
+    if (!navigator.mediaDevices?.getDisplayMedia) {
+      throw new Error('Display capture is not supported by this browser.');
+    }
+    const stream = await navigator.mediaDevices.getDisplayMedia({
+      video: true,
+      audio: true
+    });
+    // Permission handshake only; stop immediately until recording mode is used.
+    stream.getTracks().forEach((t) => t.stop());
+    setCapturePermissionGranted(true);
+    addLog('Client capture permission granted.');
+  };
+
+  const openVideoAutoplay = (videoId: string, source: 'A' | 'B') => {
+    const start = Math.max(0, Math.floor(sampleOffsetSec || 0));
+    const url = `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}&autoplay=1&mute=1&start=${start}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+    addLog(`Opened Source ${source} autoplay window (start=${start}s). Playback speed may require manual 2x selection on YouTube.`);
+  };
+
+  const getVideoDuration = async (blob: Blob): Promise<number> => {
+    return await new Promise((resolve) => {
+      const url = URL.createObjectURL(blob);
+      const v = document.createElement('video');
+      v.preload = 'metadata';
+      v.onloadedmetadata = () => {
+        const d = Number.isFinite(v.duration) ? v.duration : 0;
+        URL.revokeObjectURL(url);
+        resolve(Math.max(0, d));
+      };
+      v.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(0);
+      };
+      v.src = url;
+    });
+  };
+
+  const captureClientClip = async (source: 'A' | 'B') => {
+    if (!navigator.mediaDevices?.getDisplayMedia) {
+      setFetchError('Display capture is not supported by this browser.');
+      return;
+    }
+    const seconds = Math.max(3, Math.min(120, Math.floor(recordingSeconds || 12)));
+    source === 'A' ? setIsRecordingA(true) : setIsRecordingB(true);
+    addLog(`Recording Source ${source} clip for ${seconds}s (target playback ${recordingPlaybackSpeed}x)...`);
+    setFetchError(null);
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      const mimeCandidates = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+      const mimeType = mimeCandidates.find((m) => (window as any).MediaRecorder?.isTypeSupported?.(m)) || '';
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      const chunks: BlobPart[] = [];
+      recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+      const stopped = new Promise<void>((resolve) => {
+        recorder.onstop = () => resolve();
+      });
+      recorder.start(250);
+      setTimeout(() => {
+        if (recorder.state !== 'inactive') recorder.stop();
+      }, seconds * 1000);
+      await stopped;
+      stream.getTracks().forEach((t) => t.stop());
+      const blob = new Blob(chunks, { type: recorder.mimeType || 'video/webm' });
+      const duration = await getVideoDuration(blob);
+      if (source === 'A') setRecordedClipA(blob);
+      else setRecordedClipB(blob);
+      addLog(`Recorded Source ${source} clip: ${(blob.size / (1024 * 1024)).toFixed(2)} MB, duration=${duration.toFixed(2)}s, playback setting=${recordingPlaybackSpeed}x`);
+      setCapturePermissionGranted(true);
+    } catch (e: any) {
+      addLog(`Recording Source ${source} failed: ${e.message}`);
+      setFetchError(`Recording Source ${source} failed: ${e.message}`);
+    } finally {
+      source === 'A' ? setIsRecordingA(false) : setIsRecordingB(false);
+    }
   };
 
   const getYoutubeId = (url: string) => {
@@ -116,6 +224,47 @@ export const VerifyView: React.FC = () => {
       throw new Error("Client Configuration Error: GOOGLE_GEMINI_KEY is missing/invalid.");
   };
 
+  const extractDriveFramesViaServer = async (
+      fileId: string,
+      timestamps: number[],
+      apiKey: string
+  ): Promise<{
+      frames: Array<{ timestamp: number; imageUrl: string }>;
+      diagnostics?: {
+          requestedCount?: number;
+          extractedCount?: number;
+          extractedTimestamps?: number[];
+          missingTimestamps?: number[];
+          attempts?: Array<{
+              urlBase?: string;
+              extractedTimestamps?: number[];
+              failedTimestamps?: number[];
+              sampleError?: string;
+          }>;
+      };
+  }> => {
+      const params = new URLSearchParams({
+          fileId,
+          timestamps: timestamps.join(','),
+          key: apiKey
+      });
+      const controller = new AbortController();
+      const extractorTimeoutMs = Math.max(2000, parseInt((process.env.EXTRACTOR_TIMEOUT_MS || '5000'), 10) || 5000);
+      const t = setTimeout(() => controller.abort(), extractorTimeoutMs);
+      let res: Response;
+      try {
+          res = await fetch(`/api/extract-drive-frames?${params.toString()}`, { signal: controller.signal });
+      } finally {
+          clearTimeout(t);
+      }
+      if (!res.ok) throw new Error(`Server extractor HTTP ${res.status}`);
+      const data = await res.json();
+      return {
+          frames: Array.isArray(data?.frames) ? data.frames : [],
+          diagnostics: data?.diagnostics
+      };
+  };
+
   // --- SOURCE A HANDLERS (Playlist/Video) ---
 
   const fetchPlaylistItems = async (playlistId: string) => {
@@ -160,45 +309,35 @@ export const VerifyView: React.FC = () => {
       }
   };
 
-  // --- SOURCE B HANDLERS (Drive) ---
+  // --- SOURCE B HANDLERS (YouTube Playlist) ---
 
-  const handleGoogleDriveFolderVerify = async (id: string) => {
+  const fetchSourceBPlaylistItems = async (playlistId: string) => {
       setIsFetching(true);
-      setFolderId(id);
       setFolderContents([]);
-      addLog(`Scanning Drive Folder: ${id}`);
+      addLog(`Fetching Source B Playlist: ${playlistId}`);
 
       try {
           const apiKey = getApiKey();
-          const q = `'${id}' in parents and trashed = false`;
-          const params = new URLSearchParams({
-              q: q,
-              key: apiKey,
-              fields: "files(id,name,mimeType,size,createdTime,thumbnailLink,webContentLink)", 
-              pageSize: "50"
-          });
-
-          const url = `https://www.googleapis.com/drive/v3/files?${params.toString()}`;
-          const listRes = await fetch(url);
+          const listRes = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&key=${apiKey}`);
           const data = await listRes.json();
-          const files = data.files || [];
+          const files = data.items || [];
           
           const processedFiles = files.map((f: any) => ({
-              id: f.id,
-              name: f.name, 
-              type: f.mimeType,
-              size: f.size ? `${(parseInt(f.size) / (1024 * 1024)).toFixed(1)} MB` : 'Unknown',
-              thumbnailLink: f.thumbnailLink,
-              webContentLink: f.webContentLink, // Added for video playback
+              id: f.snippet.resourceId.videoId,
+              name: f.snippet.title, 
+              type: 'youtube/video',
+              size: 'Stream (N/A)',
+              thumbnailLink: f.snippet.thumbnails?.default?.url || `https://img.youtube.com/vi/${f.snippet.resourceId.videoId}/0.jpg`,
+              webContentLink: null,
               diffScore: null, // Reset score
-              date: f.createdTime ? new Date(f.createdTime).toLocaleDateString() : 'Unknown'
+              date: 'N/A'
           }));
 
           setFolderContents(processedFiles);
-          addLog(`Source B ready: ${files.length} candidates.`);
+          addLog(`Source B ready: ${processedFiles.length} playlist videos.`);
 
       } catch (e: any) {
-          addLog(`Drive Error: ${e.message}`);
+          addLog(`Source B Playlist Error: ${e.message}`);
           setFetchError(e.message);
       } finally {
           setIsFetching(false);
@@ -207,126 +346,213 @@ export const VerifyView: React.FC = () => {
 
   // --- AUDIT CORE ---
 
-  const executePairAudit = async () => {
-      if (!selectedSourceA || !selectedSourceB) {
+  const executePairAudit = async (aOverride?: string, bOverride?: string) => {
+      const sourceAId = aOverride || selectedSourceA;
+      const sourceBId = bOverride || selectedSourceB;
+      if (!sourceAId || !sourceBId) {
           setFetchError("Please select one item from Source A and one from Source B.");
+          return;
+      }
+      if (capturePermissionEnabled && !capturePermissionGranted) {
+          setFetchError("Please enable client capture permission before running Difference Engine.");
+          return;
+      }
+      if (useRecordedClips && (!recordedClipA || !recordedClipB)) {
+          setFetchError("Please record both Source A and Source B clips before running recorded mode.");
           return;
       }
 
       setIsVerifying(true);
+      setVerifyProgress(0);
+      setVerifyStage('Initializing audit...');
       setAuditResult(null);
+      setPerfMetrics(null);
       setVisualEvidence(null);
       setVerificationStatus('VERIFYING');
-      addLog(`Starting Pairwise Audit: A[${selectedSourceA}] vs B[${selectedSourceB}]`);
+      setSelectedSourceA(sourceAId);
+      setSelectedSourceB(sourceBId);
+      addLog(`Starting Pairwise Audit: A[${sourceAId}] vs B[${sourceBId}]`);
+      const compareStartedAt = performance.now();
 
       try {
-          // 1. Fetch Source A Metadata (Duration) to build anchors
+          // 1) Build sampling timestamps: start at +7s, then every 60s
           const apiKey = getApiKey();
-          let durationSec = 429; // Default fallback
+          let durationSec = 420; // 7 min fallback
           try {
-              const vidRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${selectedSourceA}&key=${apiKey}`);
+              const vidRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${sourceAId}&key=${apiKey}`);
               const vidData = await vidRes.json();
               if (vidData.items?.[0]?.contentDetails?.duration) {
-                  // Simple ISO 8601 duration parser (PT1H2M10S -> sec)
                   const dur = vidData.items[0].contentDetails.duration;
-                  const match = dur.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
-                  // Very basic parse for demo robustness
-                  durationSec = 0; // Reset
-                  // (Production would use a library like duration-fns, simplified here for zero-dep)
-                  // Assume roughly 5 mins if parse fails or complex
-                  durationSec = 300; 
+                  const parsed = parseIso8601DurationToSeconds(dur);
+                  if (parsed > 0) durationSec = parsed;
               }
-          } catch (e) { addLog("Duration fetch failed, using default."); }
+          } catch (_e) { addLog("Duration fetch failed, using 420s fallback."); }
 
-          // 2. Generate Reference Anchors (Source A)
-          const PRIME_OFFSET = 7;
-          const INTERVAL = 60; // Tighter sampling for pair comparison
-          const referenceUrls: ReferenceFrame[] = [];
-          
-          addLog(`Generating Anchors for Source A (v2)...`);
+          const safeOffset = Math.max(0, Math.floor(sampleOffsetSec || 0));
+          const safeInterval = Math.max(1, Math.floor(sampleIntervalSec || 1));
+          const rawTimestamps = buildMinuteSamplingTimestamps(durationSec, safeOffset, safeInterval);
+          const MAX_COMPARE_FRAMES = 4;
+          const targetTimestamps = rawTimestamps.slice(0, MAX_COMPARE_FRAMES);
+          setVerifyProgress(8);
+          setVerifyStage('Built timestamp plan');
+          addLog(`Sampling plan: offset=${safeOffset}s, interval=${safeInterval}s, frames=${targetTimestamps.length}/${rawTimestamps.length}, duration=${durationSec}s`);
+          addLog(`Policy: Compare first ${MAX_COMPARE_FRAMES} frames due to YouTube thumbnail anchor limits.`);
 
-          // Temporal (Hardcoded for 7min Demo)
-          const TARGET_TIMESTAMPS = [28, 83, 156, 245, 340, 396];
-          
-          for (let i = 0; i < TARGET_TIMESTAMPS.length; i++) {
-              const cursor = TARGET_TIMESTAMPS[i];
-              const ytAssetId = (i % 3) + 1; // Simulation: Rotate through available thumbs
-              const thumbUrl = `https://img.youtube.com/vi/${selectedSourceA}/${ytAssetId}.jpg`;
-              const hashes = await generateDualHash(thumbUrl, addLog);
-              if (hashes) {
-                  referenceUrls.push({ 
-                      label: `T+${cursor}s (Thumb ${ytAssetId})`, 
-                      hashes, 
-                      weight: 1.0, 
-                      meta: { 
-                          url: thumbUrl, 
-                          size: hashes.originalSize, 
-                          bytes: hashes.byteSize,
-                          videoId: selectedSourceA, // Pass ID for player embed
-                          timestamp: cursor         // Pass exact time for player seek
-                      } 
+          // 2) Generate Source A frame hashes (recorded-clip mode or thumbnail mode).
+          const referenceFrames: ReferenceFrame[] = [];
+          if (useRecordedClips && recordedClipA) {
+              addLog(`Generating Source A anchors from recorded clip...`);
+          } else {
+              addLog(`Generating Source A anchors from YouTube thumbnails...`);
+              addLog(`Notice: YouTube Source A uses thumbnail anchors (not exact frame decode in browser mode).`);
+          }
+          setVerifyProgress(12);
+          setVerifyStage('Extracting Source A anchors');
+
+          if (useRecordedClips && recordedClipA) {
+              const aDuration = await getVideoDuration(recordedClipA);
+              const aTimestamps = buildMinuteSamplingTimestamps(Math.max(1, Math.floor(aDuration)), Math.min(safeOffset, Math.max(0, Math.floor(aDuration - 1))), safeInterval).slice(0, targetTimestamps.length);
+              const aUrl = URL.createObjectURL(recordedClipA);
+              const aFrames = await extractVideoFrames(aUrl, aTimestamps, addLog);
+              URL.revokeObjectURL(aUrl);
+              for (let i = 0; i < aFrames.length; i++) {
+                  const f = aFrames[i];
+                  referenceFrames.push({
+                      label: `T+${f.timestamp || aTimestamps[i] || 0}s (Recorded)`,
+                      hashes: f.hashes,
+                      weight: 1.0,
+                      meta: {
+                          url: f.imageUrl,
+                          size: f.hashes.originalSize,
+                          bytes: f.hashes.byteSize,
+                          videoId: selectedSourceA,
+                          timestamp: f.timestamp || aTimestamps[i] || 0
+                      }
                   });
-                  addLog(`Anchor [T+${cursor}s]: ${hashes.originalSize} (${hashes.byteSize}B) | pHash: ${hashes.pHash.substring(0,8)}...`);
-              } else {
-                  addLog(`Anchor [T+${cursor}s]: Failed to hash.`);
+                  const p = 12 + Math.round(((i + 1) / Math.max(1, targetTimestamps.length)) * 28);
+                  setVerifyProgress(Math.min(40, p));
+                  setVerifyStage(`Source A recorded anchors ${i + 1}/${targetTimestamps.length}`);
               }
-          }
-
-          // 3. Generate Candidate Hash (Source B)
-          addLog(`Hashing Source B...`);
-          const targetFile = folderContents.find(f => f.id === selectedSourceB);
-          if (!targetFile?.thumbnailLink) throw new Error("Source B has no visual preview.");
-          
-          let candidates: FrameCandidate[] = [];
-          
-          // Try Video Extraction if it's a video and we have a link
-          if (targetFile.type.includes('video') && targetFile.webContentLink) {
-              addLog(`Attempting Video Frame Extraction for Source B...`);
-              // ALIGNMENT: Hardcoded Exact Match (User Request)
-              const timestamps: number[] = TARGET_TIMESTAMPS;
-              // Deduplicate and sort
-              const uniqueTimestamps = Array.from(new Set(timestamps)).sort((a, b) => a - b);
-              
-              if (uniqueTimestamps.length > 0) {
-                  // Use API URL for direct stream (bypasses virus scan interstitial on large files)
-                  const videoUrl = `https://www.googleapis.com/drive/v3/files/${targetFile.id}?alt=media&key=${apiKey}`;
-                  const frames = await extractVideoFrames(videoUrl, uniqueTimestamps, addLog);
-                  if (frames.length > 0) {
-                      candidates = frames;
-                      addLog(`Successfully extracted ${frames.length} frames (Cloud Search) from Source B video.`);
+          } else {
+              for (let i = 0; i < targetTimestamps.length; i++) {
+                  const cursor = targetTimestamps[i];
+                  const ytAssetId = i % 4; // YouTube key thumbnails: 0,1,2,3
+              const thumbUrl = `https://img.youtube.com/vi/${sourceAId}/${ytAssetId}.jpg`;
+                  const hashes = await generateDualHash(thumbUrl, addLog);
+                  if (hashes) {
+                      referenceFrames.push({ 
+                          label: `Thumb ${ytAssetId} (Sample ${i + 1})`, 
+                          hashes, 
+                          weight: 1.0, 
+                          meta: { 
+                              url: thumbUrl, 
+                              size: hashes.originalSize, 
+                              bytes: hashes.byteSize,
+                              videoId: sourceAId,
+                              timestamp: cursor,
+                              sampleIndex: i + 1,
+                              anchorKind: 'YOUTUBE_THUMBNAIL'
+                          } 
+                      });
+                      addLog(`Anchor [Sample ${i + 1} -> Thumb ${ytAssetId}; requested offset T+${cursor}s]: ${hashes.originalSize} (${hashes.byteSize}B) | pHash: ${hashes.pHash.substring(0,8)}...`);
                   } else {
-                      addLog(`Video extraction yielded 0 frames. Fallback to thumbnail.`);
+                      addLog(`Anchor [T+${cursor}s]: Failed to hash.`);
                   }
+                  const p = 12 + Math.round(((i + 1) / Math.max(1, targetTimestamps.length)) * 28);
+                  setVerifyProgress(Math.min(40, p));
+                  setVerifyStage(`Source A anchors ${i + 1}/${targetTimestamps.length}`);
               }
           }
-
-          // Fallback to Thumbnail if no candidates found (or not a video)
-          if (candidates.length === 0) {
-              const bHashes = await generateDualHash(targetFile.thumbnailLink, addLog);
-              if (!bHashes) throw new Error("Failed to hash Source B.");
-              addLog(`Source B Hash (Thumbnail): ${bHashes.originalSize} (${bHashes.byteSize}B) | pHash: ${bHashes.pHash.substring(0,8)}...`);
-              candidates = [{ id: selectedSourceB, hashes: bHashes }];
+          const uniqueRefHashes = new Set(referenceFrames.map((r) => r.hashes.pHash)).size;
+          if (uniqueRefHashes <= 1) {
+              addLog("Warning: Source A reference hashes are highly repetitive. This can weaken comparison confidence.");
           }
 
-          // 4. Compute
-          const result = computeAuditScore(candidates, referenceUrls);
+          // 3) Generate Source B hashes (recorded-clip mode or thumbnail mode)
+          addLog(`Hashing Source B...`);
+          setVerifyProgress(45);
+          setVerifyStage(useRecordedClips ? 'Preparing Source B recorded clip' : 'Preparing Source B thumbnails');
+          const targetFile = folderContents.find(f => f.id === sourceBId);
+          if (!targetFile) throw new Error("Source B selection missing.");
+
+          const candidates: FrameCandidate[] = [];
+          if (useRecordedClips && recordedClipB) {
+              const bDuration = await getVideoDuration(recordedClipB);
+              const bTimestamps = buildMinuteSamplingTimestamps(Math.max(1, Math.floor(bDuration)), Math.min(safeOffset, Math.max(0, Math.floor(bDuration - 1))), safeInterval).slice(0, targetTimestamps.length);
+              const bUrl = URL.createObjectURL(recordedClipB);
+              const bFrames = await extractVideoFrames(bUrl, bTimestamps, addLog);
+              URL.revokeObjectURL(bUrl);
+              bFrames.forEach((f, i) => {
+                  candidates.push({
+                      id: `recorded_${selectedSourceB}_${f.timestamp || bTimestamps[i] || 0}`,
+                      timestamp: f.timestamp || bTimestamps[i] || 0,
+                      hashes: f.hashes,
+                      imageUrl: f.imageUrl
+                  });
+                  const p = 46 + Math.round(((i + 1) / Math.max(1, targetTimestamps.length)) * 26);
+                  setVerifyProgress(Math.min(72, p));
+                  setVerifyStage(`Source B recorded anchors ${i + 1}/${targetTimestamps.length}`);
+              });
+          } else {
+              for (let i = 0; i < targetTimestamps.length; i++) {
+                  const ts = targetTimestamps[i];
+                  const ytAssetId = i % 4;
+              const thumbUrl = `https://img.youtube.com/vi/${sourceBId}/${ytAssetId}.jpg`;
+                  const bHashes = await generateDualHash(thumbUrl, addLog);
+                  if (!bHashes) continue;
+                  candidates.push({
+                  id: `thumb_${sourceBId}_${ts}`,
+                      timestamp: ts,
+                      hashes: bHashes,
+                      imageUrl: thumbUrl
+                  });
+                  addLog(`Source B Anchor [Sample ${i + 1} -> Thumb ${ytAssetId}; requested offset T+${ts}s]: ${bHashes.originalSize} (${bHashes.byteSize}B) | pHash: ${bHashes.pHash.substring(0,8)}...`);
+                  const p = 46 + Math.round(((i + 1) / Math.max(1, targetTimestamps.length)) * 26);
+                  setVerifyProgress(Math.min(72, p));
+                  setVerifyStage(`Source B anchors ${i + 1}/${targetTimestamps.length}`);
+              }
+          }
+          if (candidates.length === 0) throw new Error("Failed to hash Source B thumbnails.");
+          addLog(useRecordedClips ? `Source B Mode: client-recorded clip comparison.` : `Source B Mode: YouTube thumbnail comparison.`);
+
+          // 4) Strict pairwise scoring at same timestamps
+          setVerifyProgress(82);
+          setVerifyStage('Computing pairwise score');
+          const result = computePairwiseFrameAuditScore(referenceFrames, candidates, targetTimestamps, { matchingWindowSec: 0 });
           
           if (result.frameDetails) {
              result.frameDetails.forEach(fd => {
                  const refInfo = fd.refMeta ? `[${fd.refMeta.size}, ${fd.refMeta.bytes}B]` : '';
-                 addLog(`Frame [${fd.refLabel}] ${refInfo} vs Candidate [${fd.bestCandId.substring(0,8)}...]: Dist=${fd.visualDistance.toFixed(4)} (${fd.isMatch ? 'MATCH' : 'MISS'})`);
+                 const candTs = typeof fd.candMeta?.timestamp === 'number' ? fd.candMeta.timestamp : null;
+                 const refTs = typeof fd.refMeta?.timestamp === 'number' ? fd.refMeta.timestamp : null;
+                 const delta = (candTs !== null && refTs !== null) ? (candTs - refTs) : null;
+                 addLog(`Frame [${fd.refLabel}] ${refInfo} vs Candidate [${fd.bestCandId.substring(0,8)}...${candTs !== null ? ` @${candTs}s` : ''}${delta !== null ? ` Δt=${delta >= 0 ? '+' : ''}${delta}s` : ''}]: Dist=${fd.visualDistance.toFixed(4)} (${fd.isMatch ? 'MATCH' : 'MISS'})`);
              });
           }
           addLog(`Scoring: D_visual=${result.signals.dVisual}, D_temporal=${result.signals.dTemporal}`);
-          addLog(`Final Score Calculation: (0.65 * ${result.signals.dVisual}) + (0.35 * ${result.signals.dTemporal}) = ${(0.65 * result.signals.dVisual + 0.35 * result.signals.dTemporal).toFixed(4)} -> Scaled: ${result.score}`);
+          addLog(`Final Score Calculation: (0.8 * ${result.signals.dVisual}) + (0.2 * ${result.signals.dTemporal}) = ${(0.8 * result.signals.dVisual + 0.2 * result.signals.dTemporal).toFixed(4)} -> Scaled(0-1000): ${result.score}`);
+          addLog(`Verdict: ${result.score <= 120 ? 'SAME/CONSISTENT' : 'NOT SAME'}`);
 
           setAuditResult(result);
           setAuditCandidates(candidates);
+          const framesRead = referenceFrames.length + candidates.length;
+          const bytesProcessed = [...referenceFrames.map((r) => r.hashes.byteSize || 0), ...candidates.map((c) => c.hashes.byteSize || 0)].reduce((a, b) => a + b, 0);
+          const compareMs = Math.round(performance.now() - compareStartedAt);
+          const formula = `score = round(((0.8 * ${result.signals.dVisual}) + (0.2 * ${result.signals.dTemporal})) * 1000)`;
+          setPerfMetrics({
+              framesRead,
+              bytesProcessed,
+              compareMs,
+              aiTokensUsed: 0,
+              formula
+          });
+          setVerifyProgress(96);
+          setVerifyStage('Rendering report');
           
           // Set Visual Debugging Evidence
           if (result.bestMatchMeta?.url) {
               const bestCand = candidates.find(c => c.id === result.bestMatchCandId);
-              const candUrl = bestCand?.imageUrl || targetFile.thumbnailLink;
+              const candUrl = bestCand?.imageUrl || targetFile?.thumbnailLink;
               const isFrame = !!bestCand?.imageUrl;
 
               setVisualEvidence({
@@ -338,10 +564,12 @@ export const VerifyView: React.FC = () => {
           }
           
           // Update the list view score for B
-          setFolderContents(prev => prev.map(f => f.id === selectedSourceB ? { ...f, diffScore: result.score } : f));
+          setFolderContents(prev => prev.map(f => f.id === sourceBId ? { ...f, diffScore: result.score } : f));
           
           setVerificationStatus('BATCH_REPORT');
           addLog(`Audit Complete: Score ${result.score}`);
+          setVerifyProgress(100);
+          setVerifyStage('Completed');
 
       } catch (e: any) {
           addLog(`Audit Failed: ${e.message}`);
@@ -351,12 +579,36 @@ export const VerifyView: React.FC = () => {
       }
   };
 
+  const executeBatchPlaylistAudit = async () => {
+      if (batchRunningRef.current) return;
+      if (sourceAItems.length === 0 || folderContents.length === 0) return;
+      const count = Math.min(sourceAItems.length, folderContents.length);
+      if (count === 0) return;
+      batchRunningRef.current = true;
+      addLog(`Starting playlist batch compare (pairs=${count})...`);
+      try {
+          for (let i = 0; i < count; i++) {
+              const aId = sourceAItems[i]?.id;
+              const bId = folderContents[i]?.id;
+              if (!aId || !bId) continue;
+              addLog(`Batch pair ${i + 1}/${count}: A[${aId}] vs B[${bId}]`);
+              await executePairAudit(aId, bId);
+          }
+          addLog(`Batch compare completed.`);
+      } finally {
+          batchRunningRef.current = false;
+      }
+  };
+
   // --- INITIALIZATION ---
 
   const handleUrlFetch = async (url: string, refUrl?: string) => {
     // Check Inputs
     const ref = refUrl || referenceInput;
     const target = url || urlInput;
+    const key = `${ref}::${target}`;
+    if (lastFetchKeyRef.current === key) return;
+    lastFetchKeyRef.current = key;
 
     // Load Source A
     if (ref) {
@@ -372,13 +624,31 @@ export const VerifyView: React.FC = () => {
     }
 
     // Load Source B
-    const dId = getGoogleDriveId(target);
-    if (dId && isFolderUrl(target)) {
-        handleGoogleDriveFolderVerify(dId);
+    const sourceBPlaylistId = getYoutubePlaylistId(target);
+    if (sourceBPlaylistId) {
+        fetchSourceBPlaylistItems(sourceBPlaylistId);
+    } else {
+        const vId = getYoutubeId(target);
+        if (vId) {
+            setFolderContents([{
+                id: vId,
+                name: `YouTube Video ${vId}`,
+                type: 'youtube/video',
+                size: 'Stream (N/A)',
+                thumbnailLink: `https://img.youtube.com/vi/${vId}/0.jpg`,
+                webContentLink: null,
+                diffScore: null,
+                date: 'N/A'
+            }]);
+            setSelectedSourceB(vId);
+        }
     }
   };
 
   useEffect(() => {
+      if (hasInitialized.current) return;
+      hasInitialized.current = true;
+
       // Deep Link Handler
       const deepLinkUrl = getUrlParam('url') || getUrlParam('verify_url');
       const refUrlParam = getUrlParam('ref');
@@ -393,6 +663,54 @@ export const VerifyView: React.FC = () => {
       handleUrlFetch(targetToLoad, refToLoad);
   }, []);
 
+  useEffect(() => {
+      const t = setTimeout(() => {
+          handleUrlFetch(urlInput, referenceInput);
+      }, 700);
+      return () => clearTimeout(t);
+  }, [referenceInput, urlInput]);
+
+  useEffect(() => {
+      if (!autoMode) return;
+      if (isVerifying || batchRunningRef.current) return;
+      if (capturePermissionEnabled && !capturePermissionGranted) return;
+      if (useRecordedClips && (!recordedClipA || !recordedClipB)) return;
+
+      if (autoBatchMode) {
+          if (sourceAItems.length === 0 || folderContents.length === 0) return;
+          const count = Math.min(sourceAItems.length, folderContents.length);
+          const key = `batch:${count}:${sourceAItems[0]?.id || ''}:${folderContents[0]?.id || ''}:${sampleOffsetSec}:${sampleIntervalSec}`;
+          if (lastAutoRunKeyRef.current === key) return;
+          lastAutoRunKeyRef.current = key;
+          const t = setTimeout(() => { executeBatchPlaylistAudit(); }, 1200);
+          return () => clearTimeout(t);
+      }
+
+      const autoA = selectedSourceA || sourceAItems[0]?.id;
+      const autoB = selectedSourceB || folderContents[0]?.id;
+      if (!autoA || !autoB) return;
+      const key = `pair:${autoA}:${autoB}:${sampleOffsetSec}:${sampleIntervalSec}:${useRecordedClips ? 'rec' : 'thumb'}`;
+      if (lastAutoRunKeyRef.current === key) return;
+      lastAutoRunKeyRef.current = key;
+      const t = setTimeout(() => { executePairAudit(autoA, autoB); }, 1200);
+      return () => clearTimeout(t);
+  }, [
+      autoMode,
+      autoBatchMode,
+      selectedSourceA,
+      selectedSourceB,
+      sourceAItems,
+      folderContents,
+      sampleOffsetSec,
+      sampleIntervalSec,
+      isVerifying,
+      capturePermissionEnabled,
+      capturePermissionGranted,
+      useRecordedClips,
+      recordedClipA,
+      recordedClipB
+  ]);
+
   // --- UI RENDERERS ---
 
   const renderL2State = () => {
@@ -401,13 +719,19 @@ export const VerifyView: React.FC = () => {
             <div className="h-[400px] border border-[var(--border-light)] rounded-xl bg-[var(--code-bg)] flex flex-col items-center justify-center text-center p-8">
                 <div className="w-8 h-8 border-2 border-[var(--trust-blue)] border-t-transparent rounded-full animate-spin mb-4"></div>
                 <p className="font-mono text-[10px] uppercase tracking-widest text-[var(--trust-blue)]">
-                    Calculating Difference...
+                    Calculating Difference... {verifyProgress}%
+                </p>
+                <p className="font-mono text-[9px] uppercase tracking-wide opacity-60 mt-2">
+                    {verifyStage}
                 </p>
             </div>
         );
     }
 
     if (auditResult) {
+        const isSame = auditResult.score <= 120;
+        const matchedCount = auditResult.frameDetails?.filter((f) => f.isMatch).length || 0;
+        const totalCount = auditResult.frameDetails?.length || 0;
         const bandLabels = {
             'VERIFIED_ORIGINAL': 'MINIMAL DIFFERENCE (Match)',
             'PLATFORM_CONSISTENT': 'LOW DIFFERENCE (Consistent)',
@@ -436,6 +760,12 @@ export const VerifyView: React.FC = () => {
                        <h4 className={`font-serif text-xl font-bold italic ${bandColor.split(' ')[0]}`}>
                            {bandLabels[auditResult.band]}
                        </h4>
+                       <p className={`font-mono text-[10px] uppercase tracking-widest font-bold ${isSame ? 'text-emerald-600' : 'text-red-600'}`}>
+                           Verdict: {isSame ? 'SAME / CONSISTENT' : 'NOT SAME'}
+                       </p>
+                       <p className="font-mono text-[10px] opacity-70 uppercase tracking-widest">
+                           Anchors Matched: {matchedCount}/{totalCount}
+                       </p>
                        <p className="font-mono text-[10px] opacity-60 uppercase tracking-widest">
                            Confidence: {(auditResult.confidence * 100).toFixed(1)}%
                        </p>
@@ -471,6 +801,40 @@ export const VerifyView: React.FC = () => {
                <div className="p-3 border-l-2 border-[var(--trust-blue)] bg-[var(--admonition-bg)] text-[10px] opacity-80 leading-relaxed font-serif italic">
                    Comparison: Source A [{selectedSourceA}] vs Source B [{folderContents.find(f=>f.id===selectedSourceB)?.name.substring(0,15)}...]
                </div>
+
+               {perfMetrics && (
+                 <div className="border border-[var(--border-light)] rounded bg-white/60 p-3">
+                   <h5 className="font-mono text-[10px] uppercase font-bold text-[var(--text-header)] mb-2">Performance Summary</h5>
+                   <table className="w-full text-[10px] font-mono">
+                     <tbody>
+                       <tr className="border-b border-[var(--border-light)]">
+                         <td className="py-1 pr-2 opacity-60">Frames Read</td>
+                         <td className="py-1 font-bold text-right">{perfMetrics.framesRead}</td>
+                       </tr>
+                       <tr className="border-b border-[var(--border-light)]">
+                         <td className="py-1 pr-2 opacity-60">Bytes Processed (Pixel Buffer)</td>
+                         <td className="py-1 font-bold text-right">{perfMetrics.bytesProcessed.toLocaleString()} B</td>
+                       </tr>
+                       <tr className="border-b border-[var(--border-light)]">
+                         <td className="py-1 pr-2 opacity-60">Compare Time</td>
+                         <td className="py-1 font-bold text-right">{perfMetrics.compareMs} ms</td>
+                       </tr>
+                       <tr className="border-b border-[var(--border-light)]">
+                         <td className="py-1 pr-2 opacity-60">AI Tokens Used</td>
+                         <td className="py-1 font-bold text-right">{perfMetrics.aiTokensUsed}</td>
+                       </tr>
+                       <tr className="border-b border-[var(--border-light)]">
+                         <td className="py-1 pr-2 opacity-60">Final Score</td>
+                         <td className="py-1 font-bold text-right">{auditResult.score}</td>
+                       </tr>
+                       <tr>
+                         <td className="pt-2 pr-2 opacity-60 align-top">Score Formula</td>
+                         <td className="pt-2 text-right break-all">{perfMetrics.formula}</td>
+                       </tr>
+                     </tbody>
+                   </table>
+                 </div>
+               )}
 
                {/* Frame-by-Frame Scoring Table */}
                {auditResult.frameDetails && auditResult.frameDetails.length > 0 && (
@@ -599,7 +963,7 @@ export const VerifyView: React.FC = () => {
                {/* Source B List */}
                <div className="flex-1 flex flex-col min-w-0 bg-white">
                    <div className="p-3 bg-[var(--table-header)] border-b border-[var(--border-light)] font-bold text-neutral-600 uppercase tracking-widest flex justify-between">
-                       <span>Source B (Pool)</span>
+                       <span>Source B (Target Playlist)</span>
                        <span className="opacity-50">{folderContents.length} items</span>
                    </div>
                    <div className="flex-1 overflow-y-auto p-2 space-y-1">
@@ -609,7 +973,7 @@ export const VerifyView: React.FC = () => {
                              onClick={() => setSelectedSourceB(item.id)}
                              className={`p-2 border rounded cursor-pointer transition-all flex gap-2 items-center ${selectedSourceB === item.id ? 'border-[var(--trust-blue)] bg-blue-50' : 'border-transparent hover:bg-neutral-50'}`}
                            >
-                               <span className="text-lg opacity-50">{item.type.includes('video') ? '🎬' : '📄'}</span>
+                               <img src={item.thumbnailLink} className="w-8 h-8 object-cover rounded bg-neutral-200" />
                                <div className="flex-1 min-w-0">
                                    <p className="font-bold truncate">{item.name}</p>
                                    <div className="flex justify-between">
@@ -632,6 +996,7 @@ export const VerifyView: React.FC = () => {
   };
 
   const handleManualFetch = () => {
+      lastFetchKeyRef.current = '';
       const plId = getYoutubePlaylistId(referenceInput);
       if (plId) fetchPlaylistItems(plId);
       else if (referenceInput) {
@@ -639,8 +1004,24 @@ export const VerifyView: React.FC = () => {
           if (vId) { setSourceAItems([]); setSelectedSourceA(vId); }
       }
 
-      const dId = getGoogleDriveId(urlInput);
-      if (dId) handleGoogleDriveFolderVerify(dId);
+      const bPlId = getYoutubePlaylistId(urlInput);
+      if (bPlId) fetchSourceBPlaylistItems(bPlId);
+      else {
+          const bId = getYoutubeId(urlInput);
+          if (bId) {
+              setFolderContents([{
+                  id: bId,
+                  name: `YouTube Video ${bId}`,
+                  type: 'youtube/video',
+                  size: 'Stream (N/A)',
+                  thumbnailLink: `https://img.youtube.com/vi/${bId}/0.jpg`,
+                  webContentLink: null,
+                  diffScore: null,
+                  date: 'N/A'
+              }]);
+              setSelectedSourceB(bId);
+          }
+      }
   };
 
   if (showAnalysis && auditResult) {
@@ -669,7 +1050,7 @@ export const VerifyView: React.FC = () => {
            </button>
         </div>
         <p className="text-xl opacity-60 max-w-2xl font-serif italic">
-          Compare a <strong>Reference Playlist (A)</strong> against a <strong>Target Pool (B)</strong> to calculate logic drift and visual divergence.
+          Compare two selected videos from YouTube playlists using four thumbnail anchors and perceptual hash distance.
         </p>
       </header>
 
@@ -719,52 +1100,41 @@ export const VerifyView: React.FC = () => {
              </div>
 
              {/* Target Candidate Input */}
-             <div className="flex gap-2 -mt-2">
-                <div className="flex-1 relative group">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none opacity-40">
-                    <span className="text-xs">B</span>
-                  </div>
-                  <input 
-                    type="text"
-                    value={urlInput}
-                    onChange={(e) => setUrlInput(e.target.value)}
-                    placeholder="Source B (Target) - Drive Folder / File URL"
-                    onKeyDown={(e) => e.key === 'Enter' && handleManualFetch()}
-                    className="w-full pl-9 pr-4 py-3 bg-[var(--bg-standard)] border border-[var(--border-light)] rounded-b font-mono text-[11px] outline-none focus:border-[var(--trust-blue)] transition-colors text-[var(--text-body)] shadow-sm"
-                  />
-                  <button 
-                    onClick={() => handleManualFetch()}
-                    className="absolute inset-y-0 right-0 px-4 text-[9px] font-bold uppercase hover:bg-[var(--bg-sidebar)] transition-colors rounded-br border-l border-[var(--border-light)] text-[var(--trust-blue)]"
-                  >
-                    Load
-                  </button>
-                </div>
-                <button 
-                  onClick={() => { 
-                      setSourceAItems([]); setFolderContents([]); setSelectedSourceA(null); setSelectedSourceB(null);
-                      setAuditResult(null); setReferenceInput(''); setUrlInput(''); 
-                  }}
-                  className="px-6 border border-[var(--border-light)] rounded hover:bg-[var(--bg-sidebar)] transition-colors font-mono text-[10px] uppercase font-bold text-[var(--text-body)]"
-                >
-                  Reset
-                </button>
+             <div className="relative group -mt-2">
+               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none opacity-40">
+                 <span className="text-xs">B</span>
+               </div>
+               <input 
+                 type="text"
+                 value={urlInput}
+                 onChange={(e) => setUrlInput(e.target.value)}
+                 placeholder="Source B (Target) - YouTube Playlist or Video URL..."
+                 onKeyDown={(e) => e.key === 'Enter' && handleManualFetch()}
+                 className="w-full pl-9 pr-4 py-3 bg-[var(--bg-standard)] border border-[var(--border-light)] rounded-b font-mono text-[11px] outline-none focus:border-[var(--trust-blue)] transition-colors text-[var(--text-body)] shadow-sm"
+               />
              </div>
 
-             <div className="space-y-2 border-t border-[var(--border-light)] pt-4 mt-2">
-                <p className="font-mono text-[9px] uppercase opacity-40 font-bold tracking-widest mb-1">Quick Demos</p>
-                <div className="flex items-center justify-between hover:bg-white/5 p-1 rounded transition-colors">
-                  <button 
-                    onClick={() => { 
-                        const driveUrl = "https://drive.google.com/drive/folders/1dKxGvDBrxHp9ys_7jy7cXNt74JnaryA9";
-                        const refUrl = "https://www.youtube.com/playlist?list=PLjnwycFexttARFrzatvBjzL0BEH-78Bft"; // Updated to Playlist Demo
-                        window.location.hash = `#verify?url=${encodeURIComponent(driveUrl)}&ref=${encodeURIComponent(refUrl)}`;
-                    }}
-                    className="text-[10px] text-purple-600 hover:underline font-mono uppercase font-bold flex items-center gap-2"
-                  >
-                    <span>📂</span> Drive Folder vs Playlist Demo
-                  </button>
-                  <span className="text-[9px] font-bold text-blue-500 bg-blue-500/10 px-1.5 rounded border border-blue-500/20">BATCH</span>
-                </div>
+             <div className="border border-[var(--border-light)] rounded p-3 bg-[var(--code-bg)] space-y-2">
+               <label className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-wide opacity-80 cursor-pointer">
+                 <input
+                   type="checkbox"
+                   checked={autoMode}
+                   onChange={(e) => setAutoMode(e.target.checked)}
+                 />
+                 Auto Mode
+               </label>
+               <label className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-wide opacity-80 cursor-pointer">
+                 <input
+                   type="checkbox"
+                   checked={autoBatchMode}
+                   onChange={(e) => setAutoBatchMode(e.target.checked)}
+                   disabled={!autoMode}
+                 />
+                 Batch Playlist Mode (LA vs LB)
+               </label>
+               <div className="text-[9px] font-mono opacity-60">
+                 0) Enable permission (optional) 1) Paste links A/B 2) Report auto-generates in a few seconds.
+               </div>
              </div>
 
              {fetchError && (
@@ -773,20 +1143,91 @@ export const VerifyView: React.FC = () => {
                </div>
              )}
 
-             <button 
-               onClick={executePairAudit}
-               disabled={!selectedSourceA || !selectedSourceB || isVerifying}
-               className={`w-full py-5 font-mono text-xs uppercase font-bold tracking-[0.3em] rounded-lg shadow-2xl transition-all disabled:opacity-30 disabled:shadow-none hover:brightness-110 active:scale-95 ${
-                 verificationStatus === 'SUCCESS' ? 'bg-emerald-600 text-white' : 
-                 verificationStatus === 'BATCH_REPORT' ? 'bg-purple-600 text-white' :
-                 verificationStatus === 'UNSIGNED' ? 'bg-red-500 text-white' : 
-                 'bg-[var(--trust-blue)] text-white'
-               }`}
+             <div className="border border-[var(--border-light)] rounded p-3 bg-[var(--code-bg)] space-y-2">
+               <div className="flex items-center justify-between gap-3">
+                 <label className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-wide opacity-80 cursor-pointer">
+                   <input
+                     type="checkbox"
+                     checked={capturePermissionEnabled}
+                     onChange={(e) => setCapturePermissionEnabled(e.target.checked)}
+                   />
+                   Require Client Capture Permission
+                 </label>
+                 <button
+                   onClick={requestClientCapturePermission}
+                   className="px-3 py-1 border border-[var(--border-light)] rounded text-[9px] font-mono uppercase font-bold hover:bg-[var(--bg-sidebar)]"
+                 >
+                   Enable Permission
+                 </button>
+               </div>
+               <div className="text-[9px] font-mono opacity-60">
+                 Status: {capturePermissionGranted ? 'Granted' : 'Not Granted'} (client-only, no backend)
+               </div>
+             </div>
+
+             <button
+               onClick={() => setShowAdvancedControls((v) => !v)}
+               className="w-full py-2 border border-[var(--border-light)] rounded text-[10px] font-mono uppercase font-bold hover:bg-[var(--bg-sidebar)]"
              >
-               {isVerifying ? 'PROBING SUBSTRATE...' : 
-                selectedSourceA && selectedSourceB ? 'Compare Selection (Δ)' :
-                'Select 1 from A & 1 from B'}
+               {showAdvancedControls ? 'Hide Advanced Controls' : 'Show Advanced Controls'}
              </button>
+
+             {showAdvancedControls && (
+               <div className="space-y-3 border border-[var(--border-light)] rounded p-3 bg-[var(--code-bg)]">
+                 <div className="flex items-center justify-between gap-3">
+                   <label className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-wide opacity-80 cursor-pointer">
+                     <input
+                       type="checkbox"
+                       checked={useRecordedClips}
+                       onChange={(e) => setUseRecordedClips(e.target.checked)}
+                     />
+                     Use Recorded Clips (Client)
+                   </label>
+                   <div className="flex items-center gap-2">
+                     <select
+                       value={recordingPlaybackSpeed}
+                       onChange={(e) => setRecordingPlaybackSpeed(parseFloat(e.target.value))}
+                       className="px-2 py-1 bg-white border border-[var(--border-light)] rounded text-[10px] font-mono"
+                     >
+                       <option value={1}>1x</option>
+                       <option value={1.5}>1.5x</option>
+                       <option value={2}>2x</option>
+                       <option value={3}>3x</option>
+                       <option value={4}>4x</option>
+                     </select>
+                     <input
+                       type="number"
+                       min={3}
+                       max={120}
+                       step={1}
+                       value={recordingSeconds}
+                       onChange={(e) => setRecordingSeconds(parseInt(e.target.value || '12', 10))}
+                       className="w-20 px-2 py-1 bg-white border border-[var(--border-light)] rounded text-[10px] font-mono"
+                     />
+                   </div>
+                 </div>
+                 {useRecordedClips && (
+                   <div className="grid grid-cols-2 gap-2">
+                     <button onClick={() => selectedSourceA ? openVideoAutoplay(selectedSourceA, 'A') : setFetchError('Select Source A first.')} className="px-3 py-2 border border-[var(--border-light)] rounded text-[9px] font-mono uppercase font-bold hover:bg-[var(--bg-sidebar)]">Auto-Open Source A</button>
+                     <button onClick={() => selectedSourceB ? openVideoAutoplay(selectedSourceB, 'B') : setFetchError('Select Source B first.')} className="px-3 py-2 border border-[var(--border-light)] rounded text-[9px] font-mono uppercase font-bold hover:bg-[var(--bg-sidebar)]">Auto-Open Source B</button>
+                     <button onClick={() => captureClientClip('A')} disabled={isRecordingA} className="px-3 py-2 border border-[var(--border-light)] rounded text-[9px] font-mono uppercase font-bold hover:bg-[var(--bg-sidebar)] disabled:opacity-40">{isRecordingA ? 'Recording A...' : `Record Source A (${recordingSeconds}s)`}</button>
+                     <button onClick={() => captureClientClip('B')} disabled={isRecordingB} className="px-3 py-2 border border-[var(--border-light)] rounded text-[9px] font-mono uppercase font-bold hover:bg-[var(--bg-sidebar)] disabled:opacity-40">{isRecordingB ? 'Recording B...' : `Record Source B (${recordingSeconds}s)`}</button>
+                   </div>
+                 )}
+                 <div className="text-[9px] font-mono opacity-60">Clips: A={recordedClipA ? 'Ready' : 'Missing'} | B={recordedClipB ? 'Ready' : 'Missing'}</div>
+                 <div className="grid grid-cols-2 gap-2">
+                   <label className="text-[10px] font-mono uppercase tracking-wide opacity-70">Offset (s)<input type="number" min={0} step={1} value={sampleOffsetSec} onChange={(e) => setSampleOffsetSec(parseInt(e.target.value || '0', 10))} className="mt-1 w-full px-2 py-1 bg-white border border-[var(--border-light)] rounded text-[11px]" /></label>
+                   <label className="text-[10px] font-mono uppercase tracking-wide opacity-70">Interval (s)<input type="number" min={1} step={1} value={sampleIntervalSec} onChange={(e) => setSampleIntervalSec(parseInt(e.target.value || '60', 10))} className="mt-1 w-full px-2 py-1 bg-white border border-[var(--border-light)] rounded text-[11px]" /></label>
+                 </div>
+                 <button
+                   onClick={() => executePairAudit()}
+                   disabled={!selectedSourceA || !selectedSourceB || isVerifying}
+                   className="w-full py-3 font-mono text-[10px] uppercase font-bold rounded border border-[var(--trust-blue)] text-[var(--trust-blue)] hover:bg-blue-500/10 disabled:opacity-30"
+                 >
+                   Run Manual Compare
+                 </button>
+               </div>
+             )}
           </div>
         </div>
 

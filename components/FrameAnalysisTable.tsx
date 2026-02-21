@@ -14,6 +14,18 @@ export const FrameAnalysisTable: React.FC<FrameAnalysisTableProps> = ({ auditRes
 
   // Helper to find candidate details
   const getCandidate = (id: string) => candidates.find(c => c.id === id);
+  const getCandidateForRow = (bestCandId: string, refLabel: string): FrameCandidate | undefined => {
+    const byId = getCandidate(bestCandId);
+    if (byId) return byId;
+
+    const refTs = getTimestamp(refLabel);
+    const byTimestamp = candidates.find((c) => c.timestamp === refTs);
+    if (byTimestamp) return byTimestamp;
+
+    // Thumbnail-only fallback mode (single candidate without per-frame extraction)
+    if (candidates.length === 1) return candidates[0];
+    return undefined;
+  };
 
   // Helper to parse timestamp from ID or Label
   const getTimestamp = (str: string): number => {
@@ -29,6 +41,7 @@ export const FrameAnalysisTable: React.FC<FrameAnalysisTableProps> = ({ auditRes
   // Compute Global Stats
   const stats = useMemo(() => {
     if (!auditResult.frameDetails) return null;
+    const thumbnailMode = auditResult.frameDetails.some((row) => row.refMeta?.anchorKind === 'YOUTUBE_THUMBNAIL');
     
     const drifts: number[] = [];
     let matchCount = 0;
@@ -38,9 +51,9 @@ export const FrameAnalysisTable: React.FC<FrameAnalysisTableProps> = ({ auditRes
       if (row.isMatch) matchCount++;
       totalDist += row.visualDistance;
       
-      const refTime = getTimestamp(row.refLabel);
+      const refTime = typeof row.refMeta?.timestamp === 'number' ? row.refMeta.timestamp : getTimestamp(row.refLabel);
       const cand = getCandidate(row.bestCandId);
-      if (cand && cand.timestamp !== undefined) {
+      if (!thumbnailMode && cand && cand.timestamp !== undefined) {
         drifts.push(cand.timestamp - refTime);
       }
     });
@@ -54,7 +67,7 @@ export const FrameAnalysisTable: React.FC<FrameAnalysisTableProps> = ({ auditRes
       ? drifts[Math.floor(drifts.length / 2)] 
       : 0;
 
-    return { matchCount, avgDist, avgSim, medianDrift, total: auditResult.frameDetails.length };
+    return { matchCount, avgDist, avgSim, medianDrift, total: auditResult.frameDetails.length, thumbnailMode };
   }, [auditResult, candidates]);
 
   const runAiAnalysis = async () => {
@@ -88,7 +101,9 @@ export const FrameAnalysisTable: React.FC<FrameAnalysisTableProps> = ({ auditRes
           
           const mocks: Record<string, string> = {};
           auditResult.frameDetails?.forEach(row => {
-             mocks[row.refLabel] = `[Forensic AI] Verified timestamp T+${getTimestamp(row.refLabel)}s. Visual content aligns with 'Signet AI' core concepts. Structure matches reference.`;
+             const hamming = Math.round(row.visualDistance * 64);
+             const similarity = ((1 - row.visualDistance) * 100).toFixed(1);
+             mocks[row.refLabel] = `[Forensic AI] Anchor ${row.refLabel}: pHash comparison produced Hamming distance ${hamming}/64 (similarity ${similarity}%). Interpretation: ${row.isMatch ? 'within match threshold, indicating structurally consistent luminance-frequency layout despite platform compression.' : 'outside match threshold, indicating meaningful structural deviation in low-frequency image features.'} Method: 64-bit DCT pHash soft-binding with pairwise anchor scoring.`;
           });
           setAiDescriptions(mocks);
       }
@@ -137,7 +152,7 @@ export const FrameAnalysisTable: React.FC<FrameAnalysisTableProps> = ({ auditRes
               <div className="bg-white border border-[var(--border-light)] rounded-lg p-3 min-w-[100px]">
                 <div className="text-[9px] font-mono uppercase opacity-50 mb-1">Median Shift</div>
                 <div className="text-xl font-bold font-mono">
-                  {stats.medianDrift > 0 ? '+' : ''}{stats.medianDrift}s
+                  {stats.thumbnailMode ? 'N/A' : `${stats.medianDrift > 0 ? '+' : ''}${stats.medianDrift}s`}
                 </div>
               </div>
               <div className="bg-white border border-[var(--border-light)] rounded-lg p-3 min-w-[100px]">
@@ -172,11 +187,13 @@ export const FrameAnalysisTable: React.FC<FrameAnalysisTableProps> = ({ auditRes
         </div>
 
         {/* Main Table */}
-        <div className="border border-[var(--border-light)] rounded-xl overflow-hidden bg-white shadow-sm">
-          <table className="w-full text-left border-collapse">
+        <div className="border border-[var(--border-light)] rounded-xl bg-white shadow-sm overflow-x-auto">
+          <table className="w-full min-w-[1200px] text-left border-collapse">
             <thead>
               <tr className="bg-[var(--table-header)] border-b border-[var(--border-light)] text-[10px] font-mono uppercase tracking-wider text-neutral-600">
-                <th className="p-4 w-12 text-center">T(s)</th>
+                <th className="p-4 w-16 text-center">{stats?.thumbnailMode ? 'Sample' : 'T(s)'}</th>
+                <th className="p-4 w-40">Source A Frame</th>
+                <th className="p-4 w-40">Source B Frame</th>
                 <th className="p-4 w-24">Ref Hash (A)</th>
                 <th className="p-4 w-24">Cand Hash (B)</th>
                 <th className="p-4 w-20 text-center">Hamming</th>
@@ -186,8 +203,11 @@ export const FrameAnalysisTable: React.FC<FrameAnalysisTableProps> = ({ auditRes
             </thead>
             <tbody className="divide-y divide-[var(--border-light)]">
               {auditResult.frameDetails.map((row, idx) => {
-                const candidate = getCandidate(row.bestCandId);
-                const refTime = getTimestamp(row.refLabel);
+                const candidate = getCandidateForRow(row.bestCandId, row.refLabel);
+                const refTime = typeof row.refMeta?.timestamp === 'number' ? row.refMeta.timestamp : getTimestamp(row.refLabel);
+                const sampleIndex = typeof row.refMeta?.sampleIndex === 'number' ? row.refMeta.sampleIndex : (idx + 1);
+                const refImageUrl = row.refMeta?.url as string | undefined;
+                const candImageUrl = (row.candMeta?.imageUrl || candidate?.imageUrl) as string | undefined;
                 
                 // Calculate Similarity %
                 // Distance 0 = 100%, Distance 1 = 0% (Normalized)
@@ -205,7 +225,35 @@ export const FrameAnalysisTable: React.FC<FrameAnalysisTableProps> = ({ auditRes
 
                 return (
                   <tr key={idx} className="hover:bg-neutral-50 transition-colors group text-xs">
-                    <td className="p-4 font-mono font-bold text-center">{refTime}s</td>
+                    <td className="p-4 font-mono font-bold text-center">
+                      {stats?.thumbnailMode ? `S${sampleIndex}` : `${refTime}s`}
+                    </td>
+
+                    {/* Source A Frame */}
+                    <td className="p-4">
+                      {refImageUrl ? (
+                        <div className="w-32 h-[72px] rounded border border-[var(--border-light)] overflow-hidden bg-black">
+                          <img src={refImageUrl} alt={`Source A frame ${refTime}s`} className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="w-32 h-[72px] rounded border border-[var(--border-light)] bg-neutral-100 flex items-center justify-center font-mono text-[9px] uppercase opacity-50">
+                          No Frame
+                        </div>
+                      )}
+                    </td>
+
+                    {/* Source B Frame */}
+                    <td className="p-4">
+                      {candImageUrl ? (
+                        <div className="w-32 h-[72px] rounded border border-[var(--border-light)] overflow-hidden bg-black">
+                          <img src={candImageUrl} alt={`Source B frame ${refTime}s`} className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="w-32 h-[72px] rounded border border-[var(--border-light)] bg-neutral-100 flex items-center justify-center font-mono text-[9px] uppercase opacity-50">
+                          No Frame
+                        </div>
+                      )}
+                    </td>
                     
                     {/* Hash A */}
                     <td className="p-4 font-mono opacity-60">{refHashDisp}</td>
@@ -245,12 +293,11 @@ export const FrameAnalysisTable: React.FC<FrameAnalysisTableProps> = ({ auditRes
 
         {/* System Note */}
         <div className="bg-amber-50 border border-amber-100 rounded-xl p-6 font-serif text-xs text-amber-900 opacity-80">
-           <h4 className="font-bold mb-2">⚠️ Analyst Note: Source A Sampling Artifacts</h4>
+           <h4 className="font-bold mb-2">⚠️ Analyst Note: Source A Sampling Policy</h4>
            <p>
-             You may notice identical pHashes for timestamps <strong>T+28s</strong> and <strong>T+245s</strong>. 
-             This is an artifact of the YouTube Data API, which provides a limited set of 3 thumbnails per video. 
-             The system cycles these available frames for reference anchors. Source B uses true frame extraction 
-             and provides unique hashes for every timestamp.
+             YouTube Data API exposes only a small fixed thumbnail set per video (commonly 4 anchors), not true arbitrary-time frame extraction.
+             To avoid repeated Source A anchors, this verifier compares only the first <strong>4</strong> sampled timestamps.
+             Source B still uses frame extraction at those exact offsets.
            </p>
         </div>
 

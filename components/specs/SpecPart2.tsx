@@ -197,35 +197,33 @@ export const PART_2 = [
   {
     category: "TECHNICAL AUDIT",
     title: "12.5 The Difference Engine (Audit Scoring)",
-    text: "12.5.1 The Difference Engine (formerly Audit Engine)\nMoving beyond binary 'Truth' verification, Signet 0.3.3 introduces the Difference Engine.\n\nCore Concept: Source A vs Source B\nInstead of verifying a single asset against a registry, the engine calculates the perceptual and temporal distance between a Reference (Source A) and a Candidate (Source B).\n\nDifference Bands (Δ):\n0-30: MINIMAL DIFFERENCE (Match)\n30-120: LOW DIFFERENCE (Consistent)\n120-300: MODERATE DIFFERENCE (Modified)\n>300: HIGH DIFFERENCE (Distinct)",
+    text: "12.5.1 The Difference Engine (Current Deployment)\nSignet's public /verify flow currently runs in YouTube Thumbnail Anchor Mode for cross-device compatibility.\n\nCore Concept: Source A vs Source B (YouTube Playlist Videos)\nUsers select one video from Source A and one from Source B. The engine compares 4 thumbnail anchors (0,1,2,3) at user-defined sampling offsets and computes a perceptual difference score.\n\nDifference Bands (Δ, 0-1000):\n0-30: MINIMAL DIFFERENCE (Match)\n30-120: LOW DIFFERENCE (Consistent)\n120-300: MODERATE DIFFERENCE (Modified)\n>300: HIGH DIFFERENCE (Distinct)",
     content: (
       <div className="space-y-8 animate-in fade-in duration-500">
         <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">12.5 The Difference Engine</h2>
         
         <p className="opacity-80 leading-loose mb-6">
-          To accommodate a decentralized web where "Truth" is relative to the observer, Signet introduces the <strong>Difference Engine</strong>. This module quantifies the <em>distance</em> between two assets (Source A vs Source B) rather than asserting absolute validity.
+          The current public deployment uses a <strong>Thumbnail Anchor Mode</strong> to maximize device/browser compatibility. Instead of direct video-frame decoding, the verifier compares YouTube thumbnail anchors between selected Source A and Source B videos.
         </p>
 
         <div className="p-6 bg-[var(--code-bg)] border border-[var(--border-light)] rounded-lg mb-8">
-           <h4 className="font-mono text-[10px] uppercase font-bold text-[var(--trust-blue)] mb-2">12.5.1 Dual-Hash Fusion Algorithm</h4>
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono opacity-80">
+           <h4 className="font-mono text-[10px] uppercase font-bold text-[var(--trust-blue)] mb-2">12.5.1 Current Scoring Primitive</h4>
+           <div className="grid grid-cols-1 md:grid-cols-1 gap-4 text-xs font-mono opacity-80">
               <div className="p-3 border border-[var(--border-light)] rounded bg-white/5">
-                 <strong>dHash (0.6 weight)</strong><br/>
-                 Tracks gradient structure. Resistant to brightness/contrast shifts.
-              </div>
-              <div className="p-3 border border-[var(--border-light)] rounded bg-white/5">
-                 <strong>pHash (0.4 weight)</strong><br/>
-                 Tracks luminance frequency. Resistant to scaling/compression.
+                 <strong>64-bit DCT pHash (Pairwise by Timestamp)</strong><br/>
+                 For each anchor timestamp, Source A and Source B pHashes are compared by Hamming distance. Distances are normalized to [0,1] and fused into the final Delta score.
               </div>
            </div>
         </div>
 
         <div className="p-6 bg-[var(--code-bg)] border border-[var(--border-light)] rounded-lg mb-8">
            <h4 className="font-mono text-[10px] uppercase font-bold text-[var(--trust-blue)] mb-2">12.5.2 Pairwise Comparison Logic</h4>
-           <p className="text-xs opacity-80 mb-3">The engine allows users to define their own <strong>Reference (Source A)</strong>, such as a YouTube Playlist or original broadcast, against which <strong>Candidates (Source B)</strong> are measured.</p>
+           <p className="text-xs opacity-80 mb-3">The engine compares one selected Source A video and one selected Source B video from YouTube playlist inputs.</p>
            <ul className="list-disc pl-4 text-xs opacity-70 font-mono space-y-1">
-              <li><strong>Dynamic Anchors:</strong> Temporal anchors are generated on-the-fly from Source A's duration.</li>
-              <li><strong>Neutral Scoring:</strong> The system reports <code>Δ (Delta)</code> instead of "Pass/Fail".</li>
+              <li><strong>Anchor Set:</strong> Four thumbnail anchors (<code>0,1,2,3</code>) are used for each selected video.</li>
+              <li><strong>Sampling Controls:</strong> Users can configure offset and interval; the first 4 sampled timestamps are mapped to anchor slots.</li>
+              <li><strong>Output:</strong> The verifier reports <code>Δ (0-1000)</code>, band classification, and anchor match ratio (<code>X/4</code>).</li>
+              <li><strong>Confidence Note:</strong> This mode is explicitly low-confidence versus true frame extraction because it is thumbnail-based.</li>
            </ul>
         </div>
 
