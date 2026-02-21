@@ -197,33 +197,33 @@ export const PART_2 = [
   {
     category: "TECHNICAL AUDIT",
     title: "12.5 The Difference Engine (Audit Scoring)",
-    text: "12.5.1 The Difference Engine (Current Deployment)\nSignet's public /verify flow currently runs in YouTube Thumbnail Anchor Mode for cross-device compatibility.\n\nCore Concept: Source A vs Source B (YouTube Playlist Videos)\nUsers select one video from Source A and one from Source B. The engine compares 4 thumbnail anchors (0,1,2,3) at user-defined sampling offsets and computes a perceptual difference score.\n\nDifference Bands (Δ, 0-1000):\n0-30: MINIMAL DIFFERENCE (Match)\n30-120: LOW DIFFERENCE (Consistent)\n120-300: MODERATE DIFFERENCE (Modified)\n>300: HIGH DIFFERENCE (Distinct)",
+    text: "12.5.1 The Difference Engine (Quick + Deep)\nSignet's /verify flow signs Source A with keyframe metadata at 1 frame/min and verifies Source B in two modes.\n\nCore Concept: Source A vs Source B (YouTube Playlist Videos)\nQuick Checker compares four YouTube thumbnail anchors for speed. Deep Checker samples 2 frames/min and matches each sample against all signed keyframes metadata.\n\nDifference Bands (Δ, 0-1000):\n0-30: MINIMAL DIFFERENCE (Match)\n30-120: LOW DIFFERENCE (Consistent)\n120-300: MODERATE DIFFERENCE (Modified)\n>300: HIGH DIFFERENCE (Distinct)",
     content: (
       <div className="space-y-8 animate-in fade-in duration-500">
         <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">12.5 The Difference Engine</h2>
         
         <p className="opacity-80 leading-loose mb-6">
-          The current public deployment uses a <strong>Thumbnail Anchor Mode</strong> to maximize device/browser compatibility. Instead of direct video-frame decoding, the verifier compares YouTube thumbnail anchors between selected Source A and Source B videos.
+          The current deployment uses a signed keyframe metadata strategy. Source A is sampled at <strong>1 frame/min</strong> to generate pHash keyframes and a local signature record, then Source B is evaluated in either <strong>Quick</strong> or <strong>Deep</strong> mode.
         </p>
 
         <div className="p-6 bg-[var(--code-bg)] border border-[var(--border-light)] rounded-lg mb-8">
-           <h4 className="font-mono text-[10px] uppercase font-bold text-[var(--trust-blue)] mb-2">12.5.1 Current Scoring Primitive</h4>
+           <h4 className="font-mono text-[10px] uppercase font-bold text-[var(--trust-blue)] mb-2">12.5.1 Signing Primitive (Source A)</h4>
            <div className="grid grid-cols-1 md:grid-cols-1 gap-4 text-xs font-mono opacity-80">
               <div className="p-3 border border-[var(--border-light)] rounded bg-white/5">
-                 <strong>64-bit DCT pHash (Pairwise by Timestamp)</strong><br/>
-                 For each anchor timestamp, Source A and Source B pHashes are compared by Hamming distance. Distances are normalized to [0,1] and fused into the final Delta score.
+                 <strong>Keyframes @ 1 Frame/Minute + 64-bit DCT pHash</strong><br/>
+                 Each keyframe stores <code>{`{t_sec, pHash64, dHash64, source, anchorId}`}</code> and is included in a signed manifest block for later verification.
               </div>
            </div>
         </div>
 
         <div className="p-6 bg-[var(--code-bg)] border border-[var(--border-light)] rounded-lg mb-8">
-           <h4 className="font-mono text-[10px] uppercase font-bold text-[var(--trust-blue)] mb-2">12.5.2 Pairwise Comparison Logic</h4>
+           <h4 className="font-mono text-[10px] uppercase font-bold text-[var(--trust-blue)] mb-2">12.5.2 Verification Modes</h4>
            <p className="text-xs opacity-80 mb-3">The engine compares one selected Source A video and one selected Source B video from YouTube playlist inputs.</p>
            <ul className="list-disc pl-4 text-xs opacity-70 font-mono space-y-1">
-              <li><strong>Anchor Set:</strong> Four thumbnail anchors (<code>0,1,2,3</code>) are used for each selected video.</li>
-              <li><strong>Sampling Controls:</strong> Users can configure offset and interval; the first 4 sampled timestamps are mapped to anchor slots.</li>
-              <li><strong>Output:</strong> The verifier reports <code>Δ (0-1000)</code>, band classification, and anchor match ratio (<code>X/4</code>).</li>
-              <li><strong>Confidence Note:</strong> This mode is explicitly low-confidence versus true frame extraction because it is thumbnail-based.</li>
+              <li><strong>Quick Checker:</strong> Uses 4 thumbnail anchors (<code>0,1,2,3</code>) for low-latency audit output.</li>
+              <li><strong>Deep Checker:</strong> Samples at <code>2 frames/min</code>; each sample is matched against all signed Source A keyframes metadata.</li>
+              <li><strong>Output:</strong> Reports <code>Δ (0-1000)</code>, band classification, checker mode, and match ratio.</li>
+              <li><strong>Confidence Note:</strong> YouTube browser mode remains soft-binding based; hard byte-equivalence requires original-file verification outside YouTube transcode.</li>
            </ul>
         </div>
 

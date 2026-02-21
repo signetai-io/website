@@ -235,7 +235,7 @@ export const ManualView: React.FC = () => {
 
       <ManualSection title="10. Difference Engine Metrics">
         <p className="text-lg leading-loose text-[var(--text-body)] opacity-80 font-serif mb-8">
-          The <strong>Performance Summary</strong> in <code>/verify</code> reports deterministic client-side metrics for each comparison run.
+          The <strong>Performance Summary</strong> in <code>/verify</code> reports deterministic client-side metrics for each comparison run, including signed keyframe metadata and checker mode.
         </p>
 
         <div className="overflow-hidden border border-[var(--border-light)] rounded-lg">
@@ -252,6 +252,14 @@ export const ManualView: React.FC = () => {
                     <td className="p-4 opacity-70">Total hashed anchors processed in the run (<code>Source A anchors + Source B anchors</code>).</td>
                  </tr>
                  <tr>
+                    <td className="p-4 font-mono text-[var(--text-header)]">Sign Keyframes</td>
+                    <td className="p-4 opacity-70">Count of Source A keyframes generated at signing profile (<code>1 frame/min</code> baseline).</td>
+                 </tr>
+                 <tr>
+                    <td className="p-4 font-mono text-[var(--text-header)]">Verify Samples</td>
+                    <td className="p-4 opacity-70">Count of Source B samples evaluated by checker mode (<code>Quick=4</code>, <code>Deep≈2/min</code>).</td>
+                 </tr>
+                 <tr>
                     <td className="p-4 font-mono text-[var(--text-header)]">Bytes Processed (Pixel Buffer)</td>
                     <td className="p-4 opacity-70">Client-side pixel bytes consumed by hashing. Current hash canvas is <code>32x32 RGBA</code> = <code>4096 B/frame</code>.</td>
                  </tr>
@@ -262,6 +270,14 @@ export const ManualView: React.FC = () => {
                  <tr>
                     <td className="p-4 font-mono text-[var(--text-header)]">AI Tokens Used</td>
                     <td className="p-4 opacity-70">Tokens consumed by the core compare path. In thumbnail compare mode this is <strong>0</strong> (no AI model call).</td>
+                 </tr>
+                 <tr>
+                    <td className="p-4 font-mono text-[var(--text-header)]">Checker Mode</td>
+                    <td className="p-4 opacity-70">Verification mode used for scoring: <strong>Quick</strong> (4 anchors) or <strong>Deep</strong> (2 samples/min matched to signed keyframes).</td>
+                 </tr>
+                 <tr>
+                    <td className="p-4 font-mono text-[var(--text-header)]">Manifest Hash</td>
+                    <td className="p-4 opacity-70">Digest of signed Source A keyframe metadata used as the verification reference bundle.</td>
                  </tr>
                  <tr>
                     <td className="p-4 font-mono text-[var(--text-header)]">Final Score</td>
@@ -282,7 +298,7 @@ export const ManualView: React.FC = () => {
           <strong className="block mb-2 text-[var(--trust-blue)]">Thumbnail Mode Note</strong>
           <span>
             In YouTube Thumbnail Anchor Mode, labels represent <strong>anchor slots</strong> rather than true decoded video-frame timestamps.
-            Sample rows are shown as <code>S1..S4</code>, and drift metrics such as median shift are reported as <code>N/A</code>.
+            Sample rows are shown as <code>S1..S4</code> (Quick) or dense sample IDs (Deep), and drift metrics such as median shift are reported as <code>N/A</code>.
           </span>
         </div>
       </ManualSection>

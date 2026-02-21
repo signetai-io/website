@@ -41,7 +41,10 @@ export const FrameAnalysisTable: React.FC<FrameAnalysisTableProps> = ({ auditRes
   // Compute Global Stats
   const stats = useMemo(() => {
     if (!auditResult.frameDetails) return null;
-    const thumbnailMode = auditResult.frameDetails.some((row) => row.refMeta?.anchorKind === 'YOUTUBE_THUMBNAIL');
+    const thumbnailMode = auditResult.frameDetails.some((row) => {
+      const k = row.refMeta?.anchorKind;
+      return k === 'YOUTUBE_THUMBNAIL' || k === 'THUMBNAIL_ANCHOR';
+    });
     
     const drifts: number[] = [];
     let matchCount = 0;

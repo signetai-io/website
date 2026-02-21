@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { PersistenceService } from '../services/PersistenceService';
 import { Admonition } from './Admonition';
+import { buildMinuteSamplingTimestamps, generateDualHash } from './scoring';
 
 // --- STREAMING HELPERS ---
 
@@ -45,6 +46,16 @@ const calculateStreamingHash = async (
 };
 
 type Strategy = 'XML_INJECTION' | 'POST_EOF_PDF' | 'UNIVERSAL_TAIL_WRAP';
+type VideoFrameSample = {
+  index: number;
+  t_sec: number;
+  frame_size: string;
+  p_hash_64: string;
+  d_hash_64: string;
+  preview_jpeg_data_url: string;
+  capture_status: 'OK' | 'FAILED';
+  capture_note?: string;
+};
 
 const getStrategy = (mime: string): Strategy => {
   if (mime === 'image/svg+xml') return 'XML_INJECTION';
@@ -61,15 +72,241 @@ export const UniversalSigner: React.FC = () => {
   const [progress, setProgress] = useState(0);
   const [activeTab, setActiveTab] = useState<'VISUAL' | 'HEX'>('VISUAL');
   const [verificationResult, setVerificationResult] = useState<any>(null);
+  const [youtubeDescriptionMeta, setYoutubeDescriptionMeta] = useState<string>('');
+  const [youtubeCommentMeta, setYoutubeCommentMeta] = useState<string>('');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const buildYouTubeMetadataBlocks = (manifest: any) => {
+    const frameSamples = Array.isArray(manifest?.asset?.frame_samples) ? manifest.asset.frame_samples : [];
+    const compactFrames = frameSamples.map((s: any) => ({
+      i: s.index,
+      t: s.t_sec,
+      p: s.p_hash_64,
+      d: s.d_hash_64,
+      st: s.capture_status || 'OK'
+    }));
+
+    const descriptionPayload = {
+      schema: "signet_youtube_v1",
+      signer: manifest?.signature?.signer || "UNKNOWN",
+      anchor: manifest?.signature?.anchor || "UNKNOWN",
+      key: manifest?.signature?.key || "UNKNOWN",
+      signed_at: manifest?.signature?.timestamp || new Date().toISOString(),
+      asset: {
+        filename: manifest?.asset?.filename || "unknown",
+        type: manifest?.asset?.type || "unknown",
+        byte_length: manifest?.asset?.byte_length || 0,
+        hash_algorithm: manifest?.asset?.hash_algorithm || "SHA-256",
+        content_hash: manifest?.asset?.content_hash || ""
+      },
+      sampling: {
+        profile: manifest?.asset?.sampling_profile || null,
+        offset_sec: manifest?.asset?.sampling_offset_sec ?? null,
+        frames_total: compactFrames.length
+      }
+    };
+
+    const commentPayload = {
+      schema: "signet_youtube_v1_frames",
+      filename: manifest?.asset?.filename || "unknown",
+      content_hash: manifest?.asset?.content_hash || "",
+      frame_samples: compactFrames
+    };
+
+    const descriptionBlock = [
+      "[SIGNET_VPR_BLOCK_START]",
+      JSON.stringify(descriptionPayload),
+      "[SIGNET_VPR_BLOCK_END]"
+    ].join("\n");
+
+    const commentBlock = [
+      "[SIGNET_VPR_FRAMES_START]",
+      JSON.stringify(commentPayload),
+      "[SIGNET_VPR_FRAMES_END]"
+    ].join("\n");
+
+    return { descriptionBlock, commentBlock };
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (_e) {
+      // no-op fallback; users can still copy manually from textarea
+    }
+  };
+
+  const extractTailManifestJson = async (targetBlob: Blob): Promise<string> => {
+    const startToken = '%SIGNET_VPR_START';
+    const endToken = '%SIGNET_VPR_END';
+    const maxWindow = Math.min(targetBlob.size, 8 * 1024 * 1024); // 8MB cap
+    let windowSize = 16 * 1024; // Start from 16KB
+    while (windowSize <= maxWindow) {
+      const tailBlob = targetBlob.slice(Math.max(0, targetBlob.size - windowSize), targetBlob.size);
+      const tailText = await tailBlob.text();
+      const end = tailText.lastIndexOf(endToken);
+      const start = tailText.lastIndexOf(startToken);
+      if (start !== -1 && end !== -1 && end > start) {
+        return tailText.substring(start + startToken.length, end).trim();
+      }
+      windowSize *= 2;
+    }
+
+    // Final fallback: if file is smaller than cap, scan full blob.
+    if (targetBlob.size <= maxWindow) {
+      const allText = await targetBlob.text();
+      const end = allText.lastIndexOf(endToken);
+      const start = allText.lastIndexOf(startToken);
+      if (start !== -1 && end !== -1 && end > start) {
+        return allText.substring(start + startToken.length, end).trim();
+      }
+    }
+
+    return "";
+  };
+
+  const extractVideoFrameSamples = async (
+    blob: Blob,
+    onProgress?: (pct: number) => void
+  ): Promise<{ durationSec: number; samples: VideoFrameSample[] }> => {
+    const url = URL.createObjectURL(blob);
+    const video = document.createElement('video');
+    video.src = url;
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = 'metadata';
+
+    const previewW = 160;
+    const previewH = 90;
+    const previewCanvas = document.createElement('canvas');
+    previewCanvas.width = previewW;
+    previewCanvas.height = previewH;
+    const previewCtx = previewCanvas.getContext('2d');
+    if (!previewCtx) {
+      URL.revokeObjectURL(url);
+      return { durationSec: 0, samples: [] };
+    }
+
+    const withTimeout = async <T,>(p: Promise<T>, ms: number, label: string): Promise<T> => {
+      let to: ReturnType<typeof setTimeout> | undefined;
+      const timeoutPromise = new Promise<T>((_, reject) => {
+        to = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+      });
+      try {
+        return await Promise.race([p, timeoutPromise]);
+      } finally {
+        if (to) clearTimeout(to);
+      }
+    };
+
+    const waitLoadedMetadata = async (): Promise<void> => {
+      if (video.readyState >= 1) return;
+      await withTimeout(new Promise<void>((resolve, reject) => {
+        video.onloadedmetadata = () => resolve();
+        video.onerror = () => reject(new Error(video.error?.message || 'Video load error'));
+      }), 15000, 'Video metadata load');
+    };
+
+    const seekTo = async (time: number): Promise<void> => {
+      await withTimeout(new Promise<void>((resolve, reject) => {
+        const onSeeked = () => {
+          cleanup();
+          resolve();
+        };
+        const onError = () => {
+          cleanup();
+          reject(new Error(video.error?.message || 'Video seek error'));
+        };
+        const cleanup = () => {
+          video.removeEventListener('seeked', onSeeked);
+          video.removeEventListener('error', onError);
+        };
+        video.addEventListener('seeked', onSeeked, { once: true });
+        video.addEventListener('error', onError, { once: true });
+        video.currentTime = time;
+      }), 10000, `Seek @ ${time}s`);
+    };
+
+    const waitFrameReady = async (): Promise<void> => {
+      if (typeof video.requestVideoFrameCallback === 'function') {
+        await withTimeout(new Promise<void>((resolve) => {
+          video.requestVideoFrameCallback(() => resolve());
+        }), 3000, 'Video frame decode');
+      } else {
+        await new Promise((resolve) => setTimeout(resolve, 80));
+      }
+    };
+
+    try {
+      await waitLoadedMetadata();
+      const durationSec = Number.isFinite(video.duration) ? Math.max(0, Math.floor(video.duration)) : 0;
+      const sampleOffsetSec = 7;
+      const timestamps = buildMinuteSamplingTimestamps(durationSec, sampleOffsetSec, 60);
+      const maxTime = Math.max(0, (video.duration || 0) - 0.05);
+      const samples: VideoFrameSample[] = [];
+
+      for (let i = 0; i < timestamps.length; i++) {
+        const baseTs = Math.max(0, Math.min(timestamps[i], maxTime));
+        const retryOffsets = [0, 0.25, 1, -0.25, -1, 2, -2];
+        let captured: VideoFrameSample | null = null;
+        let failReason = 'Frame capture failed after retries';
+
+        for (const off of retryOffsets) {
+          const ts = Math.max(0, Math.min(baseTs + off, maxTime));
+          try {
+            await seekTo(ts);
+            await waitFrameReady();
+            previewCtx.drawImage(video, 0, 0, previewW, previewH);
+            const previewUrl = previewCanvas.toDataURL('image/jpeg', 0.78);
+            const hashes = await generateDualHash(previewUrl);
+            if (!hashes) {
+              failReason = 'Hash generation failed';
+              continue;
+            }
+            captured = {
+              index: i + 1,
+              t_sec: baseTs,
+              frame_size: hashes.originalSize || `${video.videoWidth}x${video.videoHeight}`,
+              p_hash_64: hashes.pHash,
+              d_hash_64: hashes.dHash,
+              preview_jpeg_data_url: previewUrl,
+              capture_status: 'OK'
+            };
+            break;
+          } catch (e: any) {
+            failReason = e?.message || 'Unknown frame extraction error';
+          }
+        }
+
+        if (captured) {
+          samples.push(captured);
+        } else {
+          samples.push({
+            index: i + 1,
+            t_sec: baseTs,
+            frame_size: 'N/A',
+            p_hash_64: '',
+            d_hash_64: '',
+            preview_jpeg_data_url: '',
+            capture_status: 'FAILED',
+            capture_note: failReason
+          });
+        }
+        if (onProgress) onProgress(Math.round(((i + 1) / Math.max(1, timestamps.length)) * 100));
+      }
+
+      return { durationSec: Math.max(0, durationSec), samples };
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  };
 
   const verifyBlob = async (targetBlob: Blob, svgStr: string | null) => {
     setIsProcessing(true);
     setProgress(0);
     setVerificationResult(null);
     
-    const TAIL_SCAN_SIZE = 10240; 
     let jsonStr = "";
     let strategy: Strategy = 'UNIVERSAL_TAIL_WRAP';
 
@@ -78,17 +315,7 @@ export const UniversalSigner: React.FC = () => {
         const match = svgStr.match(/<signet:manifest>([\s\S]*?)<\/signet:manifest>/);
         if (match) jsonStr = match[1];
     } else {
-        // Efficiently slice the tail without reading the whole file
-        const tailBlob = targetBlob.slice(Math.max(0, targetBlob.size - TAIL_SCAN_SIZE), targetBlob.size);
-        const tailText = await tailBlob.text();
-        
-        if (tailText.includes('%SIGNET_VPR_START')) {
-            const start = tailText.indexOf('%SIGNET_VPR_START');
-            const end = tailText.indexOf('%SIGNET_VPR_END');
-            if (start !== -1 && end !== -1) {
-                jsonStr = tailText.substring(start + '%SIGNET_VPR_START'.length, end).trim();
-            }
-        }
+        jsonStr = await extractTailManifestJson(targetBlob);
     }
 
     if (!jsonStr) {
@@ -123,6 +350,9 @@ export const UniversalSigner: React.FC = () => {
             hash: manifest.asset.content_hash,
             fileName: manifest.asset.filename,
             strategy: manifest.strategy,
+            samplingProfile: manifest.asset.sampling_profile,
+            samplingOffsetSec: manifest.asset.sampling_offset_sec,
+            frameSamples: Array.isArray(manifest.asset.frame_samples) ? manifest.asset.frame_samples : [],
             msg: match ? `Authentic. ${manifest.asset.type} integrity verified.` : "TAMPERED. Binary hash mismatch."
         });
 
@@ -145,7 +375,6 @@ export const UniversalSigner: React.FC = () => {
 
       // Auto-Detect Existing Signature
       const strategy = getStrategy(f.type);
-      const TAIL_SCAN_SIZE = 10240; 
       let isSigned = false;
       let svgContent = null;
 
@@ -156,10 +385,9 @@ export const UniversalSigner: React.FC = () => {
               svgContent = text;
           }
       } else {
-          // Check tail for binary formats
-          const tail = f.slice(Math.max(0, f.size - TAIL_SCAN_SIZE), f.size);
-          const text = await tail.text();
-          if (text.includes('%SIGNET_VPR_START')) isSigned = true;
+          // Check tail for binary formats with adaptive window.
+          const json = await extractTailManifestJson(f);
+          if (json) isSigned = true;
       }
 
       if (isSigned) {
@@ -176,83 +404,106 @@ export const UniversalSigner: React.FC = () => {
     setIsProcessing(true);
     setVerificationResult(null);
     setProgress(0);
-
-    let vault = await PersistenceService.getActiveVault();
-    if (!vault) {
-        vault = {
-            identity: 'DEMO_USER',
-            anchor: 'signetai.io:demo',
-            publicKey: 'ed25519:demo_key_7f8a...',
-            mnemonic: '',
-            timestamp: Date.now(),
-            type: 'CONSUMER'
-        };
-    }
-
-    const strategy = getStrategy(file.type);
-    
-    // 1. Calculate Content Hash (Streaming)
-    let contentHash = "";
-    
-    if (strategy === 'XML_INJECTION') {
-        const text = await file.text();
-        const encoder = new TextEncoder();
-        const data = encoder.encode(text);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        contentHash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
-        setProgress(100);
-    } else {
-        contentHash = await calculateStreamingHash(file, setProgress);
-    }
-
-    // 2. Create Manifest
-    const manifest = {
-      "@context": "https://signetai.io/contexts/vpr-v1.jsonld",
-      "type": "org.signetai.media_provenance",
-      "version": "0.3.1",
-      "strategy": strategy,
-      "hashing_mode": strategy === 'XML_INJECTION' ? 'SHA256_FULL' : 'SHA256_BLOCK_CHAINED',
-      "asset": {
-        "type": file.type,
-        "hash_algorithm": "SHA-256",
-        "content_hash": contentHash,
-        "filename": file.name,
-        "byte_length": file.size
-      },
-      "signature": {
-        "signer": vault.identity,
-        "anchor": vault.anchor,
-        "key": vault.publicKey,
-        "timestamp": new Date().toISOString()
+    try {
+      let vault = await PersistenceService.getActiveVault();
+      if (!vault) {
+          vault = {
+              identity: 'DEMO_USER',
+              anchor: 'signetai.io:demo',
+              publicKey: 'ed25519:demo_key_7f8a...',
+              mnemonic: '',
+              timestamp: Date.now(),
+              type: 'CONSUMER'
+          };
       }
-    };
 
-    const manifestStr = JSON.stringify(manifest, null, 2);
+      const strategy = getStrategy(file.type);
+      
+      // 1. Calculate Content Hash (Streaming)
+      let contentHash = "";
+      
+      if (strategy === 'XML_INJECTION') {
+          const text = await file.text();
+          const encoder = new TextEncoder();
+          const data = encoder.encode(text);
+          const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+          contentHash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+          setProgress(100);
+      } else {
+          contentHash = await calculateStreamingHash(file, setProgress);
+      }
 
-    if (strategy === 'XML_INJECTION') {
-        const text = await file.text();
-        const uniqueId = `signet-${Date.now()}`;
-        const metadataBlock = `
+      let videoSamples: VideoFrameSample[] = [];
+      let signedDurationSec: number | undefined = undefined;
+      if (file.type.includes('video')) {
+        setProgress(0);
+        const sampled = await extractVideoFrameSamples(file, setProgress);
+        videoSamples = sampled.samples;
+        signedDurationSec = sampled.durationSec;
+      }
+
+      // 2. Create Manifest
+      const manifest = {
+        "@context": "https://signetai.io/contexts/vpr-v1.jsonld",
+        "type": "org.signetai.media_provenance",
+        "version": "0.3.1",
+        "strategy": strategy,
+        "hashing_mode": strategy === 'XML_INJECTION' ? 'SHA256_FULL' : 'SHA256_BLOCK_CHAINED',
+        "asset": {
+          "type": file.type,
+          "hash_algorithm": "SHA-256",
+          "content_hash": contentHash,
+          "filename": file.name,
+          "byte_length": file.size,
+          ...(typeof signedDurationSec === 'number' ? { "duration_sec": signedDurationSec } : {}),
+          ...(file.type.includes('video') ? { "sampling_profile": "1_FRAME_PER_MINUTE" } : {}),
+          ...(file.type.includes('video') ? { "sampling_offset_sec": 7 } : {}),
+          ...(videoSamples.length > 0 ? { "frame_samples": videoSamples } : {})
+        },
+        "signature": {
+          "signer": vault.identity,
+          "anchor": vault.anchor,
+          "key": vault.publicKey,
+          "timestamp": new Date().toISOString()
+        }
+      };
+
+      const manifestStr = JSON.stringify(manifest, null, 2);
+      const ytBlocks = buildYouTubeMetadataBlocks(manifest);
+      setYoutubeDescriptionMeta(ytBlocks.descriptionBlock);
+      setYoutubeCommentMeta(ytBlocks.commentBlock);
+
+      if (strategy === 'XML_INJECTION') {
+          const text = await file.text();
+          const uniqueId = `signet-${Date.now()}`;
+          const metadataBlock = `
 <metadata id="${uniqueId}" xmlns:signet="https://signetai.io/schema">
 <signet:manifest>${manifestStr}</signet:manifest>
 </metadata>`;
-        const closingTagIndex = text.lastIndexOf('</svg>');
-        const newSvg = text.slice(0, closingTagIndex) + metadataBlock + '\n' + text.slice(closingTagIndex);
-        setSignedSvgString(newSvg);
-        setSignedBlob(new Blob([newSvg], { type: 'image/svg+xml' }));
+          const closingTagIndex = text.lastIndexOf('</svg>');
+          const newSvg = text.slice(0, closingTagIndex) + metadataBlock + '\n' + text.slice(closingTagIndex);
+          setSignedSvgString(newSvg);
+          const outBlob = new Blob([newSvg], { type: 'image/svg+xml' });
+          setSignedBlob(outBlob);
+          await verifyBlob(outBlob, newSvg);
 
-    } else {
-        // UNIVERSAL TAIL WRAP (Zero-Copy)
-        const wrapperStart = `\n%SIGNET_VPR_START\n`;
-        const wrapperEnd = `\n%SIGNET_VPR_END`;
-        const injection = `${wrapperStart}${manifestStr}${wrapperEnd}`;
-        
-        // Combine pointers, not data
-        const finalBlob = new Blob([file, injection], { type: file.type });
-        setSignedBlob(finalBlob);
+      } else {
+          // UNIVERSAL TAIL WRAP (Zero-Copy)
+          const wrapperStart = `\n%SIGNET_VPR_START\n`;
+          const wrapperEnd = `\n%SIGNET_VPR_END`;
+          const injection = `${wrapperStart}${manifestStr}${wrapperEnd}`;
+          
+          // Combine pointers, not data
+          const finalBlob = new Blob([file, injection], { type: file.type });
+          setSignedBlob(finalBlob);
+          await verifyBlob(finalBlob, null);
+      }
+    } catch (e: any) {
+      console.error(e);
+      setVerificationResult({ success: false, msg: `Sign Error: ${e?.message || 'Unknown error'}` });
+    } finally {
+      setIsProcessing(false);
     }
-    
-    setIsProcessing(false);
   };
 
   const downloadSigned = () => {
@@ -283,6 +534,9 @@ export const UniversalSigner: React.FC = () => {
         <p className="text-xl opacity-60 max-w-2xl font-serif italic">
           Signet uses <strong>Block-Chained Hashing</strong> to sign gigabyte-scale assets (4K Video, RAW Audio) directly in the browser without memory crashes.
         </p>
+        <p className="text-sm opacity-70 max-w-3xl font-mono">
+          Local MP4 signing is supported: select any <code>.mp4</code> from disk, sign it with UTW metadata, then download <code>signet_*</code> output.
+        </p>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-[600px]">
@@ -295,6 +549,7 @@ export const UniversalSigner: React.FC = () => {
                   type="file" 
                   ref={fileInputRef} 
                   onChange={handleFileUpload} 
+                  accept=".mp4,.mov,.wav,.mp3,.pdf,.png,.jpg,.jpeg,.webp,.svg,image/*,video/*,audio/*,application/pdf"
                   className="hidden" 
                 />
                 <button 
@@ -456,9 +711,95 @@ export const UniversalSigner: React.FC = () => {
                             <p className="font-mono text-[9px] uppercase font-bold opacity-40 text-[var(--text-body)]">Verified Hash (Streamed)</p>
                             <p className="font-mono text-[10px] font-bold break-all text-[var(--text-body)]">{verificationResult.hash}</p>
                         </div>
+                        {verificationResult.samplingProfile && (
+                            <div className="bg-[var(--bg-standard)] p-3 rounded border border-[var(--border-light)] col-span-2">
+                                <p className="font-mono text-[9px] uppercase font-bold opacity-40 text-[var(--text-body)]">Video Sampling Profile</p>
+                                <p className="font-mono text-[10px] font-bold text-[var(--text-body)]">{verificationResult.samplingProfile}</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+                {Array.isArray(verificationResult.frameSamples) && verificationResult.frameSamples.length > 0 && (
+                    <div className="pt-4">
+                        <h5 className="font-mono text-[10px] uppercase font-bold opacity-60 mb-3 text-[var(--text-body)]">
+                            Frame Samples (1 Frame/Minute)
+                        </h5>
+                        <div className="overflow-x-auto border border-[var(--border-light)] rounded">
+                            <table className="min-w-[900px] w-full text-left text-[10px] font-mono">
+                                <thead className="bg-[var(--table-header)] border-b border-[var(--border-light)]">
+                                    <tr>
+                                        <th className="p-2">#</th>
+                                        <th className="p-2">T(s)</th>
+                                        <th className="p-2">Status</th>
+                                        <th className="p-2">Frame</th>
+                                        <th className="p-2">Frame Size</th>
+                                        <th className="p-2">pHash64</th>
+                                        <th className="p-2">dHash64</th>
+                                        <th className="p-2">Note</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-[var(--border-light)] bg-white/70">
+                                    {verificationResult.frameSamples.map((s: any, i: number) => (
+                                        <tr key={`${s.index || i}-${s.t_sec || i}`}>
+                                            <td className="p-2">{s.index || i + 1}</td>
+                                            <td className="p-2">{typeof s.t_sec === 'number' ? s.t_sec : 0}</td>
+                                            <td className="p-2">
+                                                <span className={s.capture_status === 'FAILED' ? 'text-red-600 font-bold' : 'text-emerald-600 font-bold'}>
+                                                    {s.capture_status || 'OK'}
+                                                </span>
+                                            </td>
+                                            <td className="p-2">
+                                                {s.preview_jpeg_data_url ? (
+                                                    <img src={s.preview_jpeg_data_url} className="w-24 h-14 object-cover rounded border border-[var(--border-light)]" />
+                                                ) : (
+                                                    <span className="opacity-40">N/A</span>
+                                                )}
+                                            </td>
+                                            <td className="p-2">{s.frame_size || 'N/A'}</td>
+                                            <td className="p-2 break-all">{s.p_hash_64 || 'N/A'}</td>
+                                            <td className="p-2 break-all">{s.d_hash_64 || 'N/A'}</td>
+                                            <td className="p-2">{s.capture_note || '-'}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 )}
             </div>
+        </div>
+      )}
+
+      {(youtubeDescriptionMeta || youtubeCommentMeta) && (
+        <div className="p-6 border border-[var(--border-light)] rounded-lg bg-[var(--bg-standard)] space-y-4">
+          <h4 className="font-serif text-xl font-bold italic text-[var(--text-header)]">YouTube Metadata (Copy & Paste)</h4>
+          <p className="text-xs opacity-70 font-mono">
+            Paste Description block into YouTube video description, and Frames block into pinned comment.
+          </p>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="font-mono text-[10px] uppercase font-bold opacity-60">Description Block</label>
+              <button onClick={() => copyToClipboard(youtubeDescriptionMeta)} className="px-2 py-1 text-[9px] font-mono uppercase border border-[var(--border-light)] rounded hover:bg-[var(--bg-sidebar)]">Copy</button>
+            </div>
+            <textarea
+              readOnly
+              value={youtubeDescriptionMeta}
+              className="w-full h-32 p-2 font-mono text-[10px] border border-[var(--border-light)] rounded bg-[var(--code-bg)] text-[var(--text-body)]"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="font-mono text-[10px] uppercase font-bold opacity-60">Pinned Comment Block</label>
+              <button onClick={() => copyToClipboard(youtubeCommentMeta)} className="px-2 py-1 text-[9px] font-mono uppercase border border-[var(--border-light)] rounded hover:bg-[var(--bg-sidebar)]">Copy</button>
+            </div>
+            <textarea
+              readOnly
+              value={youtubeCommentMeta}
+              className="w-full h-40 p-2 font-mono text-[10px] border border-[var(--border-light)] rounded bg-[var(--code-bg)] text-[var(--text-body)]"
+            />
+          </div>
         </div>
       )}
     </div>

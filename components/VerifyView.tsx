@@ -6,12 +6,15 @@ import { GOOGLE_GEMINI_KEY } from '../private_keys';
 import { 
   generateDualHash, 
   computePairwiseFrameAuditScore,
+  computeDeepManifestAuditScore,
+  createSignedVideoManifest,
   extractVideoFrames,
   buildMinuteSamplingTimestamps,
   parseIso8601DurationToSeconds,
   AuditResult, 
   FrameCandidate, 
-  ReferenceFrame 
+  ReferenceFrame,
+  SignedVideoManifest
 } from './scoring';
 
 import { FrameAnalysisTable } from './FrameAnalysisTable';
@@ -23,6 +26,10 @@ export const VerifyView: React.FC = () => {
     compareMs: number;
     aiTokensUsed: number;
     formula: string;
+    checkerMode: 'QUICK' | 'DEEP';
+    signKeyframes: number;
+    verifySamples: number;
+    manifestHash?: string;
   };
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -53,6 +60,7 @@ export const VerifyView: React.FC = () => {
   const [referenceInput, setReferenceInput] = useState('https://www.youtube.com/playlist?list=PLjnwycFexttARFrzatvBjzL0BEH-78Bft'); // Default Source A
   const [sampleOffsetSec, setSampleOffsetSec] = useState(7);
   const [sampleIntervalSec, setSampleIntervalSec] = useState(60);
+  const [checkerMode, setCheckerMode] = useState<'QUICK' | 'DEEP'>('QUICK');
   const [autoMode, setAutoMode] = useState(true);
   const [autoBatchMode, setAutoBatchMode] = useState(false);
   const [showAdvancedControls, setShowAdvancedControls] = useState(false);
@@ -72,6 +80,7 @@ export const VerifyView: React.FC = () => {
   // Audit Engine State
   const [auditResult, setAuditResult] = useState<AuditResult | null>(null);
   const [auditCandidates, setAuditCandidates] = useState<FrameCandidate[]>([]);
+  const [signedManifest, setSignedManifest] = useState<SignedVideoManifest | null>(null);
   const [perfMetrics, setPerfMetrics] = useState<PerfMetrics | null>(null);
   const [visualEvidence, setVisualEvidence] = useState<{ refUrl: string, candUrl: string, label: string, isFrame: boolean } | null>(null);
   
@@ -366,6 +375,7 @@ export const VerifyView: React.FC = () => {
       setVerifyProgress(0);
       setVerifyStage('Initializing audit...');
       setAuditResult(null);
+      setSignedManifest(null);
       setPerfMetrics(null);
       setVisualEvidence(null);
       setVerificationStatus('VERIFYING');
@@ -375,7 +385,7 @@ export const VerifyView: React.FC = () => {
       const compareStartedAt = performance.now();
 
       try {
-          // 1) Build sampling timestamps: start at +7s, then every 60s
+          // 1) Build signing and verification sampling plans.
           const apiKey = getApiKey();
           let durationSec = 420; // 7 min fallback
           try {
@@ -390,13 +400,16 @@ export const VerifyView: React.FC = () => {
 
           const safeOffset = Math.max(0, Math.floor(sampleOffsetSec || 0));
           const safeInterval = Math.max(1, Math.floor(sampleIntervalSec || 1));
-          const rawTimestamps = buildMinuteSamplingTimestamps(durationSec, safeOffset, safeInterval);
-          const MAX_COMPARE_FRAMES = 4;
-          const targetTimestamps = rawTimestamps.slice(0, MAX_COMPARE_FRAMES);
+          const signingTimestamps = buildMinuteSamplingTimestamps(durationSec, safeOffset, safeInterval);
+          const deepVerifyInterval = Math.max(1, Math.floor(safeInterval / 2)); // 2 frames/min when interval=60
+          const deepVerifyTimestamps = buildMinuteSamplingTimestamps(durationSec, safeOffset, deepVerifyInterval);
+          const quickTargetTimestamps = signingTimestamps.slice(0, 4);
+          const targetTimestamps = checkerMode === 'DEEP' ? deepVerifyTimestamps : quickTargetTimestamps;
           setVerifyProgress(8);
           setVerifyStage('Built timestamp plan');
-          addLog(`Sampling plan: offset=${safeOffset}s, interval=${safeInterval}s, frames=${targetTimestamps.length}/${rawTimestamps.length}, duration=${durationSec}s`);
-          addLog(`Policy: Compare first ${MAX_COMPARE_FRAMES} frames due to YouTube thumbnail anchor limits.`);
+          addLog(`Signing plan: offset=${safeOffset}s, interval=${safeInterval}s, keyframes=${signingTimestamps.length}, duration=${durationSec}s`);
+          addLog(`Verify plan (${checkerMode}): samples=${targetTimestamps.length}, interval=${checkerMode === 'DEEP' ? deepVerifyInterval : safeInterval}s`);
+          addLog(`Policy: YouTube mode uses 4 thumbnail anchors (0,1,2,3). Deep checker scores dense samples against signed keyframe metadata.`);
 
           // 2) Generate Source A frame hashes (recorded-clip mode or thumbnail mode).
           const referenceFrames: ReferenceFrame[] = [];
@@ -411,7 +424,7 @@ export const VerifyView: React.FC = () => {
 
           if (useRecordedClips && recordedClipA) {
               const aDuration = await getVideoDuration(recordedClipA);
-              const aTimestamps = buildMinuteSamplingTimestamps(Math.max(1, Math.floor(aDuration)), Math.min(safeOffset, Math.max(0, Math.floor(aDuration - 1))), safeInterval).slice(0, targetTimestamps.length);
+              const aTimestamps = buildMinuteSamplingTimestamps(Math.max(1, Math.floor(aDuration)), Math.min(safeOffset, Math.max(0, Math.floor(aDuration - 1))), safeInterval);
               const aUrl = URL.createObjectURL(recordedClipA);
               const aFrames = await extractVideoFrames(aUrl, aTimestamps, addLog);
               URL.revokeObjectURL(aUrl);
@@ -429,19 +442,19 @@ export const VerifyView: React.FC = () => {
                           timestamp: f.timestamp || aTimestamps[i] || 0
                       }
                   });
-                  const p = 12 + Math.round(((i + 1) / Math.max(1, targetTimestamps.length)) * 28);
+                  const p = 12 + Math.round(((i + 1) / Math.max(1, Math.min(aFrames.length, aTimestamps.length))) * 28);
                   setVerifyProgress(Math.min(40, p));
-                  setVerifyStage(`Source A recorded anchors ${i + 1}/${targetTimestamps.length}`);
+                  setVerifyStage(`Source A recorded keyframes ${i + 1}/${Math.max(1, Math.min(aFrames.length, aTimestamps.length))}`);
               }
           } else {
-              for (let i = 0; i < targetTimestamps.length; i++) {
-                  const cursor = targetTimestamps[i];
+              for (let i = 0; i < signingTimestamps.length; i++) {
+                  const cursor = signingTimestamps[i];
                   const ytAssetId = i % 4; // YouTube key thumbnails: 0,1,2,3
-              const thumbUrl = `https://img.youtube.com/vi/${sourceAId}/${ytAssetId}.jpg`;
+                  const thumbUrl = `https://img.youtube.com/vi/${sourceAId}/${ytAssetId}.jpg`;
                   const hashes = await generateDualHash(thumbUrl, addLog);
                   if (hashes) {
                       referenceFrames.push({ 
-                          label: `Thumb ${ytAssetId} (Sample ${i + 1})`, 
+                          label: `KF${i + 1} (Thumb ${ytAssetId})`, 
                           hashes, 
                           weight: 1.0, 
                           meta: { 
@@ -451,18 +464,29 @@ export const VerifyView: React.FC = () => {
                               videoId: sourceAId,
                               timestamp: cursor,
                               sampleIndex: i + 1,
-                              anchorKind: 'YOUTUBE_THUMBNAIL'
+                              anchorKind: 'YOUTUBE_THUMBNAIL',
+                              anchorId: ytAssetId
                           } 
                       });
-                      addLog(`Anchor [Sample ${i + 1} -> Thumb ${ytAssetId}; requested offset T+${cursor}s]: ${hashes.originalSize} (${hashes.byteSize}B) | pHash: ${hashes.pHash.substring(0,8)}...`);
+                      addLog(`Keyframe [KF${i + 1} -> Thumb ${ytAssetId}]: ${hashes.originalSize} (${hashes.byteSize}B) | pHash: ${hashes.pHash.substring(0,8)}...`);
                   } else {
-                      addLog(`Anchor [T+${cursor}s]: Failed to hash.`);
+                      addLog(`Keyframe [KF${i + 1}]: Failed to hash.`);
                   }
-                  const p = 12 + Math.round(((i + 1) / Math.max(1, targetTimestamps.length)) * 28);
+                  const p = 12 + Math.round(((i + 1) / Math.max(1, signingTimestamps.length)) * 28);
                   setVerifyProgress(Math.min(40, p));
-                  setVerifyStage(`Source A anchors ${i + 1}/${targetTimestamps.length}`);
+                  setVerifyStage(`Source A keyframes ${i + 1}/${signingTimestamps.length}`);
               }
           }
+          if (referenceFrames.length === 0) throw new Error("Failed to build Source A keyframes.");
+          const localManifest = createSignedVideoManifest(referenceFrames, {
+              sourceVideoId: sourceAId,
+              durationSec,
+              offsetSec: safeOffset,
+              intervalSec: safeInterval,
+              mode: useRecordedClips ? 'RECORDED_CLIP' : 'YOUTUBE_THUMBNAIL'
+          });
+          setSignedManifest(localManifest);
+          addLog(`Signed keyframe metadata generated: keyframes=${localManifest.keyframes.length}, hash=${localManifest.signature.manifestHash}`);
           const uniqueRefHashes = new Set(referenceFrames.map((r) => r.hashes.pHash)).size;
           if (uniqueRefHashes <= 1) {
               addLog("Warning: Source A reference hashes are highly repetitive. This can weaken comparison confidence.");
@@ -478,7 +502,7 @@ export const VerifyView: React.FC = () => {
           const candidates: FrameCandidate[] = [];
           if (useRecordedClips && recordedClipB) {
               const bDuration = await getVideoDuration(recordedClipB);
-              const bTimestamps = buildMinuteSamplingTimestamps(Math.max(1, Math.floor(bDuration)), Math.min(safeOffset, Math.max(0, Math.floor(bDuration - 1))), safeInterval).slice(0, targetTimestamps.length);
+              const bTimestamps = buildMinuteSamplingTimestamps(Math.max(1, Math.floor(bDuration)), Math.min(safeOffset, Math.max(0, Math.floor(bDuration - 1))), checkerMode === 'DEEP' ? deepVerifyInterval : safeInterval).slice(0, targetTimestamps.length);
               const bUrl = URL.createObjectURL(recordedClipB);
               const bFrames = await extractVideoFrames(bUrl, bTimestamps, addLog);
               URL.revokeObjectURL(bUrl);
@@ -497,28 +521,31 @@ export const VerifyView: React.FC = () => {
               for (let i = 0; i < targetTimestamps.length; i++) {
                   const ts = targetTimestamps[i];
                   const ytAssetId = i % 4;
-              const thumbUrl = `https://img.youtube.com/vi/${sourceBId}/${ytAssetId}.jpg`;
+                  const thumbUrl = `https://img.youtube.com/vi/${sourceBId}/${ytAssetId}.jpg`;
                   const bHashes = await generateDualHash(thumbUrl, addLog);
                   if (!bHashes) continue;
                   candidates.push({
-                  id: `thumb_${sourceBId}_${ts}`,
+                      id: `thumb_${sourceBId}_s${i + 1}`,
                       timestamp: ts,
                       hashes: bHashes,
                       imageUrl: thumbUrl
                   });
-                  addLog(`Source B Anchor [Sample ${i + 1} -> Thumb ${ytAssetId}; requested offset T+${ts}s]: ${bHashes.originalSize} (${bHashes.byteSize}B) | pHash: ${bHashes.pHash.substring(0,8)}...`);
+                  addLog(`Source B Sample [S${i + 1} -> Thumb ${ytAssetId}]: ${bHashes.originalSize} (${bHashes.byteSize}B) | pHash: ${bHashes.pHash.substring(0,8)}...`);
                   const p = 46 + Math.round(((i + 1) / Math.max(1, targetTimestamps.length)) * 26);
                   setVerifyProgress(Math.min(72, p));
-                  setVerifyStage(`Source B anchors ${i + 1}/${targetTimestamps.length}`);
+                  setVerifyStage(`Source B samples ${i + 1}/${targetTimestamps.length}`);
               }
           }
           if (candidates.length === 0) throw new Error("Failed to hash Source B thumbnails.");
-          addLog(useRecordedClips ? `Source B Mode: client-recorded clip comparison.` : `Source B Mode: YouTube thumbnail comparison.`);
+          addLog(useRecordedClips ? `Source B Mode: client-recorded clip comparison.` : `Source B Mode: YouTube thumbnail sampling.`);
 
-          // 4) Strict pairwise scoring at same timestamps
+          // 4) Score according to checker mode.
           setVerifyProgress(82);
-          setVerifyStage('Computing pairwise score');
-          const result = computePairwiseFrameAuditScore(referenceFrames, candidates, targetTimestamps, { matchingWindowSec: 0 });
+          setVerifyStage(`Computing ${checkerMode.toLowerCase()} score`);
+          const quickRefs = referenceFrames.slice(0, 4);
+          const result = checkerMode === 'DEEP'
+              ? computeDeepManifestAuditScore(localManifest, candidates)
+              : computePairwiseFrameAuditScore(quickRefs, candidates, targetTimestamps.slice(0, quickRefs.length), { matchingWindowSec: 0 });
           
           if (result.frameDetails) {
              result.frameDetails.forEach(fd => {
@@ -544,7 +571,11 @@ export const VerifyView: React.FC = () => {
               bytesProcessed,
               compareMs,
               aiTokensUsed: 0,
-              formula
+              formula,
+              checkerMode,
+              signKeyframes: referenceFrames.length,
+              verifySamples: candidates.length,
+              manifestHash: localManifest.signature.manifestHash
           });
           setVerifyProgress(96);
           setVerifyStage('Rendering report');
@@ -679,7 +710,7 @@ export const VerifyView: React.FC = () => {
       if (autoBatchMode) {
           if (sourceAItems.length === 0 || folderContents.length === 0) return;
           const count = Math.min(sourceAItems.length, folderContents.length);
-          const key = `batch:${count}:${sourceAItems[0]?.id || ''}:${folderContents[0]?.id || ''}:${sampleOffsetSec}:${sampleIntervalSec}`;
+          const key = `batch:${count}:${sourceAItems[0]?.id || ''}:${folderContents[0]?.id || ''}:${sampleOffsetSec}:${sampleIntervalSec}:${checkerMode}`;
           if (lastAutoRunKeyRef.current === key) return;
           lastAutoRunKeyRef.current = key;
           const t = setTimeout(() => { executeBatchPlaylistAudit(); }, 1200);
@@ -689,7 +720,7 @@ export const VerifyView: React.FC = () => {
       const autoA = selectedSourceA || sourceAItems[0]?.id;
       const autoB = selectedSourceB || folderContents[0]?.id;
       if (!autoA || !autoB) return;
-      const key = `pair:${autoA}:${autoB}:${sampleOffsetSec}:${sampleIntervalSec}:${useRecordedClips ? 'rec' : 'thumb'}`;
+      const key = `pair:${autoA}:${autoB}:${sampleOffsetSec}:${sampleIntervalSec}:${checkerMode}:${useRecordedClips ? 'rec' : 'thumb'}`;
       if (lastAutoRunKeyRef.current === key) return;
       lastAutoRunKeyRef.current = key;
       const t = setTimeout(() => { executePairAudit(autoA, autoB); }, 1200);
@@ -703,6 +734,7 @@ export const VerifyView: React.FC = () => {
       folderContents,
       sampleOffsetSec,
       sampleIntervalSec,
+      checkerMode,
       isVerifying,
       capturePermissionEnabled,
       capturePermissionGranted,
@@ -769,6 +801,11 @@ export const VerifyView: React.FC = () => {
                        <p className="font-mono text-[10px] opacity-60 uppercase tracking-widest">
                            Confidence: {(auditResult.confidence * 100).toFixed(1)}%
                        </p>
+                       {perfMetrics && (
+                         <p className="font-mono text-[10px] opacity-60 uppercase tracking-widest">
+                           Checker: {perfMetrics.checkerMode}
+                         </p>
+                       )}
                    </div>
                </div>
 
@@ -801,6 +838,13 @@ export const VerifyView: React.FC = () => {
                <div className="p-3 border-l-2 border-[var(--trust-blue)] bg-[var(--admonition-bg)] text-[10px] opacity-80 leading-relaxed font-serif italic">
                    Comparison: Source A [{selectedSourceA}] vs Source B [{folderContents.find(f=>f.id===selectedSourceB)?.name.substring(0,15)}...]
                </div>
+               {signedManifest && (
+                 <div className="p-3 border border-[var(--border-light)] rounded bg-white/60 text-[10px] font-mono space-y-1">
+                   <div className="uppercase opacity-60">Signed Metadata Snapshot</div>
+                   <div>schema={signedManifest.schemaVersion} | keyframes={signedManifest.keyframes.length} | profile={signedManifest.sampling.signProfile}</div>
+                   <div>signature={signedManifest.signature.algorithm} ({signedManifest.signature.status})</div>
+                 </div>
+               )}
 
                {perfMetrics && (
                  <div className="border border-[var(--border-light)] rounded bg-white/60 p-3">
@@ -808,25 +852,41 @@ export const VerifyView: React.FC = () => {
                    <table className="w-full text-[10px] font-mono">
                      <tbody>
                        <tr className="border-b border-[var(--border-light)]">
-                         <td className="py-1 pr-2 opacity-60">Frames Read</td>
-                         <td className="py-1 font-bold text-right">{perfMetrics.framesRead}</td>
-                       </tr>
-                       <tr className="border-b border-[var(--border-light)]">
-                         <td className="py-1 pr-2 opacity-60">Bytes Processed (Pixel Buffer)</td>
-                         <td className="py-1 font-bold text-right">{perfMetrics.bytesProcessed.toLocaleString()} B</td>
-                       </tr>
+                       <td className="py-1 pr-2 opacity-60">Frames Read</td>
+                        <td className="py-1 font-bold text-right">{perfMetrics.framesRead}</td>
+                      </tr>
+                      <tr className="border-b border-[var(--border-light)]">
+                        <td className="py-1 pr-2 opacity-60">Sign Keyframes</td>
+                        <td className="py-1 font-bold text-right">{perfMetrics.signKeyframes}</td>
+                      </tr>
+                      <tr className="border-b border-[var(--border-light)]">
+                        <td className="py-1 pr-2 opacity-60">Verify Samples</td>
+                        <td className="py-1 font-bold text-right">{perfMetrics.verifySamples}</td>
+                      </tr>
+                      <tr className="border-b border-[var(--border-light)]">
+                        <td className="py-1 pr-2 opacity-60">Bytes Processed (Pixel Buffer)</td>
+                        <td className="py-1 font-bold text-right">{perfMetrics.bytesProcessed.toLocaleString()} B</td>
+                      </tr>
                        <tr className="border-b border-[var(--border-light)]">
                          <td className="py-1 pr-2 opacity-60">Compare Time</td>
                          <td className="py-1 font-bold text-right">{perfMetrics.compareMs} ms</td>
                        </tr>
-                       <tr className="border-b border-[var(--border-light)]">
-                         <td className="py-1 pr-2 opacity-60">AI Tokens Used</td>
-                         <td className="py-1 font-bold text-right">{perfMetrics.aiTokensUsed}</td>
-                       </tr>
-                       <tr className="border-b border-[var(--border-light)]">
-                         <td className="py-1 pr-2 opacity-60">Final Score</td>
-                         <td className="py-1 font-bold text-right">{auditResult.score}</td>
-                       </tr>
+                      <tr className="border-b border-[var(--border-light)]">
+                        <td className="py-1 pr-2 opacity-60">AI Tokens Used</td>
+                        <td className="py-1 font-bold text-right">{perfMetrics.aiTokensUsed}</td>
+                      </tr>
+                      <tr className="border-b border-[var(--border-light)]">
+                        <td className="py-1 pr-2 opacity-60">Checker Mode</td>
+                        <td className="py-1 font-bold text-right">{perfMetrics.checkerMode}</td>
+                      </tr>
+                      <tr className="border-b border-[var(--border-light)]">
+                        <td className="py-1 pr-2 opacity-60">Manifest Hash</td>
+                        <td className="py-1 font-bold text-right">{perfMetrics.manifestHash || 'N/A'}</td>
+                      </tr>
+                      <tr className="border-b border-[var(--border-light)]">
+                        <td className="py-1 pr-2 opacity-60">Final Score</td>
+                        <td className="py-1 font-bold text-right">{auditResult.score}</td>
+                      </tr>
                        <tr>
                          <td className="pt-2 pr-2 opacity-60 align-top">Score Formula</td>
                          <td className="pt-2 text-right break-all">{perfMetrics.formula}</td>
@@ -1050,7 +1110,7 @@ export const VerifyView: React.FC = () => {
            </button>
         </div>
         <p className="text-xl opacity-60 max-w-2xl font-serif italic">
-          Compare two selected videos from YouTube playlists using four thumbnail anchors and perceptual hash distance.
+          Compare two selected YouTube videos with signed keyframe metadata. Quick mode uses 4 thumbnails; Deep mode samples at 2 frames/min against saved keyframes.
         </p>
       </header>
 
@@ -1115,6 +1175,17 @@ export const VerifyView: React.FC = () => {
              </div>
 
              <div className="border border-[var(--border-light)] rounded p-3 bg-[var(--code-bg)] space-y-2">
+               <div className="flex items-center justify-between gap-3">
+                 <label className="text-[10px] font-mono uppercase tracking-wide opacity-80">Checker Mode</label>
+                 <select
+                   value={checkerMode}
+                   onChange={(e) => setCheckerMode(e.target.value as 'QUICK' | 'DEEP')}
+                   className="px-2 py-1 bg-white border border-[var(--border-light)] rounded text-[10px] font-mono"
+                 >
+                   <option value="QUICK">Quick (4 thumbnails)</option>
+                   <option value="DEEP">Deep (2 samples/min)</option>
+                 </select>
+               </div>
                <label className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-wide opacity-80 cursor-pointer">
                  <input
                    type="checkbox"
@@ -1133,7 +1204,7 @@ export const VerifyView: React.FC = () => {
                  Batch Playlist Mode (LA vs LB)
                </label>
                <div className="text-[9px] font-mono opacity-60">
-                 0) Enable permission (optional) 1) Paste links A/B 2) Report auto-generates in a few seconds.
+                 0) Optional permission 1) Paste links A/B 2) Auto-generate report (Quick or Deep).
                </div>
              </div>
 

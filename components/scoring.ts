@@ -55,6 +55,39 @@ export interface AuditResult {
   frameDetails?: FrameMatchResult[];
 }
 
+export interface SignedKeyframe {
+  keyframeIndex: number;
+  tSec: number;
+  pHash64: string;
+  dHash64: string;
+  source: 'THUMBNAIL_ANCHOR' | 'RECORDED_FRAME';
+  anchorId?: number;
+  previewUrl?: string;
+}
+
+export interface SignedVideoManifest {
+  schemaVersion: string;
+  createdAt: string;
+  sampling: {
+    signProfile: 'KF_1FPM';
+    verifyQuickProfile: 'THUMB_4_ANCHOR';
+    verifyDeepProfile: 'VF_2FPM';
+    offsetSec: number;
+    intervalSec: number;
+  };
+  sourceA: {
+    videoId?: string;
+    durationSec?: number;
+    mode: 'YOUTUBE_THUMBNAIL' | 'RECORDED_CLIP';
+  };
+  keyframes: SignedKeyframe[];
+  signature: {
+    algorithm: 'Ed25519';
+    status: 'UNSIGNED_LOCAL_DRAFT';
+    manifestHash: string;
+  };
+}
+
 // --- HASHING UTILITIES (Lightweight / Zero-Dep) ---
 
 // Compute Hamming Distance between two hex/binary strings
@@ -516,6 +549,164 @@ export const computePairwiseFrameAuditScore = (
   const n = Math.max(1, expectedTimestamps.length);
   const dVisual = sumDist / n;
   const coverage = matches / n;
+  const dTemporal = 1 - coverage;
+  const dTotal = (0.8 * dVisual) + (0.2 * dTemporal);
+  const score = Math.min(1000, Math.round(dTotal * 1000));
+
+  return {
+    score,
+    band: getConfidenceBand(score),
+    signals: {
+      dVisual: parseFloat(dVisual.toFixed(3)),
+      dTemporal: parseFloat(dTemporal.toFixed(3))
+    },
+    bestMatchLabel,
+    bestMatchMeta,
+    bestMatchCandId,
+    confidence: Math.max(0, 1 - dTotal),
+    frameDetails
+  };
+};
+
+export const createSignedVideoManifest = (
+  referenceFrames: ReferenceFrame[],
+  options: {
+    sourceVideoId?: string;
+    durationSec?: number;
+    offsetSec: number;
+    intervalSec: number;
+    mode: 'YOUTUBE_THUMBNAIL' | 'RECORDED_CLIP';
+  }
+): SignedVideoManifest => {
+  const keyframes: SignedKeyframe[] = referenceFrames.map((r, i) => ({
+    keyframeIndex: i + 1,
+    tSec: typeof r.meta?.timestamp === 'number' ? r.meta.timestamp : i * options.intervalSec,
+    pHash64: r.hashes.pHash,
+    dHash64: r.hashes.dHash,
+    source: options.mode === 'YOUTUBE_THUMBNAIL' ? 'THUMBNAIL_ANCHOR' : 'RECORDED_FRAME',
+    anchorId: typeof r.meta?.anchorId === 'number' ? r.meta.anchorId : undefined,
+    previewUrl: typeof r.meta?.url === 'string' ? r.meta.url : undefined
+  }));
+
+  const canonicalPayload = JSON.stringify({
+    schemaVersion: '0.3.4',
+    sourceVideoId: options.sourceVideoId || '',
+    durationSec: options.durationSec || 0,
+    offsetSec: options.offsetSec,
+    intervalSec: options.intervalSec,
+    mode: options.mode,
+    keyframes: keyframes.map((k) => ({
+      i: k.keyframeIndex,
+      t: k.tSec,
+      p: k.pHash64,
+      d: k.dHash64,
+      s: k.source,
+      a: typeof k.anchorId === 'number' ? k.anchorId : null
+    }))
+  });
+
+  // Lightweight deterministic local digest placeholder; real signing path replaces this hash.
+  let h = 0;
+  for (let i = 0; i < canonicalPayload.length; i++) {
+    h = (h * 31 + canonicalPayload.charCodeAt(i)) >>> 0;
+  }
+  const pseudoHash = `local32:${h.toString(16).padStart(8, '0')}`;
+
+  return {
+    schemaVersion: '0.3.4',
+    createdAt: new Date().toISOString(),
+    sampling: {
+      signProfile: 'KF_1FPM',
+      verifyQuickProfile: 'THUMB_4_ANCHOR',
+      verifyDeepProfile: 'VF_2FPM',
+      offsetSec: options.offsetSec,
+      intervalSec: options.intervalSec
+    },
+    sourceA: {
+      videoId: options.sourceVideoId,
+      durationSec: options.durationSec,
+      mode: options.mode
+    },
+    keyframes,
+    signature: {
+      algorithm: 'Ed25519',
+      status: 'UNSIGNED_LOCAL_DRAFT',
+      manifestHash: pseudoHash
+    }
+  };
+};
+
+export const computeDeepManifestAuditScore = (
+  signedManifest: SignedVideoManifest,
+  candidateFrames: FrameCandidate[]
+): AuditResult => {
+  const frameDetails: FrameMatchResult[] = [];
+  const refs = signedManifest.keyframes;
+  if (refs.length === 0 || candidateFrames.length === 0) {
+    return {
+      score: 1000,
+      band: 'DIVERGENT_SOURCE',
+      signals: { dVisual: 1, dTemporal: 1 },
+      confidence: 0,
+      frameDetails: []
+    };
+  }
+
+  let totalMinDist = 0;
+  let matchedCandidateCount = 0;
+  let minVisualDist = 1;
+  let bestMatchLabel = 'None';
+  let bestMatchMeta: any = null;
+  let bestMatchCandId: string | undefined;
+  const threshold = 0.25;
+
+  for (const cand of candidateFrames) {
+    let bestRef = refs[0];
+    let bestDist = 1;
+    for (const ref of refs) {
+      const d = getHammingDistance(ref.pHash64, cand.hashes.pHash) / 64.0;
+      if (d < bestDist) {
+        bestDist = d;
+        bestRef = ref;
+      }
+    }
+
+    const isMatch = bestDist <= threshold;
+    if (isMatch) matchedCandidateCount++;
+    totalMinDist += bestDist;
+
+    const refLabel = `KF${bestRef.keyframeIndex}`;
+    if (bestDist < minVisualDist) {
+      minVisualDist = bestDist;
+      bestMatchLabel = refLabel;
+      bestMatchMeta = {
+        timestamp: bestRef.tSec,
+        anchorId: bestRef.anchorId,
+        anchorKind: bestRef.source,
+        url: bestRef.previewUrl
+      };
+      bestMatchCandId = cand.id;
+    }
+
+    frameDetails.push({
+      refLabel,
+      refMeta: {
+        timestamp: bestRef.tSec,
+        sampleIndex: bestRef.keyframeIndex,
+        anchorKind: bestRef.source,
+        anchorId: bestRef.anchorId,
+        url: bestRef.previewUrl
+      },
+      bestCandId: cand.id,
+      candMeta: { timestamp: cand.timestamp, imageUrl: cand.imageUrl, hashes: cand.hashes },
+      visualDistance: bestDist,
+      isMatch
+    });
+  }
+
+  const n = Math.max(1, candidateFrames.length);
+  const dVisual = totalMinDist / n;
+  const coverage = matchedCandidateCount / n;
   const dTemporal = 1 - coverage;
   const dTotal = (0.8 * dVisual) + (0.2 * dTemporal);
   const score = Math.min(1000, Math.round(dTotal * 1000));
