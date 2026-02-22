@@ -1,7 +1,7 @@
 
 # Signet AI Project Status & Roadmap
 
-**Current Version:** 0.3.2_UTW  
+**Current Version:** 0.3.3_UTW  
 **Protocol Spec:** v0.3.2
 
 ## Phase 1: Core Architecture (Foundation)
@@ -28,6 +28,9 @@
     - [x] **Zero-Copy Streaming Engine** (Unlimited File Size)
     - [x] Block-Chained Hashing (SHA-256)
     - [x] **Deep Hash Verification** (Content Slicing)
+    - [x] MP4 sample-frame metadata embedding (1 frame/min, +7s offset)
+    - [x] Auto-verify on signed file load/sign complete
+    - [x] YouTube OAuth resumable upload + metadata/comment publishing
     - [x] **Batch Telemetry** (Throughput/Velocity Metrics)
 
 - [x] **Formal Specification**
@@ -60,6 +63,9 @@
     - [x] Recursive Directory Scanning (Discovery)
     - [x] Sidecar (.json) Generation & Verification
     - [x] Embedded (UTW) Verification with Slicing
+    - [x] Hash-mode parity with Universal Signer (`SHA256_BLOCK_CHAINED` / `SHA256_FULL`)
+    - [x] MP4 audit columns (frames checked, pHash preview, final hash, audit detail)
+    - [x] Per-row `Open Report` handoff to `/#universal-lab` Universal Integrity Verified view
 
 - [ ] **Resilience Layer (Soft-Binding)**
     - [ ] **Client-side pHash** calculation (WASM/JS) for Images
@@ -77,6 +83,7 @@
 
 ## Known Issues / Optimization
 - **PDF Incremental Updates**: Post-EOF injection is valid, but multiple signs need a formal xref table update to be "Adobe Compliant" (currently "Signet Compliant").
+- **YouTube Browser Frame Limits**: The `/verify` browser flow remains thumbnail-anchor based for YouTube sources (soft-binding), not arbitrary decoded frame extraction.
 
 ---
-*Last Updated: Feb 20, 2026 (CLI Tool Source Available)*
+*Last Updated: Feb 22, 2026 (Batch MP4 Report + Universal Handoff + YouTube Publish Integrated)*
