@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { PersistenceService } from '../services/PersistenceService';
 import { Admonition } from './Admonition';
 import { buildMinuteSamplingTimestamps, generateDualHash } from './scoring';
@@ -86,6 +86,20 @@ export const UniversalSigner: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || GOOGLE_OAUTH_CLIENT_ID || '';
   const YT_UPLOAD_SCOPE = 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.force-ssl';
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('signet_universal_report_payload');
+      if (!raw) return;
+      const payload = JSON.parse(raw);
+      if (payload && typeof payload === 'object') {
+        setVerificationResult(payload);
+      }
+      sessionStorage.removeItem('signet_universal_report_payload');
+    } catch (_e) {
+      // ignore invalid payload
+    }
+  }, []);
 
   const buildYouTubeMetadataBlocks = (manifest: any) => {
     const frameSamples = Array.isArray(manifest?.asset?.frame_samples) ? manifest.asset.frame_samples : [];

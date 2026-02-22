@@ -276,6 +276,11 @@ export const SpecView: React.FC = () => {
     // --- SIGNATURE INJECTION (UTW) ---
     const pdfBuffer = doc.output('arraybuffer');
     
+    const pdfHashBuffer = await crypto.subtle.digest('SHA-256', pdfBuffer);
+    const pdfContentHash = Array.from(new Uint8Array(pdfHashBuffer))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+
     const manifest = {
       "@context": "https://signetai.io/contexts/vpr-v1.jsonld",
       "type": "org.signetai.document_provenance",
@@ -285,7 +290,9 @@ export const SpecView: React.FC = () => {
         "type": "application/pdf",
         "hash_algorithm": "SHA-256",
         "filename": "signet_spec_v0.3.2.pdf",
-        "generated_by": "signetai.io"
+        "generated_by": "signetai.io",
+        "content_hash": pdfContentHash,
+        "byte_length": pdfBuffer.byteLength
       },
       "signature": {
         "signer": "signetai.io:ssl",
