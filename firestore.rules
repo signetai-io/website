@@ -11,6 +11,18 @@ service cloud.firestore {
       return request.auth.token.get('email', '').lower();
     }
 
+    function getAuthUid() {
+      return request.auth.uid;
+    }
+
+    function hasValidAnchorId(anchorId) {
+      return anchorId.size() >= 5 && anchorId.size() <= 256;
+    }
+
+    function ownerUidMatchesRequest() {
+      return request.resource.data.get('ownerUid', '') == getAuthUid();
+    }
+
     function isAdmin() {
       return isAuthenticated() && (
         getUserEmail() == 'shengliang.song.ai@gmail.com' ||
@@ -22,14 +34,10 @@ service cloud.firestore {
     match /identities/{anchorId} {
       allow read: if true;
       
-      // Allow creation if:
-      // 1. User is authenticated
-      // 2. anchorId is valid size (signetai.io:xxxx)
-      // 3. The user sets themselves as the owner
-      allow create: if isAuthenticated() 
-                    && anchorId.size() >= 5 
-                    && anchorId.size() <= 256 
-                    && request.resource.data.ownerUid == request.auth.uid;
+      // Allow creation by authenticated provider-backed user who sets ownerUid to self.
+      allow create: if isAuthenticated()
+                    && hasValidAnchorId(anchorId)
+                    && ownerUidMatchesRequest();
       
       // Allow update if:
       // 1. User is an Admin
@@ -37,12 +45,12 @@ service cloud.firestore {
       // 3. OR The document exists but has no ownerUid/Email (orphaned)
       allow update: if isAdmin() || (
         isAuthenticated() && (
-          resource.data.get('ownerUid', '') == request.auth.uid ||
+          resource.data.get('ownerUid', '') == getAuthUid() ||
           resource.data.get('ownerEmail', '').lower() == getUserEmail() ||
           resource.data.get('ownerUid', '') == '' ||
           resource.data.get('ownerUid', '') == 'ANONYMOUS'
         ) && (
-          request.resource.data.ownerUid == request.auth.uid
+          ownerUidMatchesRequest()
         )
       );
       

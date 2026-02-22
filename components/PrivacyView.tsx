@@ -49,6 +49,16 @@ export const PrivacyView: React.FC = () => {
             The Signet Protocol reference implementation is open source. You can audit our cryptographic implementation at <a href="https://github.com/signetai-io/website" className="text-[var(--trust-blue)] underline">github.com/signetai-io</a> to verify these claims.
           </p>
         </section>
+
+        <section className="space-y-4">
+          <h3 className="font-bold text-xl text-[var(--text-header)]">5. Legal Endpoints</h3>
+          <p className="text-[var(--text-body)] opacity-80 leading-relaxed">
+            Terms of Service URL: <a href="#terms" className="text-[var(--trust-blue)] underline">https://www.signetai.io/#terms</a>
+          </p>
+          <p className="text-[var(--text-body)] opacity-80 leading-relaxed">
+            User Data Deletion URL: <a href="#data-deletion" className="text-[var(--trust-blue)] underline">https://www.signetai.io/#data-deletion</a>
+          </p>
+        </section>
       </div>
 
       <div className="mt-20 pt-10 border-t border-[var(--border-light)] text-sm opacity-50 font-mono">

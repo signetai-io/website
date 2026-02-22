@@ -29,6 +29,8 @@ import { MissionView } from './components/MissionView';
 import { PrivacyView } from './components/PrivacyView';
 import { DonationView } from './components/DonationView';
 import { PodcastDemo } from './components/PodcastDemo';
+import { TermsOfServiceView } from './components/TermsOfServiceView';
+import { UserDataDeletionView } from './components/UserDataDeletionView';
 
 export type Theme = 'standard' | 'midnight';
 
@@ -89,6 +91,8 @@ const Sidebar: React.FC<{ currentView: string; isOpen: boolean }> = ({ currentVi
         <a href="#status" className={`sidebar-link ${currentView === 'status' ? 'active' : ''}`}>12. Project Status & Log</a>
         <a href="#donate" className={`sidebar-link text-[var(--trust-blue)] font-bold ${currentView === 'donate' ? 'active' : ''}`}>13. Donate & Grants</a>
         <a href="#privacy" className={`sidebar-link opacity-60 ${currentView === 'privacy' ? 'active' : ''}`}>14. Privacy & Legal</a>
+        <a href="#terms" className={`sidebar-link opacity-60 ${currentView === 'terms' ? 'active' : ''}`}>15. Terms of Service</a>
+        <a href="#data-deletion" className={`sidebar-link opacity-60 ${currentView === 'data-deletion' ? 'active' : ''}`}>16. User Data Deletion</a>
       </nav>
 
       <div className="pt-8 mt-8 border-t border-[var(--border-light)] space-y-6">
@@ -167,7 +171,7 @@ const Header: React.FC<{
 );
 
 const App: React.FC = () => {
-  const [view, setView] = useState<'home' | 'mission' | 'spec' | 'standards' | 'schema' | 'branding' | 'manual' | 'auditor' | 'identity' | 'compliance' | 'verify' | 'ecosystem' | 'svg-lab' | 'pdf-lab' | 'universal-lab' | 'status' | 'batch' | 'cli' | 'privacy' | 'donate'>('home');
+  const [view, setView] = useState<'home' | 'mission' | 'spec' | 'standards' | 'schema' | 'branding' | 'manual' | 'auditor' | 'identity' | 'compliance' | 'verify' | 'ecosystem' | 'svg-lab' | 'pdf-lab' | 'universal-lab' | 'status' | 'batch' | 'cli' | 'privacy' | 'donate' | 'terms' | 'data-deletion'>('home');
   const [theme, setTheme] = useState<Theme>('standard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isPortalOpen, setIsPortalOpen] = useState(false);
@@ -222,6 +226,10 @@ const App: React.FC = () => {
         setView('cli');
       } else if (route === '#privacy') {
         setView('privacy');
+      } else if (route === '#terms') {
+        setView('terms');
+      } else if (route === '#data-deletion') {
+        setView('data-deletion');
       } else if (route === '#donate') {
         setView('donate');
       } else {
@@ -311,6 +319,8 @@ const App: React.FC = () => {
           {view === 'cli' && <CliDownload />}
           {view === 'privacy' && <PrivacyView />}
           {view === 'donate' && <DonationView />}
+          {view === 'terms' && <TermsOfServiceView />}
+          {view === 'data-deletion' && <UserDataDeletionView />}
 
           <footer className="mt-24 pt-12 border-t border-[var(--border-light)] flex flex-wrap justify-between items-center gap-6 text-[10px] font-mono opacity-50 uppercase tracking-widest text-[var(--text-body)]">
             <div className="flex items-center gap-4">
@@ -320,6 +330,8 @@ const App: React.FC = () => {
             <div className="flex gap-4">
               <a href="#mission" className="hover:text-[var(--trust-blue)]">About</a>
               <a href="#privacy" className="hover:text-[var(--trust-blue)]">Privacy</a>
+              <a href="#terms" className="hover:text-[var(--trust-blue)]">Terms</a>
+              <a href="#data-deletion" className="hover:text-[var(--trust-blue)]">Data Deletion</a>
               <a href="#donate" className="hover:text-[var(--trust-blue)]">Grants</a>
               <span>VERSION: 0.3.3_UTW</span>
               <span>UPDATED: {new Date().toISOString().replace('T', ' ').split('.')[0]} UTC</span>
