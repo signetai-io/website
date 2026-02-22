@@ -327,6 +327,16 @@ export const ManualView: React.FC = () => {
           </div>
         </div>
 
+        <div className="mt-6 p-6 bg-[var(--bg-standard)] border border-[var(--border-light)] rounded">
+          <h5 className="font-bold text-[var(--text-header)] mb-2">Batch Processor Integration (MP4)</h5>
+          <ul className="list-disc pl-5 space-y-1 text-xs opacity-80 font-mono">
+            <li>Batch table now includes dedicated MP4 fields: <code>MP4 Audit</code>, <code>Frames</code>, <code>pHash64 Preview</code>, <code>Final Hash</code>, and <code>Audit Detail</code>.</li>
+            <li>Each MP4 row can open a full verification view via <strong>Open Report</strong>.</li>
+            <li><strong>Open Report</strong> routes to <code>/#universal-lab</code> and renders the same <strong>Universal Integrity Verified</strong> report with the <strong>Frame Samples (1 Frame/Minute)</strong> table.</li>
+            <li>This handoff is local (session storage payload), so no backend call is required for report rendering.</li>
+          </ul>
+        </div>
+
         <div className="mt-6 p-4 border-l-4 border-[var(--trust-blue)] bg-[var(--admonition-bg)] text-xs font-mono">
           <strong className="block mb-2 text-[var(--trust-blue)]">YouTube Publish Notes</strong>
           <ul className="list-disc pl-5 space-y-1">

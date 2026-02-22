@@ -5,7 +5,7 @@ export const PART_2 = [
   {
     category: "TECHNICAL AUDIT",
     title: "8. Zero-Copy Streaming Engine",
-    text: "7.1 The Problem\nLoading large assets (e.g., 2GB Video) into browser RAM (ArrayBuffer) causes crash loops on mobile devices.\n\n7.2 The Solution: Block-Chained Hashing\nSignet implements a stream reader that processes files in 5MB chunks. \nFormula: H(n) = SHA256( H(n-1) + Chunk(n) )\n\n7.3 Universal Lab Deployment\nThe public '/universal-lab' flow signs local MP4 files with UTW, generates 1-frame/min pHash metadata (offset +7s), verifies integrity locally, and can publish directly to YouTube via OAuth resumable upload with auto-generated human-readable + machine-readable metadata blocks.",
+    text: "7.1 The Problem\nLoading large assets (e.g., 2GB Video) into browser RAM (ArrayBuffer) causes crash loops on mobile devices.\n\n7.2 The Solution: Block-Chained Hashing\nSignet implements a stream reader that processes files in 5MB chunks. \nFormula: H(n) = SHA256( H(n-1) + Chunk(n) )\n\n7.3 Universal Lab Deployment\nThe public '/universal-lab' flow signs local MP4 files with UTW, generates 1-frame/min pHash metadata (offset +7s), verifies integrity locally, and can publish directly to YouTube via OAuth resumable upload with auto-generated human-readable + machine-readable metadata blocks.\n\n7.4 Batch-to-Universal Report Handoff\nBatch MP4 audit rows expose Open Report, which routes to '/#universal-lab' and renders the same Universal Integrity Verified frame-sample report without backend dependency.",
     content: (
       <div className="space-y-8 animate-in fade-in duration-500">
         <h2 className="text-[var(--text-header)] font-serif text-2xl font-bold mb-6 italic">8. Zero-Copy Streaming</h2>
@@ -33,6 +33,19 @@ export const PART_2 = [
                 <li><strong>Frame Metadata:</strong> 1 frame/min sampling with <code>offset=7s</code>; stores preview, frame size, dHash64, pHash64, and capture status.</li>
                 <li><strong>Verify:</strong> Automatic post-sign integrity verification (no extra click required).</li>
                 <li><strong>Publish:</strong> OAuth-based YouTube resumable upload; auto writes human-readable provenance summary and Signet VPR blocks.</li>
+                <li><strong>Batch Link:</strong> MP4 audit rows include <code>Open Report</code> to load the same Universal verification report page.</li>
+              </ul>
+           </div>
+
+           <div className="p-6 bg-[var(--code-bg)] border border-[var(--border-light)] rounded-lg">
+              <h4 className="font-bold text-[var(--text-header)] text-sm uppercase mb-4">7.4 Batch Processor MP4 Audit Surface</h4>
+              <ul className="list-disc pl-5 text-xs opacity-80 font-mono space-y-1">
+                <li>One row per file with explicit MP4 columns for operational triage.</li>
+                <li><strong>MP4 Audit:</strong> sampling profile, offset, total, pass/fail frame counts.</li>
+                <li><strong>Frames:</strong> valid pHash frame count / total sampled frames.</li>
+                <li><strong>pHash64 Preview:</strong> compact digest preview of sampled keyframes.</li>
+                <li><strong>Final Hash:</strong> embedded content hash used for hard-binding verification.</li>
+                <li><strong>Audit Detail:</strong> exact verification reason for VERIFIED/UNSIGNED/TAMPERED states.</li>
               </ul>
            </div>
         </div>
